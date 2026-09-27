@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = [
+  "apps/lxmi-desktop/src-tauri",
+  "crates/lxmi-core",
+  "crates/lxmi-steam",
+]
+
+[workspace.dependencies]
+tracing = "0.1"

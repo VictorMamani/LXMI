@@ -1,0 +1,8 @@
+[package]
+name = "lxmi-steam"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lxmi-core = { path = "../lxmi-core" }
+tracing = "0.1"

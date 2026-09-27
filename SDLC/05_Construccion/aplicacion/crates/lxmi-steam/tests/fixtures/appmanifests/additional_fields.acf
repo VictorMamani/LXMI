@@ -1,0 +1,12 @@
+"AppState"
+{
+    "StateFlags" "4"
+    "buildid" "999"
+    "appid" "123456"
+    "name" "Synthetic Example"
+    "installdir" "Example Folder"
+    "UserConfig"
+    {
+        "language" "english"
+    }
+}

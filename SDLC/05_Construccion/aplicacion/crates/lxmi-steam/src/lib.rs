@@ -1,0 +1,18 @@
+mod compatdata;
+mod discovery;
+mod game_scanner;
+mod manifest;
+mod scanner;
+mod vdf;
+
+pub use discovery::{
+    SteamDiscoveryResult, SteamDiscoveryScanner, SteamGameDiscoveryResult,
+    SteamGameDiscoveryStatus, SteamGameInstallation,
+};
+pub use game_scanner::{
+    SteamAppInstallStatus, SteamAppInstallation, SteamAppScanIssue, SteamAppScanIssueCode,
+    SteamAppScanIssueSeverity, SteamAppScanResult, SteamAppScanStatus, SteamAppScanner,
+};
+pub use manifest::{parse_app_manifest, SteamAppManifest, SteamManifestError};
+pub use scanner::SteamScanner;
+pub use vdf::{parse_library_folders, VdfParseError};

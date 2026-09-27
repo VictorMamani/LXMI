@@ -1,0 +1,15 @@
+"libraryfolders"
+{
+    // New format stores the library path inside an object.
+    "0"
+    {
+        "path" "/home/tester/.local/share/Steam"
+        "label" ""
+        "apps"
+        {
+            "123456" "987654"
+        }
+    }
+    // Legacy format stores the path directly as a string.
+    "1" "/mnt/games/SteamLibrary"
+}
