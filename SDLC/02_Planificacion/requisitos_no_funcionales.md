@@ -15,11 +15,12 @@
 | RNF-11 | Rendimiento | Medir primero con biblioteca sintética; fijar umbrales después de tener baseline |
 | RNF-12 | Distribución segura | Verificar dependencias, licencias y empaquetado antes de publicar binarios |
 
-## Criterios y evidencia en LXMI-0.1/0.2
+## Criterios y evidencia en LXMI-0.1/0.2/0.3
 
 - **Solo lectura:** los escáneres inspeccionan filesystem; no requieren root, no lanzan Steam/juegos y no modifican bibliotecas, manifests ni prefixes.
 - **Errores y estados:** las fallas de manifests/filesystem tienen códigos tipados; compatdata ausente es un estado observable y no un error fatal.
-- **Rutas:** alias de Steam se normalizan/deduplican; manifests, `steamapps/common`, directorios de juegos y compatdata con symlinks se rechazan según la política implementada.
-- **Pruebas aisladas:** los escenarios del scanner usan fixtures y árboles temporales sintéticos, no la instalación real de Steam.
+- **Rutas:** alias de Steam se normalizan/deduplican; manifests, `steamapps/common`, directorios de juegos, compatdata, Proton y tools custom con symlinks se rechazan según la política implementada. Las rutas de `install_path` con `..` se rechazan; las rutas absolutas declaradas se aceptan solo si existen como directorios y ninguno de sus componentes es symlink.
+- **Lectura acotada:** manifests de compatibility tools y tool manifests limitados a 2 MiB, `version` a 16 KiB y `VERSIONS.txt` a 64 KiB; ningún contenido se ejecuta.
+- **Pruebas aisladas:** escenarios Rust usan fixtures y árboles temporales sintéticos. Una comprobación adicional leyó Steam local, sin escritura ni ejecución.
 - **Persistencia:** el resultado se vuelve a detectar en cada escaneo; SQLite no se incorpora en esta etapa.
-- **Límite de evidencia:** estas propiedades se validan en pruebas de crates. La ventana nativa Tauri no se compiló en el entorno por dependencias Linux ausentes y no se probó contra Steam real.
+- **Límite de evidencia:** el workspace completo y la UI web compilan/pasan validaciones; la ventana Tauri se abrió y se revisó visualmente. El escaneo real es evidencia de discovery de una instalación concreta. No se ejecutaron Proton/Wine/juegos ni se verificó compatibilidad.

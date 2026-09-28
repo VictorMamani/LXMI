@@ -2,7 +2,7 @@
 
 **Objetivo:** confirmar que el producto hace lo acordado sin exponer datos o romper el flujo principal.
 
-LXMI-0.1/0.2 cuenta con pruebas sintéticas de modelos del core, parser KeyValues/ACF, escaneo de manifests, catálogo de AppIDs y estados compatdata/pfx, además de typecheck, lint, formato y build web. No se ejecutaron la ventana nativa Tauri ni pruebas contra Steam real; los prerrequisitos nativos faltantes se registran en construcción y trabajo pendiente. Los casos futuros de importación y perfiles siguen siendo criterios de diseño.
+LXMI-0.1/0.2/0.3 cuenta con fixtures Rust de KeyValues/ACF, Steam games/compatdata, Proton/custom tools/Steam Linux Runtime, errores y symlinks; el workspace completo pasó check, Clippy y tests, y el frontend pasó typecheck, lint, formato y build. Los scanners también se ejecutaron contra Steam local en solo lectura y la ventana Tauri se abrió/revisó visualmente con los resultados. No se ejecutaron runtimes/juegos ni se probó compatibilidad XXMI. Importación y perfiles siguen siendo criterios futuros.
 
 ## Documentos sugeridos
 
@@ -19,4 +19,4 @@ LXMI-0.1/0.2 cuenta con pruebas sintéticas de modelos del core, parser KeyValue
 
 ## Salida de fase
 
-La salida de fase para un piloto requerirá además validar la aplicación nativa en Ubuntu y completar las pruebas de sistema que correspondan; los resultados sintéticos actuales no prueban el descubrimiento en una instalación real de Steam ni compatibilidad o ejecución de juegos con Proton.
+La salida de fase para un piloto requerirá completar las pruebas de sistema que correspondan. El discovery local de Steam no prueba selección, compatibilidad o ejecución de juegos con Proton.

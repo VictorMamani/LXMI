@@ -7,7 +7,7 @@ La descripción inicial de LXMI y sus componentes fue aportada por el usuario en
 ## Hechos comprobados en este repositorio
 
 - Se ha creado una carpeta de documentación para el Proyecto 19.
-- La implementación de LXMI-0.1/0.2 cubre información del sistema, Steam Libraries, lectura de manifests, registro de Wuthering Waves y observación pasiva de compatdata/pfx. No valida ejecución, compatibilidad de juegos ni runtimes.
+- La implementación de LXMI-0.1/0.2/0.3 cubre información del sistema, Steam Libraries, lectura de manifests, registro de Wuthering Waves, observación pasiva de compatdata/pfx y descubrimiento de herramientas de compatibilidad. No valida lanzamiento ni compatibilidad de juegos/XXMI.
 - No se recibieron enlaces upstream, código, documentación de compatibilidad ni licencias de XXMI/runtimes. La fuente oficial consultada para el AppID se registra por separado; no valida compatibilidad.
 
 ## Fuente verificada para LXMI-0.2
@@ -15,6 +15,10 @@ La descripción inicial de LXMI y sus componentes fue aportada por el usuario en
 | Fecha | Fuente primaria | Dato comprobado | Límite |
 |---|---|---|---|
 | 2026-09-27 | [Ficha oficial de Wuthering Waves en Steam](https://store.steampowered.com/app/3513350/Wuthering_Waves/) | La URL de la ficha usa AppID `3513350` y el producto se identifica como Wuthering Waves. La ficha también declara uso de Anti-Cheat Expert a nivel de kernel. | Confirma identidad/AppID de Steam, no instalación local, compatibilidad con Linux/Proton, seguridad de mods ni funcionamiento de LXMI. La mención anti-cheat exige revisión antes de cualquier integración de runtime o mods; no se intentará eludir controles. |
+| 2026-09-27 | [Repositorio oficial ValveSoftware/Proton](https://github.com/ValveSoftware/Proton) | Valve distribuye varias versiones de Proton con Steam y documenta herramientas custom en `compatibilitytools.d`; el layout incluye manifests y un entrypoint `proton`. | La estructura permite descubrir archivos locales; no indica qué versión selecciona Steam para un juego ni garantiza que el juego funcione. |
+| 2026-09-27 | [Plantilla Valve `compatibilitytool.vdf`](https://github.com/ValveSoftware/Proton/blob/proton_11.0/compatibilitytool.vdf.template) | La metadata agrupa `compat_tools` y puede declarar ID, `install_path`, `display_name` y listas de OS; los paths declarados pueden ser relativos o absolutos. | LXMI valida la ruta y no ejecuta ni modifica contenido. Una plantilla no garantiza que toda versión de Proton use el mismo layout. |
+| 2026-09-27 | [Documentación Valve Steam Runtime para reportar fallos](https://github.com/ValveSoftware/steam-runtime/blob/master/doc/reporting-steamlinuxruntime-bugs.md) | Steam Linux Runtime publica metadata propia y `VERSIONS.txt`; no debe clasificarse como Proton solo por el nombre del directorio. | LXMI reconoce capas conocidas de runtime y muestra versión si puede leer la fila `depot`; la presencia no demuestra uso por Wuthering Waves. |
+| 2026-09-27 | Observación local de solo lectura con Steam Scanner y Proton Scanner | Se detectó Wuthering Waves (AppID `3513350`; directorio presente; compatdata ausente), Proton Experimental y tres Steam Linux Runtime. Un symlink `Steam.dll` se omitió y reportó. | Evidencia de discovery en esta instalación, no de la ventana visual, selección de Proton, lanzamiento, compatibilidad, salud de prefix o funcionamiento de XXMI. No se encontró una instalación custom para validar contra Steam real; esa variante se probó con fixtures. |
 
 ## Hipótesis técnicas por validar
 

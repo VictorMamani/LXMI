@@ -332,6 +332,59 @@ h3 {
   color: #e8a29a;
 }
 
+.tool-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tool-item {
+  padding: 16px 0;
+  border-top: 1px solid #2a393a;
+}
+
+.tool-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.tool-heading h3 {
+  margin-bottom: 5px;
+  font-size: 0.95rem;
+}
+
+.tool-heading p {
+  margin-bottom: 0;
+}
+
+.tool-status {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border: 1px solid #3e514c;
+  border-radius: 4px;
+  color: #a8ceb9;
+  font-size: 0.7rem;
+}
+
+.tool-status-incomplete,
+.tool-status-invalid_metadata,
+.tool-status-unreadable {
+  border-color: #594638;
+  color: #dfb08b;
+}
+
+.tool-details {
+  gap: 12px 24px;
+}
+
+.tool-issue-list {
+  margin-top: 12px;
+}
+
 .page-footer {
   display: flex;
   justify-content: space-between;
@@ -370,6 +423,10 @@ h3 {
   }
 
   .game-title-row {
+    flex-direction: column;
+  }
+
+  .tool-heading {
     flex-direction: column;
   }
 

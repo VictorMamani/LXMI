@@ -1,8 +1,8 @@
 # Flujos de usuario propuestos
 
-El primer diagrama corresponde al discovery LXMI-0.1/0.2 implementado en código y probado con datos sintéticos; todavía no se comprobó visualmente la ventana nativa ni contra Steam real. Los demás diagramas describen comportamiento futuro, no implementado. Se conserva una etapa de revisión antes de modificar archivos locales.
+El primer diagrama corresponde al discovery LXMI-0.1/0.2/0.3 implementado en código; pasó fixtures y se ejecutó contra Steam local en solo lectura. La ventana nativa se abrió y se revisó con el resultado local visible. Los demás diagramas describen comportamiento futuro, no implementado. Se conserva una etapa de revisión antes de modificar archivos locales.
 
-## Flujo de LXMI-0.1/0.2: Steam, juegos y compatdata
+## Flujo de LXMI-0.1/0.2/0.3: Steam, juegos, compatdata y tools
 
 ```mermaid
 flowchart TD
@@ -22,9 +22,14 @@ flowchart TD
     N -->|No| O[Omitir del catálogo y registrar conteo]
     N -->|Sí| P[Mostrar juego y ruta esperada]
     P --> Q[Inspeccionar compatdata y pfx sin seguir symlinks]
-    Q --> R[Mostrar estados observados y límites de inferencia]
-    O --> S[Mostrar bibliotecas, resumen y avisos]
-    R --> S
+    Q --> R[Explorar compatibility tools y metadata en solo lectura]
+    R --> T{¿Layer indica Proton o Steam Linux Runtime?}
+    T -->|Sí| U[Validar estructura y versión disponible]
+    T -->|No| V[Clasificar como otra herramienta o tipo desconocido]
+    U --> W[Mostrar runtimes disponibles; selección por juego no determinada]
+    V --> W
+    O --> X[Mostrar bibliotecas, resumen y avisos]
+    W --> X
 ```
 
 ## Inspeccionar una instalación

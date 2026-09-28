@@ -2,7 +2,7 @@
 
 **Objetivo:** decidir la estructura técnica mínima y cuidar los datos desde el comienzo.
 
-La arquitectura LXMI es una propuesta conceptual; no hay decisiones implementadas ni evaluación de amenazas completa.
+La arquitectura mantiene decisiones conceptuales para fases futuras. La rebanada de discovery 0.1–0.3 tiene límites implementados en código: Tauri/React, `lxmi-core`, `lxmi-steam` y `lxmi-proton`, en modo de solo lectura. El análisis de amenazas para importación, instalación y ejecución todavía no está completo.
 
 ## Documentos sugeridos
 

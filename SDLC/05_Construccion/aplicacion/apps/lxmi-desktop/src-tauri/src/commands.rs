@@ -5,6 +5,11 @@ use lxmi_core::{
     GameInstallationStatus, ProtonCompatDataStatus, SteamDetectionIssue, SteamDetectionIssueCode,
     SteamDetectionStatus, SteamInstallation, SteamLibrary, SteamScanResult, SystemInfo,
 };
+use lxmi_proton::{
+    CompatibilityTool, CompatibilityToolDiscoveryResult, CompatibilityToolDiscoveryStatus,
+    CompatibilityToolIssue, CompatibilityToolIssueCode, CompatibilityToolIssueSeverity,
+    CompatibilityToolKind, CompatibilityToolSource, CompatibilityToolStatus, ProtonScanner,
+};
 use lxmi_steam::{
     SteamAppScanIssue, SteamAppScanIssueCode, SteamAppScanIssueSeverity, SteamDiscoveryResult,
     SteamDiscoveryScanner, SteamGameDiscoveryResult, SteamGameDiscoveryStatus,
@@ -32,6 +37,31 @@ pub struct SteamScanDto {
     ignored_unknown_apps: usize,
     games: Vec<SteamGameDto>,
     game_issues: Vec<SteamGameIssueDto>,
+    compatibility_tools_status: &'static str,
+    compatibility_tools: Vec<CompatibilityToolDto>,
+    compatibility_tool_issues: Vec<CompatibilityToolIssueDto>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompatibilityToolDto {
+    internal_id: Option<String>,
+    display_name: String,
+    path: String,
+    metadata_path: Option<String>,
+    source: &'static str,
+    kind: &'static str,
+    version: Option<String>,
+    status: &'static str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompatibilityToolIssueDto {
+    code: &'static str,
+    severity: &'static str,
+    path: String,
+    detail: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -87,33 +117,38 @@ pub fn get_system_info() -> SystemInfoDto {
 
 #[tauri::command]
 pub async fn scan_steam() -> SteamScanDto {
-    let discovery = match tauri::async_runtime::spawn_blocking(|| {
-        SteamDiscoveryScanner::from_environment().scan()
+    let (discovery, compatibility_tools) = match tauri::async_runtime::spawn_blocking(|| {
+        let discovery = SteamDiscoveryScanner::from_environment().scan();
+        let compatibility_tools = ProtonScanner.scan(&discovery.steam.installations);
+        (discovery, compatibility_tools)
     })
     .await
     {
-        Ok(discovery) => discovery,
-        Err(error) => SteamDiscoveryResult {
-            steam: SteamScanResult {
-                status: SteamDetectionStatus::InternalError,
-                installations: Vec::new(),
-                issues: vec![SteamDetectionIssue {
-                    code: SteamDetectionIssueCode::FilesystemError,
-                    path: None,
-                    detail: Some(error.to_string()),
-                }],
+        Ok(result) => result,
+        Err(error) => (
+            SteamDiscoveryResult {
+                steam: SteamScanResult {
+                    status: SteamDetectionStatus::InternalError,
+                    installations: Vec::new(),
+                    issues: vec![SteamDetectionIssue {
+                        code: SteamDetectionIssueCode::FilesystemError,
+                        path: None,
+                        detail: Some(error.to_string()),
+                    }],
+                },
+                games: SteamGameDiscoveryResult {
+                    status: SteamGameDiscoveryStatus::NotAvailable,
+                    manifests_parsed: 0,
+                    ignored_unknown_apps: 0,
+                    games: Vec::new(),
+                    issues: Vec::new(),
+                },
             },
-            games: SteamGameDiscoveryResult {
-                status: SteamGameDiscoveryStatus::NotAvailable,
-                manifests_parsed: 0,
-                ignored_unknown_apps: 0,
-                games: Vec::new(),
-                issues: Vec::new(),
-            },
-        },
+            CompatibilityToolDiscoveryResult::not_available(),
+        ),
     };
 
-    SteamScanDto::from(discovery)
+    SteamScanDto::from((discovery, compatibility_tools))
 }
 
 impl From<SystemInfo> for SystemInfoDto {
@@ -135,8 +170,10 @@ impl From<SystemInfo> for SystemInfoDto {
     }
 }
 
-impl From<SteamDiscoveryResult> for SteamScanDto {
-    fn from(discovery: SteamDiscoveryResult) -> Self {
+impl From<(SteamDiscoveryResult, CompatibilityToolDiscoveryResult)> for SteamScanDto {
+    fn from(
+        (discovery, compatibility_tools): (SteamDiscoveryResult, CompatibilityToolDiscoveryResult),
+    ) -> Self {
         Self {
             status: status_code(&discovery.steam.status),
             installations: discovery
@@ -166,6 +203,48 @@ impl From<SteamDiscoveryResult> for SteamScanDto {
                 .iter()
                 .map(SteamGameIssueDto::from)
                 .collect(),
+            compatibility_tools_status: compatibility_tools_status_code(
+                &compatibility_tools.status,
+            ),
+            compatibility_tools: compatibility_tools
+                .tools
+                .iter()
+                .map(CompatibilityToolDto::from)
+                .collect(),
+            compatibility_tool_issues: compatibility_tools
+                .issues
+                .iter()
+                .map(CompatibilityToolIssueDto::from)
+                .collect(),
+        }
+    }
+}
+
+impl From<&CompatibilityTool> for CompatibilityToolDto {
+    fn from(tool: &CompatibilityTool) -> Self {
+        Self {
+            internal_id: tool.internal_id.clone(),
+            display_name: tool.display_name.clone(),
+            path: path_to_string(&tool.path),
+            metadata_path: tool.metadata_path.as_deref().map(path_to_string),
+            source: compatibility_tool_source_code(&tool.source),
+            kind: compatibility_tool_kind_code(&tool.kind),
+            version: tool.version.clone(),
+            status: compatibility_tool_status_code(&tool.status),
+        }
+    }
+}
+
+impl From<&CompatibilityToolIssue> for CompatibilityToolIssueDto {
+    fn from(issue: &CompatibilityToolIssue) -> Self {
+        Self {
+            code: compatibility_tool_issue_code(&issue.code),
+            severity: match issue.severity {
+                CompatibilityToolIssueSeverity::Warning => "warning",
+                CompatibilityToolIssueSeverity::Error => "error",
+            },
+            path: path_to_string(&issue.path),
+            detail: issue.detail.clone(),
         }
     }
 }
@@ -306,6 +385,55 @@ fn game_issue_code(code: &SteamAppScanIssueCode) -> &'static str {
         SteamAppScanIssueCode::PermissionDenied => "permission_denied",
         SteamAppScanIssueCode::CompatDataInvalid => "compatdata_invalid",
         SteamAppScanIssueCode::FilesystemError => "filesystem_error",
+    }
+}
+
+fn compatibility_tools_status_code(status: &CompatibilityToolDiscoveryStatus) -> &'static str {
+    match status {
+        CompatibilityToolDiscoveryStatus::NotAvailable => "not_available",
+        CompatibilityToolDiscoveryStatus::Complete => "complete",
+        CompatibilityToolDiscoveryStatus::Partial => "partial",
+    }
+}
+
+fn compatibility_tool_source_code(source: &CompatibilityToolSource) -> &'static str {
+    match source {
+        CompatibilityToolSource::SteamLibrary => "steam_library",
+        CompatibilityToolSource::Custom => "custom",
+    }
+}
+
+fn compatibility_tool_kind_code(kind: &CompatibilityToolKind) -> &'static str {
+    match kind {
+        CompatibilityToolKind::Proton => "proton",
+        CompatibilityToolKind::SteamLinuxRuntime => "steam_linux_runtime",
+        CompatibilityToolKind::Other => "other",
+        CompatibilityToolKind::Unknown => "unknown",
+    }
+}
+
+fn compatibility_tool_status_code(status: &CompatibilityToolStatus) -> &'static str {
+    match status {
+        CompatibilityToolStatus::Valid => "valid",
+        CompatibilityToolStatus::Incomplete => "incomplete",
+        CompatibilityToolStatus::InvalidMetadata => "invalid_metadata",
+        CompatibilityToolStatus::Unreadable => "unreadable",
+    }
+}
+
+fn compatibility_tool_issue_code(code: &CompatibilityToolIssueCode) -> &'static str {
+    match code {
+        CompatibilityToolIssueCode::CommonDirectoryInvalid => "common_directory_invalid",
+        CompatibilityToolIssueCode::CustomDirectoryInvalid => "custom_directory_invalid",
+        CompatibilityToolIssueCode::DirectoryUnreadable => "directory_unreadable",
+        CompatibilityToolIssueCode::EntryUnreadable => "entry_unreadable",
+        CompatibilityToolIssueCode::SymlinkRejected => "symlink_rejected",
+        CompatibilityToolIssueCode::FileNotRegular => "file_not_regular",
+        CompatibilityToolIssueCode::FileTooLarge => "file_too_large",
+        CompatibilityToolIssueCode::MetadataInvalid => "metadata_invalid",
+        CompatibilityToolIssueCode::InstallPathUnsafe => "install_path_unsafe",
+        CompatibilityToolIssueCode::ToolDirectoryMissing => "tool_directory_missing",
+        CompatibilityToolIssueCode::FilesystemError => "filesystem_error",
     }
 }
 

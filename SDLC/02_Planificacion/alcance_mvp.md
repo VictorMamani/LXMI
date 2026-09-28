@@ -21,9 +21,19 @@ Este alcance es una propuesta por etapas. El primer hito no modifica instalacion
 - Inspeccionar, sin escribir, `steamapps/compatdata/<AppID>/` y su subdirectorio `pfx/`; presentar este último como candidato a prefix, sin inferir versión/uso/salud de Proton.
 - Añadir fixtures y pruebas sintéticas de manifests, rutas y compatdata. No examinar Steam real durante tests.
 
-## Siguiente incremento: LXMI-0.3 — Proton Runtime Discovery
+## Incremento LXMI-0.3 — Proton Runtime Discovery
 
-Detectar instalaciones/versiones de Proton y relacionarlas de forma explicable con el juego. Mantener prefixes sin modificar y no lanzar procesos.
+- Descubrir herramientas instaladas dentro de `steamapps/common` y tools custom bajo `compatibilitytools.d`.
+- Reutilizar parser KeyValues para `compatibilitytool.vdf` y `toolmanifest.vdf`; distinguir Proton, Steam Linux Runtime y tipos no identificados por metadata estructural.
+- Obtener version desde `version` o `VERSIONS.txt` cuando esté disponible; versión ausente no invalida por sí sola un Proton completo.
+- Validar `proton` como archivo regular sin ejecutarlo; rechazar symlinks y rutas inseguras.
+- Mostrar en UI tipo, source, versión, ID, rutas, status e incidencias. El Proton seleccionado por juego queda “No determinado”.
+- Mantener Steam, juegos, compatdata y prefixes en solo lectura; no crear directorios.
+- Verificar con fixtures y escaneo local, sin inferir lanzamiento o compatibilidad.
+
+## Siguiente incremento: LXMI-0.4 — Runtime Selection & Launch Planning
+
+Explorar cómo describir una planificación de runtime por juego a partir de evidencias disponibles, sin leer formatos internos frágiles por defecto, ejecutar Proton/Wine/juegos ni modificar launch options. La selección efectiva por juego requiere evidencia fiable y un diseño separado.
 
 ## Hito 0 — Factibilidad
 

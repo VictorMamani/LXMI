@@ -14,6 +14,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 lxmi-core = { path = "../../../crates/lxmi-core" }
+lxmi-proton = { path = "../../../crates/lxmi-proton" }
 lxmi-steam = { path = "../../../crates/lxmi-steam" }
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "2", features = [] }

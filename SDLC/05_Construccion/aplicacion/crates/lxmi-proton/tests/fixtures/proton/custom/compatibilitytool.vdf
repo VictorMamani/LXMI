@@ -1,0 +1,14 @@
+"compatibilitytools"
+{
+    "compat_tools"
+    {
+        "GE-Proton-fixture"
+        {
+            "install_path" "."
+            "display_name" "GE-Proton fixture"
+            "from_oslist" "windows"
+            "to_oslist" "linux"
+            "fixture_field" "ignored"
+        }
+    }
+}

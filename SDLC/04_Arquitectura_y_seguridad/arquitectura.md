@@ -1,18 +1,18 @@
 # Arquitectura conceptual
 
-Esta arquitectura adapta la propuesta del usuario. LXMI-0.1/0.2 implementan una rebanada de descubrimiento con Tauri, React y crates Rust: información del sistema, Steam Libraries, manifests, el registro de juegos soportados y observación pasiva de `compatdata/<AppID>/pfx`. Las pruebas de crates y frontend están registradas en construcción; la aplicación nativa Tauri no se compiló en este entorno por bibliotecas del sistema ausentes. No se ha validado una instalación Steam real, ejecución con Proton ni acceso a runtimes. Las capas de Proton, runtime y mods siguen siendo futuras.
+Esta arquitectura adapta la propuesta del usuario. LXMI-0.1/0.2/0.3 implementan discovery con Tauri, React y crates Rust: información del sistema, Steam Libraries, manifests, catálogo de juegos, `compatdata/<AppID>/pfx` y compatibility tools. `cargo check`, Clippy y tests del workspace, además de checks/build del frontend, pasaron. El scanner se ejecutó en solo lectura contra Steam local y la ventana Tauri se abrió con sus resultados visibles. No se validó ejecución ni compatibilidad con Proton o XXMI.
 
 ```mermaid
 flowchart LR
     UI[Interfaz React y TypeScript] --> IPC[Comandos Tauri]
-    IPC --> CORE[Core Rust]
-    CORE --> STEAM[Steam: libraries, manifests y compatdata]
-    CORE -.-> PROTON[Descubrimiento de Wine, Proton y prefixes]
+    IPC --> CORE[Commands y modelos Rust]
+    CORE --> STEAM[lxmi-steam: libraries, manifests, juegos y compatdata]
+    CORE --> PROTON[lxmi-proton: compatibility tool discovery]
     CORE -.-> RUNTIME[Gestión futura de runtimes XXMI]
     CORE -.-> MODS[Biblioteca futura de mods y perfiles]
     CORE -.-> DB[(SQLite local futuro)]
-    STEAM --> HOST[Filesystem del sistema en solo lectura]
-    PROTON -.-> HOST
+    STEAM --> HOST[Filesystem local en solo lectura]
+    PROTON --> HOST
     RUNTIME --> HOST
     MODS -.-> LIB[Archivos originales y copias gestionadas]
     LIVE[Controlador live futuro] -. IPC local si se demuestra viable .-> BRIDGE[Bridge de runtime futuro]
@@ -29,19 +29,20 @@ flowchart LR
 - No se modifica el motor gráfico ni se asume que exista un protocolo de recarga.
 - Live Controller, bridge IPC y GameBanana son extensiones futuras, no dependencias del primer hito.
 
-## Rebanada implementada en LXMI-0.1/0.2
+## Rebanada implementada en LXMI-0.1/0.2/0.3
 
 | Capa | Responsabilidad en este incremento |
 |---|---|
-| UI React | Mostrar estado del sistema, bibliotecas Steam, resultado de juegos compatibles y estados de `compatdata`/prefix candidato |
-| Tauri Commands | Adaptar el IPC al resultado de descubrimiento; la compilación nativa queda pendiente por dependencias Linux ausentes |
+| UI React | Mostrar sistema, bibliotecas, juego y `compatdata`, herramientas Proton/compatibilidad, versión, metadata, source y estado |
+| Tauri Commands | Adaptar el IPC a la orquestación de `lxmi-steam` y `lxmi-proton`; compilación y arranque comprobados |
 | `lxmi-core` | Tipos de sistema/Steam, registro de juegos por AppID y modelos transitorios de instalación y compatdata |
-| `lxmi-steam` | Resolver raíces y bibliotecas; reutilizar parser KeyValues para VDF/ACF; escanear manifests y consultar compatdata/pfx |
-| Filesystem | Inspección de solo lectura de Steam y fixtures sintéticos aislados en tests |
+| `lxmi-steam` | Resolver raíces/bibliotecas; parser KeyValues para VDF/ACF; manifests, juegos y compatdata/pfx |
+| `lxmi-proton` | Reutilizar KeyValues; descubrir Steam/custom compatibility tools, validar metadata/rutas y clasificar Proton/Steam Linux Runtime |
+| Filesystem | Inspección limitada de solo lectura; tests con fixtures sintéticos aislados |
 
 El scanner parsea manifests válidos de las bibliotecas descubiertas, pero el resultado de producto solo incluye juegos reconocidos por el registro actual (Wuthering Waves). El AppID no implica que el juego esté instalado en el host Linux ni que sea compatible con Proton. La inspección de `compatdata` no identifica la versión activa de Proton ni valida el estado del prefix.
 
-No se implementa todavía descubrimiento de versiones de Proton, configuración de lanzamiento, SQLite, gestión de runtime ni biblioteca de mods.
+Proton discovery no determina qué herramienta selecciona Steam para Wuthering Waves. `compatdata` ausente es válido, y `pfx` solo es un candidato. No se implementan selección de runtime, configuración o ejecución de lanzamiento, SQLite, gestión de runtime XXMI ni biblioteca de mods.
 
 ## Adaptabilidad
 

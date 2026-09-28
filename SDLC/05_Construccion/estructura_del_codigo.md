@@ -1,6 +1,6 @@
 # Estructura actual del código
 
-LXMI-0.2 conserva el workspace pequeño y añade módulos internos con responsabilidades implementadas. No crear los módulos futuros hasta que tengan lógica real.
+LXMI-0.3 conserva el workspace pequeño y extrae `lxmi-proton` porque el discovery de compatibility tools ya tiene parser, scanner, modelos y pruebas propios. No crear los módulos futuros hasta que tengan lógica real.
 
 | Ruta propuesta | Responsabilidad |
 |---|---|
@@ -12,9 +12,10 @@ LXMI-0.2 conserva el workspace pequeño y añade módulos internos con responsab
 | `crates/lxmi-steam/src/compatdata.rs` | Inspección pasiva de compatdata/pfx, rechazando enlaces simbólicos |
 | `crates/lxmi-steam/src/discovery.rs` | Orquesta Steam roots, catálogo de juegos y compatdata |
 | `crates/lxmi-steam/src/scanner.rs` | Detección de Steam roots y bibliotecas de 0.1 |
+| `crates/lxmi-proton/` | Discovery de compatibility tools, parser de metadata Valve, validación de rutas, classification Proton/Steam Linux Runtime y lectura acotada de versiones |
 | `Cargo.toml` | Workspace Rust |
 | `apps/lxmi-desktop/src-tauri/Cargo.toml` | Paquete Rust de Tauri dentro del workspace |
 
-Más adelante se pueden extraer `lxmi-games`, `lxmi-proton`, `lxmi-runtime`, `lxmi-mods`, `xxmi-ini`, `lxmi-live` y `lxmi-gamebanana` cuando aparezca una implementación que lo requiera.
+Más adelante se pueden extraer `lxmi-games`, `lxmi-runtime`, `lxmi-mods`, `xxmi-ini`, `lxmi-live` y `lxmi-gamebanana` cuando aparezca una implementación que lo requiera.
 
 Evitar crear crates vacías solo para replicar el diagrama. Empezar con los límites que un prototipo concreto necesite y extraer módulos cuando haya responsabilidades distintas.

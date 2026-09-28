@@ -2,7 +2,7 @@
 
 **Objetivo:** entregar cambios pequeños, entendibles y conectados con criterios acordados.
 
-LXMI-0.1/0.2 están implementados parcialmente en `aplicacion/`. La UI web y los crates de sistema/Steam/game discovery tienen validaciones propias; la compilación y el lanzamiento nativos Tauri siguen pendientes por dependencias del sistema ausentes en el entorno de trabajo.
+LXMI-0.1/0.2/0.3 están implementados en `aplicacion/`. Workspace Rust (incluido Tauri), tests, Clippy y validaciones/build del frontend pasaron. El escaneo Proton corrió contra Steam local en solo lectura. La ventana Tauri se inició y revisó visualmente con resultados.
 
 ## Documentos sugeridos
 

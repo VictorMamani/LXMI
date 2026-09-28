@@ -1,4 +1,4 @@
-use crate::vdf::{parse_document, KeyValuesValue, VdfParseError};
+use crate::vdf::{parse_key_values_document, KeyValuesValue, VdfParseError};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SteamAppManifest {
@@ -51,7 +51,7 @@ impl std::error::Error for SteamManifestError {
 }
 
 pub fn parse_app_manifest(input: &str) -> Result<SteamAppManifest, SteamManifestError> {
-    let document = parse_document(input).map_err(SteamManifestError::Document)?;
+    let document = parse_key_values_document(input).map_err(SteamManifestError::Document)?;
     let app_state = unique_field(&document, "AppState")?
         .and_then(|value| match value {
             KeyValuesValue::Object(fields) => Some(fields),

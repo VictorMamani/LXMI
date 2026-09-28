@@ -36,6 +36,27 @@ type SteamScan = {
   ignoredUnknownApps: number;
   games: SteamGame[];
   gameIssues: SteamGameIssue[];
+  compatibilityToolsStatus: "not_available" | "complete" | "partial";
+  compatibilityTools: CompatibilityTool[];
+  compatibilityToolIssues: CompatibilityToolIssue[];
+};
+
+type CompatibilityTool = {
+  internalId: string | null;
+  displayName: string;
+  path: string;
+  metadataPath: string | null;
+  source: "steam_library" | "custom";
+  kind: "proton" | "steam_linux_runtime" | "other" | "unknown";
+  version: string | null;
+  status: "valid" | "incomplete" | "invalid_metadata" | "unreadable";
+};
+
+type CompatibilityToolIssue = {
+  code: string;
+  severity: "warning" | "error";
+  path: string;
+  detail: string | null;
 };
 
 type SteamGame = {
@@ -136,6 +157,39 @@ const compatdataStatusText: Record<SteamGame["compatdataStatus"], string> = {
   io_error: "No se pudo inspeccionar compatdata/pfx",
 };
 
+const compatibilityToolKindText: Record<CompatibilityTool["kind"], string> = {
+  proton: "Proton",
+  steam_linux_runtime: "Steam Linux Runtime",
+  other: "Otra herramienta",
+  unknown: "Tipo no identificado",
+};
+
+const compatibilityToolStatusText: Record<CompatibilityTool["status"], string> =
+  {
+    valid: "Estructura válida",
+    incomplete: "Instalación incompleta",
+    invalid_metadata: "Metadata inválida",
+    unreadable: "No se pudo leer",
+  };
+
+const compatibilityToolIssueText: Record<string, string> = {
+  common_directory_invalid:
+    "No se pudo inspeccionar steamapps/common en esta biblioteca.",
+  custom_directory_invalid:
+    "La ruta de herramientas custom no es un directorio válido.",
+  directory_unreadable:
+    "No se pudo leer un directorio de herramientas de compatibilidad.",
+  entry_unreadable: "No se pudo leer una entrada del directorio.",
+  symlink_rejected: "Se omitió un enlace simbólico por seguridad.",
+  file_not_regular: "Se omitió una metadata que no es un archivo normal.",
+  file_too_large: "Se omitió un archivo que supera el límite de lectura.",
+  metadata_invalid: "La metadata de una herramienta está malformada.",
+  install_path_unsafe: "La ruta declarada por la herramienta no es segura.",
+  tool_directory_missing:
+    "La herramienta declara una carpeta de instalación que no existe.",
+  filesystem_error: "La inspección encontró un error del sistema de archivos.",
+};
+
 function displayValue(value: string | null): string {
   return value ?? "No disponible";
 }
@@ -179,14 +233,14 @@ export default function App() {
     <main className="shell">
       <header className="page-header">
         <div>
-          <p className="eyebrow">ENTORNO LINUX · INCREMENTO 0.1</p>
+          <p className="eyebrow">LINUX · DEVELOPMENT BUILD</p>
           <h1>LXMI</h1>
           <p className="lede">
-            Diagnóstico local de Steam. Este escaneo solo lee rutas y
-            configuración.
+            Diagnóstico local de Steam y herramientas de compatibilidad. El
+            escaneo solo lee rutas y metadata.
           </p>
         </div>
-        <span className="version-tag">DESARROLLO</span>
+        <span className="version-tag">v0.3.0 · DESARROLLO</span>
       </header>
 
       <section className="panel" aria-labelledby="system-heading">
@@ -390,10 +444,16 @@ export default function App() {
                         <dd className="path-value">{game.prefixPath}</dd>
                       </div>
                     )}
+                    <div>
+                      <dt>Proton seleccionado para este juego</dt>
+                      <dd>No determinado</dd>
+                    </div>
                   </dl>
                   <p className="discovery-note">
-                    La presencia de compatdata/pfx no confirma qué versión de
-                    Proton se usa, ni que el prefix esté sano o activo.
+                    LXMI muestra herramientas instaladas por separado. No
+                    determina cuál seleccionará Steam para este juego; la
+                    presencia de compatdata/pfx tampoco confirma el runtime ni
+                    la salud del prefix.
                   </p>
                 </article>
               ))
@@ -431,8 +491,152 @@ export default function App() {
         )}
       </section>
 
+      <section className="panel" aria-labelledby="proton-heading">
+        <div className="section-heading">
+          <div>
+            <p className="section-index">04</p>
+            <h2 id="proton-heading">Proton y compatibilidad</h2>
+          </div>
+          <span className="section-note">Herramientas instaladas</span>
+        </div>
+
+        {steam.kind === "loading" && (
+          <p className="muted">Escanea Steam para buscar sus herramientas.</p>
+        )}
+        {steam.kind === "error" && (
+          <p className="message message-error" role="alert">
+            No se pudo obtener el resultado de herramientas de compatibilidad.
+          </p>
+        )}
+        {steam.kind === "ready" && (
+          <div>
+            {steam.value.compatibilityToolsStatus === "not_available" ? (
+              <p className="muted" role="status">
+                Steam no está disponible para buscar herramientas.
+              </p>
+            ) : (
+              <>
+                {(() => {
+                  const protonTools = steam.value.compatibilityTools.filter(
+                    (tool) => tool.kind === "proton",
+                  );
+                  const validProtonCount = protonTools.filter(
+                    (tool) => tool.status === "valid",
+                  ).length;
+                  return (
+                    <p className="status-line" role="status">
+                      <span className="status-mark" aria-hidden="true" />
+                      {validProtonCount > 0
+                        ? `${validProtonCount} herramienta${validProtonCount === 1 ? "" : "s"} Proton válida${validProtonCount === 1 ? "" : "s"} detectada${validProtonCount === 1 ? "" : "s"}.`
+                        : "No se encontraron herramientas Proton instaladas en las ubicaciones examinadas."}
+                      {protonTools.some((tool) => tool.status !== "valid") &&
+                        ` ${protonTools.filter((tool) => tool.status !== "valid").length} candidato(s) incompleto(s).`}
+                    </p>
+                  );
+                })()}
+
+                {steam.value.compatibilityTools.length > 0 ? (
+                  <ul
+                    className="tool-list"
+                    aria-label="Herramientas detectadas"
+                  >
+                    {steam.value.compatibilityTools.map((tool) => (
+                      <li
+                        className="tool-item"
+                        key={`${tool.source}-${tool.path}-${tool.internalId ?? "no-id"}`}
+                      >
+                        <div className="tool-heading">
+                          <div>
+                            <h3>{tool.displayName}</h3>
+                            <p className="muted">
+                              {compatibilityToolKindText[tool.kind]} ·{" "}
+                              {tool.source === "steam_library"
+                                ? "Biblioteca Steam"
+                                : "Custom"}
+                            </p>
+                          </div>
+                          <span
+                            className={`tool-status tool-status-${tool.status}`}
+                          >
+                            {compatibilityToolStatusText[tool.status]}
+                          </span>
+                        </div>
+                        <dl className="details-grid tool-details">
+                          <div>
+                            <dt>Versión</dt>
+                            <dd>{tool.version ?? "No disponible"}</dd>
+                          </div>
+                          {tool.internalId && (
+                            <div>
+                              <dt>ID interno</dt>
+                              <dd>{tool.internalId}</dd>
+                            </div>
+                          )}
+                          <div className="detail-wide">
+                            <dt>Ruta</dt>
+                            <dd className="path-value">{tool.path}</dd>
+                          </div>
+                          {tool.metadataPath && (
+                            <div className="detail-wide">
+                              <dt>Metadata</dt>
+                              <dd className="path-value">
+                                {tool.metadataPath}
+                              </dd>
+                            </div>
+                          )}
+                        </dl>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">
+                    No se encontraron herramientas de compatibilidad en las
+                    ubicaciones examinadas.
+                  </p>
+                )}
+
+                {steam.value.compatibilityToolsStatus === "partial" && (
+                  <p className="muted">
+                    El resultado es parcial; algunos directorios o archivos no
+                    pudieron validarse.
+                  </p>
+                )}
+
+                {steam.value.compatibilityToolIssues.length > 0 && (
+                  <ul
+                    className="issue-list tool-issue-list"
+                    aria-label="Avisos de herramientas de compatibilidad"
+                  >
+                    {steam.value.compatibilityToolIssues.map((issue, index) => (
+                      <li
+                        key={`${issue.code}-${issue.path}-${index}`}
+                        className={
+                          issue.severity === "error" ? "issue-error" : ""
+                        }
+                      >
+                        <span>
+                          {compatibilityToolIssueText[issue.code] ??
+                            "No se pudo validar una herramienta."}
+                        </span>
+                        {issue.detail && issue.code !== "symlink_rejected" && (
+                          <span>{issue.detail}</span>
+                        )}
+                        <code className="path-value">{issue.path}</code>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
       <footer className="page-footer">
-        <span>LXMI lee configuración local; no modifica Steam ni juegos.</span>
+        <span>
+          LXMI solo lee metadata; no ejecuta Proton/Wine ni modifica Steam,
+          juegos o prefixes.
+        </span>
         <span>BYTE-CX</span>
       </footer>
     </main>

@@ -1,0 +1,4 @@
+# Synthetic Valve-style Steam Linux Runtime version fixture.
+#Name	Version	Runtime	Runtime_Version	Comment
+depot	4.0.fixture			# Overall version number
+pressure-vessel	0.fixture			Synthetic fixture entry

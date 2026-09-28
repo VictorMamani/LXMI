@@ -15,4 +15,4 @@ pub use game_scanner::{
 };
 pub use manifest::{parse_app_manifest, SteamAppManifest, SteamManifestError};
 pub use scanner::SteamScanner;
-pub use vdf::{parse_library_folders, VdfParseError};
+pub use vdf::{parse_key_values_document, parse_library_folders, KeyValuesValue, VdfParseError};

@@ -1,6 +1,6 @@
 # SDLC | Proyecto 19 — LXMI
 
-Estructura de ciclo de vida conservada desde la plantilla común. LXMI-0.1 y la lógica Rust sintética de LXMI-0.2 están en `05_Construccion/aplicacion/`. Los tests de `lxmi-core`/`lxmi-steam` y los chequeos/build web pasaron; la compilación y ejecución nativas de Tauri siguen bloqueadas por dependencias del sistema ausentes en el entorno actual. No se ha probado contra una instalación Steam real.
+Estructura de ciclo de vida conservada desde la plantilla común. LXMI-0.1/0.2/0.3 están implementados en `05_Construccion/aplicacion/`. El workspace Rust, incluidos Tauri y `lxmi-proton`, pasó check, Clippy y tests; el frontend pasó typecheck, lint, formato y build. El scanner se ejecutó contra Steam local en modo de solo lectura y la ventana Tauri se abrió y revisó visualmente. No se probó lanzamiento de juegos ni compatibilidad Proton/XXMI.
 
 ## Fases
 

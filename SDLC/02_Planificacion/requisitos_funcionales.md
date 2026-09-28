@@ -1,23 +1,26 @@
 # Requisitos funcionales iniciales
 
-Estados: **implementado en código** no implica prueba con Steam real; **propuesto** = aún no implementado; **por validar** = su viabilidad o necesidad no está comprobada.
+Estados: **implementado** indica que la función existe y fue verificada en el tipo de entorno mencionado; no implica compatibilidad del juego. **Propuesto** = aún no implementado; **por validar** = la viabilidad o necesidad no está comprobada.
 
 ## Instalaciones y runtimes
 
 | ID | Requisito | Estado |
 |---|---|---|
-| RF-00 | Mostrar OS, arquitectura, home y directorios XDG relevantes sin requerir privilegios | Implementado en código; typecheck/build web pasaron; ejecución nativa pendiente |
-| RF-00.1 | Buscar Steam en rutas Linux conocidas, resolver aliases y listar bibliotecas Steam existentes | Implementado; parser/detector pasaron pruebas con fixtures; Steam real pendiente |
-| RF-00.2 | Informar Steam ausente, configuración inexistente/inválida, biblioteca ausente o permiso denegado con códigos distinguibles | Implementado en código; estados principales con fixtures; denegación real de permisos pendiente |
+| RF-00 | Mostrar OS, arquitectura, home y directorios XDG relevantes sin requerir privilegios | Implementado; Tauri workspace compila; frontend typecheck/build pasa |
+| RF-00.1 | Buscar Steam en rutas Linux conocidas, resolver aliases y listar bibliotecas Steam existentes | Implementado; fixtures y Steam local comprobados |
+| RF-00.2 | Informar Steam ausente, configuración inexistente/inválida, biblioteca ausente o permiso denegado con códigos distinguibles | Implementado; estados con fixtures; denegación real de permisos pendiente |
 | RF-00.3 | Mostrar Wuthering Waves como no escaneado en LXMI-0.1 | Implementado en LXMI-0.1; reemplazado por descubrimiento en LXMI-0.2 |
-| RF-00.4 | Leer `appmanifest_*.acf`, validar AppID/nombre/installdir y continuar ante un manifest inválido | Implementado en `lxmi-steam`; probado con fixtures; adapter nativo Tauri pendiente de compilación |
-| RF-00.5 | Enumerar manifests válidos y reconocer Wuthering Waves por AppID del registro | Implementado con AppID `3513350`; fuente oficial registrada; sin validación Steam real |
-| RF-00.6 | Inspeccionar `compatdata/<AppID>/pfx` y distinguir ausente/encontrado/inválido sin seguir symlinks | Implementado en modo de solo lectura; probado con fixtures |
+| RF-00.4 | Leer `appmanifest_*.acf`, validar AppID/nombre/installdir y continuar ante un manifest inválido | Implementado en `lxmi-steam`; fixtures y Steam local comprobados |
+| RF-00.5 | Enumerar manifests válidos y reconocer Wuthering Waves por AppID del registro | Implementado; fixture y Steam local comprobaron AppID `3513350` y directorio presente |
+| RF-00.6 | Inspeccionar `compatdata/<AppID>/pfx` y distinguir ausente/encontrado/inválido sin seguir symlinks | Implementado y probado con fixtures; Steam local mostró compatdata ausente |
+| RF-00.7 | Descubrir compatibility tools en Steam Libraries y `compatibilitytools.d` leyendo metadata estructural | Implementado en `lxmi-proton`; fixtures para tools Steam/custom y scan local para tools Steam |
+| RF-00.8 | Distinguir Proton, Steam Linux Runtime, otras herramientas y estado/versión disponible | Implementado; fixtures y Steam local detectaron Proton Experimental y tres Steam Linux Runtime |
+| RF-00.9 | Mostrar herramientas disponibles junto al estado de Wuthering Waves sin inferir la selección de Steam | Implementado en UI/command; typecheck/build y scan local comprobados. Render visual Tauri pendiente |
 | RF-01 | Registrar y mostrar ubicaciones Steam elegidas por la persona usuaria | Propuesto |
 | RF-02 | Detectar juegos/runtimes únicamente en ubicaciones y formatos documentados | Por validar |
 | RF-03 | Permitir añadir, editar y quitar una instalación manualmente | Propuesto |
 | RF-04 | Mostrar rutas detectadas, versión y confianza/estado de cada dato | Propuesto |
-| RF-05 | Detectar Proton/Wine y prefix conforme a fuentes vigentes | Por validar |
+| RF-05 | Descubrir herramientas Proton y prefixes conforme a fuentes vigentes | Proton discovery implementado; selección/ejecución y salud del prefix no determinadas |
 | RF-06 | Lanzar un juego o runtime con argumentos y entorno revisados por la persona usuaria | Por validar; posterior al hito de inspección |
 | RF-07 | Capturar y presentar logs útiles sin exponer información sensible | Propuesto |
 | RF-08 | Respaldar y restaurar configuraciones gestionadas por LXMI | Por validar |

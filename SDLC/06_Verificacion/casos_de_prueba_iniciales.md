@@ -1,6 +1,6 @@
 # Casos de prueba iniciales
 
-Los casos T-01 a T-01g corresponden a LXMI-0.1; T-20 a T-29 cubren LXMI-0.2. “Pasó con fixtures” significa que el escenario se ejecutó con rutas sintéticas; no prueba funcionamiento con Steam real ni con la ventana nativa Tauri.
+Los casos T-01 a T-01g corresponden a LXMI-0.1; T-20 a T-29 a LXMI-0.2; T-30 en adelante a LXMI-0.3. “Pasó con fixtures” significa que el escenario se ejecutó con rutas sintéticas. El scan real comprueba discovery de filesystem, no selección de Proton, lanzamiento ni presentación visual Tauri.
 
 | ID | Escenario | Resultado esperado | Estado |
 |---|---|---|---|
@@ -43,4 +43,18 @@ Todos estos escenarios usan fixtures sintéticos y se ejecutan dentro de los tes
 | T-28 | `compatdata` ausente, presente sin `pfx`, y presente con `pfx` | Devolver respectivamente `NotFound`, `CompatDataFound`, `PrefixFound` | Pasó con fixtures |
 | T-29 | `compatdata`, `pfx`, `steamapps/common` o manifest como symlink/no directorio | Marcar ruta inválida y no seguir symlink | Pasó con fixtures |
 
-La compilación de Tauri y la presentación integrada siguen pendientes por bibliotecas nativas Linux ausentes. No se recorrieron manifests ni prefixes reales.
+## LXMI-0.3 — Proton Runtime Discovery
+
+| ID | Escenario | Resultado esperado | Estado |
+|---|---|---|---|
+| T-30 | Tool manifest layer Proton y entrypoint regular, con folder name arbitrario | Identificar Proton válido por estructura, no por nombre | Pasó con fixtures |
+| T-31 | Custom compatibilitytool.vdf válido y directorio de instalación resuelto | Identificar metadata custom, ID, display name, path y source | Pasó con fixtures; no se encontró custom tool en Steam local |
+| T-32 | Steam Linux Runtime con marker de layer y `VERSIONS.txt` | Clasificar como Steam Linux Runtime, no Proton; leer depot version disponible | Pasó con fixtures y Steam local |
+| T-33 | Carpeta llamada Proton sin estructura reconocible | No clasificarla como Proton | Pasó con fixtures |
+| T-34 | Runtime Proton con `version` ausente | Mantener Proton válido y mostrar versión desconocida | Pasó con fixtures |
+| T-35 | Marker Proton sin entrypoint, VDF inválido o tool incompleta | Reportar candidato incompleto/inválido sin abortar el resto | Pasó con fixtures |
+| T-36 | `install_path` con `..` o componentes symlink | Rechazar y no seguir el path | Pasó con fixtures |
+| T-37 | Scan con Steam local | Encontrar Proton Experimental y tres SLR; reportar el symlink `Steam.dll` sin seguirlo | Pasó en lectura local |
+| T-38 | Wuthering Waves detectado con compatdata ausente y runtimes disponibles | Mostrar compatdata ausente; no atribuirle Proton seleccionado | Confirmado por scan local y ventana Tauri |
+
+En LXMI-0.3 pasaron 57 tests del workspace Rust, `cargo check`, Clippy con `-D warnings`, `cargo fmt --check` y validaciones frontend. La ventana Tauri se inició y revisó visualmente con los resultados del scan local.

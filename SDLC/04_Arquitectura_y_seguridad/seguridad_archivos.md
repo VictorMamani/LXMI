@@ -1,13 +1,16 @@
 # Seguridad de archivos y límites de integración
 
-## LXMI-0.1/0.2: detección de solo lectura
+## LXMI-0.1/0.2/0.3: detección de solo lectura
 
-- Los incrementos solo consultan metadata y leen `libraryfolders.vdf`, `appmanifest_*.acf` y rutas candidatas de `compatdata`; no modifican Steam, juegos, manifests ni prefixes.
+- Los incrementos solo consultan metadata y leen `libraryfolders.vdf`, `appmanifest_*.acf`, metadata de compatibility tools y rutas candidatas de `compatdata`; no modifican Steam, juegos, Proton ni prefixes.
 - Rutas candidatas se limitan a directorios conocidos bajo home/XDG; su procedencia queda visible en resultados/diagnósticos.
 - Resolver un alias simbólico de Steam sirve para canonizar y deduplicar la detección; no se escribe ni se elimina contenido siguiendo ese enlace.
 - El parser KeyValues procesa texto local, limita cada archivo a 2 MiB y la profundidad anidada a 64 niveles, y devuelve errores con offset; no interpreta contenido como comando.
 - `installdir` debe ser un nombre de directorio relativo simple. El scanner rechaza manifests con rutas absolutas, separadores, `..`, AppID inválido o discrepancia entre AppID y nombre del archivo.
 - El scanner no sigue symlinks en manifests, `steamapps/common`, rutas de juego, `compatdata` ni `pfx`. Un `pfx` presente se informa como candidato, no como prefix sano o Proton activo.
+- Proton discovery solo lee `toolmanifest.vdf`, `compatibilitytool.vdf`, `proton` como metadata de archivo, `version` y `VERSIONS.txt`; no ejecuta entrypoints ni sigue symlinks.
+- `install_path` custom no acepta `..`, componentes de prefijo ni rutas relativas con root. Los paths absolutos admitidos por el formato se validan como directorios reales, recorriendo componentes con `symlink_metadata` y rechazando enlaces. No se escribe en esos paths.
+- Un nombre de carpeta no es prueba suficiente de runtime. La clasificación usa layer metadata y archivos estructurales; los Steam Linux Runtime se mantienen separados de Proton.
 - Los tests usan directorios temporales, no recorren ni modifican bibliotecas reales.
 
 ## Archivos de mods

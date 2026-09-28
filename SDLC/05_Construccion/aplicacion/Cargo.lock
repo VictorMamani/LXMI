@@ -1741,12 +1741,22 @@ name = "lxmi-desktop"
 version = "0.1.0"
 dependencies = [
  "lxmi-core",
+ "lxmi-proton",
  "lxmi-steam",
  "serde",
  "tauri",
  "tauri-build",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "lxmi-proton"
+version = "0.1.0"
+dependencies = [
+ "lxmi-core",
+ "lxmi-steam",
+ "tracing",
 ]
 
 [[package]]

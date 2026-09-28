@@ -4,9 +4,9 @@ Las versiones expresan una secuencia de aprendizaje, no compromisos de entrega n
 
 | Hito tentativo | Resultado propuesto | Puerta de decisión |
 |---|---|---|
-| 0.1 | Steam Discovery: sistema, Steam roots y bibliotecas | Crates probadas con fixtures; falta compilar/abrir Tauri y validar con Steam de desarrollo |
-| 0.2 | Game + compatdata Discovery: manifests, Wuthering Waves y candidato `pfx` | Implementado y probado con fixtures; AppID verificado en Steam; sin inferir Proton activo ni compatibilidad |
-| 0.3 | Proton Discovery: detectar instalaciones/versiones y asociaciones posibles | No ejecutar ni modificar prefixes; registrar layouts soportados |
+| 0.1 | Steam Discovery: sistema, Steam roots y bibliotecas | Implementado; workspace check/test/clippy y escaneo local Steam comprobados. Ventana revisada visualmente en 0.3 |
+| 0.2 | Game + compatdata Discovery: manifests, Wuthering Waves y candidato `pfx` | Implementado; fixtures y Steam local comprobados. Wuthering Waves presente; compatdata no encontrada; sin inferir Proton activo ni compatibilidad |
+| 0.3 | Proton Discovery: detectar instalaciones/versiones y asociar contexto de juego sin selección | Implementado; fixtures y Steam local comprobaron Proton Experimental + tres Steam Linux Runtime. No se ejecutan runtimes ni se determina cuál usa el juego |
 | 0.4 | Preparar GameLaunchConfiguration | Solo modelar/mostrar configuración; evaluar permisos y seguridad antes de permitir lanzamiento |
 | 0.5 | Integración guiada con XXMI/WWMI Runtime | Revisar upstream, licencia, anti-cheat, compatibilidad y reversión antes de tocar archivos |
 | 0.6 | Biblioteca local de mods | Importación segura y preservación de originales |
@@ -21,4 +21,4 @@ Las versiones expresan una secuencia de aprendizaje, no compromisos de entrega n
 | 0.17 | Evaluación de SteamOS | Definir hardware/entorno y repetir matriz de pruebas |
 | 1.0 | Versión estable | Matriz de compatibilidad, recuperación y distribución definidas |
 
-Se puede cancelar o reordenar cualquier hito. El runtime live y el fork no son requisitos de la primera versión funcional.
+Se puede cancelar o reordenar cualquier hito. El siguiente es LXMI-0.4 Runtime Selection & Launch Planning, limitado a planificar/mostrar datos y separado de ejecutar procesos. El runtime live y el fork no son requisitos de la primera versión funcional.

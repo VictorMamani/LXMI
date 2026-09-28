@@ -18,7 +18,7 @@ impl std::fmt::Display for VdfParseError {
 impl std::error::Error for VdfParseError {}
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum KeyValuesValue {
+pub enum KeyValuesValue {
     Scalar(String),
     Object(Vec<(String, KeyValuesValue)>),
 }
@@ -258,7 +258,9 @@ impl<'a> Parser<'a> {
     }
 }
 
-pub(crate) fn parse_document(input: &str) -> Result<Vec<(String, KeyValuesValue)>, VdfParseError> {
+pub fn parse_key_values_document(
+    input: &str,
+) -> Result<Vec<(String, KeyValuesValue)>, VdfParseError> {
     if input.len() > MAX_VDF_BYTES {
         return Err(VdfParseError {
             offset: MAX_VDF_BYTES,
@@ -270,7 +272,7 @@ pub(crate) fn parse_document(input: &str) -> Result<Vec<(String, KeyValuesValue)
 }
 
 pub fn parse_library_folders(input: &str) -> Result<Vec<PathBuf>, VdfParseError> {
-    let entries = parse_document(input)?;
+    let entries = parse_key_values_document(input)?;
     let library_folders = entries
         .iter()
         .find(|(key, _)| key.eq_ignore_ascii_case("libraryfolders"))

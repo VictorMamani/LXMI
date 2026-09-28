@@ -2,7 +2,7 @@
 
 Modelo conceptual para persistencia local; no es un esquema SQLite definitivo ni se ha implementado.
 
-LXMI-0.1/0.2 no persiste datos. Los escaneos se ejecutan bajo demanda; sus respuestas transitorias incluyen estos conceptos:
+LXMI-0.1/0.2/0.3 no persiste datos. Los escaneos se ejecutan bajo demanda; sus respuestas transitorias incluyen estos conceptos:
 
 | Tipo de respuesta | Campos principales |
 |---|---|
@@ -13,6 +13,9 @@ LXMI-0.1/0.2 no persiste datos. Los escaneos se ejecutan bajo demanda; sus respu
 | `SteamAppManifest` | `app_id`, `name`, `install_dir` | Datos requeridos parseados de cada manifest válido |
 | `SteamGameInstallation` | `installation`, `steam_app_id`, `manifest_name`, `steam_library`, `compatdata` | El flujo muestra por ahora solo juegos del registro soportado |
 | `ProtonCompatData` | `app_id`, `compatdata_path`, `prefix_path`, `status` | Observación del filesystem; no prueba runtime activo ni salud del prefix |
+| `CompatibilityTool` | `internal_id`, `display_name`, `path`, `metadata_path`, `source`, `kind`, `version`, `status` | Discovery efímero; Proton, Steam Linux Runtime, otra herramienta o tipo desconocido |
+
+`CompatibilityToolDiscoveryResult` informa estado completo/parcial/no disponible e incidencias de lectura. La lista se muestra junto al juego, pero no contiene una selección de Proton por juego.
 
 | Entidad | Campos candidatos | Relaciones / reglas |
 |---|---|---|

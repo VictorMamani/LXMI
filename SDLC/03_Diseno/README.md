@@ -2,7 +2,7 @@
 
 **Objetivo:** hacer comprensible el flujo principal en móvil y escritorio antes de pulir pantallas secundarias.
 
-Los flujos de importación y perfiles siguen siendo conceptuales; no hay mockup ni prueba con personas usuarias. El flujo técnico de LXMI-0.1/0.2 consulta información del sistema, explora Steam Libraries y manifests, reconoce Wuthering Waves por AppID y observa `compatdata`/`pfx` en solo lectura. La ventana Tauri aún no se ejecutó en este entorno por dependencias nativas ausentes, así que la presentación visual del resultado no está comprobada en la aplicación de escritorio.
+Los flujos de importación y perfiles siguen siendo conceptuales; no hay mockup ni prueba con personas usuarias. LXMI-0.1/0.2/0.3 inspecciona el sistema, Steam Libraries, manifests, `compatdata`/`pfx` y herramientas de compatibilidad en solo lectura. El workspace compila y la ventana se abrió y revisó visualmente en Ubuntu.
 
 ## Documentos sugeridos
 

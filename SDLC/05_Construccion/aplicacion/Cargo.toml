@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "apps/lxmi-desktop/src-tauri",
   "crates/lxmi-core",
+  "crates/lxmi-proton",
   "crates/lxmi-steam",
 ]
 
