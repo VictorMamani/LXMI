@@ -1,6 +1,6 @@
 [package]
 name = "lxmi-desktop"
-version = "0.1.0"
+version = "0.5.1"
 description = "Linux Model Importer & Live Mod Manager"
 authors = ["BYTE-CX"]
 edition = "2021"
@@ -13,8 +13,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+lxmi-xxmi = { path = "../../../crates/lxmi-xxmi" }
 lxmi-core = { path = "../../../crates/lxmi-core" }
 lxmi-proton = { path = "../../../crates/lxmi-proton" }
+lxmi-runtime = { path = "../../../crates/lxmi-runtime" }
 lxmi-steam = { path = "../../../crates/lxmi-steam" }
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "2", features = [] }

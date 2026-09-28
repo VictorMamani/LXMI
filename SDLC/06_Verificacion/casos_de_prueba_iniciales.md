@@ -1,6 +1,6 @@
 # Casos de prueba iniciales
 
-Los casos T-01 a T-01g corresponden a LXMI-0.1; T-20 a T-29 a LXMI-0.2; T-30 en adelante a LXMI-0.3. “Pasó con fixtures” significa que el escenario se ejecutó con rutas sintéticas. El scan real comprueba discovery de filesystem, no selección de Proton, lanzamiento ni presentación visual Tauri.
+Los casos T-01 a T-01g corresponden a LXMI-0.1; T-20 a T-29 a LXMI-0.2; T-30 a T-38 a LXMI-0.3; T-40 en adelante a LXMI-0.4 y siguientes. “Pasó con fixtures” significa que el escenario se ejecutó con rutas sintéticas. El scan real comprueba discovery y la evaluación del planner con el estado local; no prueba qué runtime elegirá Steam ni permite lanzar el juego.
 
 | ID | Escenario | Resultado esperado | Estado |
 |---|---|---|---|
@@ -58,3 +58,64 @@ Todos estos escenarios usan fixtures sintéticos y se ejecutan dentro de los tes
 | T-38 | Wuthering Waves detectado con compatdata ausente y runtimes disponibles | Mostrar compatdata ausente; no atribuirle Proton seleccionado | Confirmado por scan local y ventana Tauri |
 
 En LXMI-0.3 pasaron 57 tests del workspace Rust, `cargo check`, Clippy con `-D warnings`, `cargo fmt --check` y validaciones frontend. La ventana Tauri se inició y revisó visualmente con los resultados del scan local.
+
+## LXMI-0.4 — Runtime Planning & Launch Readiness
+
+| ID | Escenario | Resultado esperado | Estado |
+|---|---|---|---|
+| T-40 | Wuthering Waves presente, un candidato Proton válido, sin compatdata | `NeedsInitialization`; candidate disponible, selección desconocida | Pasó con fixtures |
+| T-41 | Juego presente y varios candidatos Proton | Listar todos los candidatos; no elegir uno automáticamente | Pasó con fixtures |
+| T-42 | Un único candidato Proton | Mantener selección `Unknown` sin evidencia por juego | Pasó con fixtures (`single_proton_candidate_does_not_imply_selected_runtime`) |
+| T-43 | Juego presente, `compatdata/pfx` observado y selección desconocida | Prefix queda como candidato; no inferir runtime ni readiness completa | Pasó con fixtures |
+| T-44 | Discovery completo sin manifest del juego | `Blocked` y game `NotFound` | Pasó con fixtures |
+| T-45 | Discovery de tools completo sin Proton válido | `Incomplete`; no promover otra tool | Pasó con fixtures |
+| T-46 | Solo compatibility tools desconocidas | Cero candidatos Proton | Pasó con fixtures |
+| T-47 | Steam Linux Runtime disponible | No clasificar SLR como Proton | Pasó con fixtures |
+| T-48 | Compatdata/prefix ilegible por permisos | Preservar `Unreadable`, issue y readiness `Unknown` | Pasó con fixtures |
+| T-49 | Discovery parcial de juegos sin Wuthering Waves | Estado `Unknown`, no afirmar que no está instalado | Pasó con fixtures |
+| T-50 | Scan local Steam y planner desde la aplicación Tauri | Wuthering Waves presente; compatdata/pfx ausentes; dos candidatos Proton, tres SLR; selección desconocida; `NeedsInitialization`; scan completo | Comprobado en este equipo, solo lectura |
+
+En LXMI-0.4 pasaron 69 tests del workspace Rust, `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D warnings` y las validaciones frontend. El scan real no ejecutó Steam, Proton, Wine ni el juego.
+
+## LXMI-0.5 — XXMI / WWMI Integration Foundation
+
+Los escenarios T-60 a T-104 son 45 tests del crate `lxmi-xxmi`. Salvo validación del corpus oficial externa a la suite, todos usan árboles/file payloads de **FIXTURE** sintéticos y no contienen runtime funcional.
+
+| Grupo | Casos | Resultado |
+|---|---|---|
+| Package/metadata | WWMIv1 válida; recursos/config faltantes; namespace desconocido; parser raw version; XXMI Libraries separado; DLL aislada insuficiente; manifest/signatures ausentes o inválidos | Pasó en fixtures |
+| Integrity | SHA-256 conocido; payload modificado; manifest LXMI alterado; verificación obligatoria al listar/planificar; IDs duplicados se reusan sin overwrite | Pasó en fixtures |
+| Path/source safety | Traversal, absolute, separadores Windows, dot/empty components, nombres case collision, symlink de archivo/ancestro/root/destino, hardlink, storage/source solapado | Pasó en fixtures |
+| Resource bounds | Máximo archivo, total, entries, profundidad; `.zip` explícitamente rechazado | Pasó en fixtures |
+| Storage/staging | Root XDG, no crear en list/discovery/plan; modos privados; promoción y manifest lateral; import incompleto no listado; fuente sin cambios | Pasó en fixtures |
+| Runtime discovery | Absent normal, estructura presente con compatibilidad `NotVerified`, incomplete e unreadable | Pasó en fixtures |
+| Assessment/plan | WWMI con juego equivocado rechazado; paquetes/runtime no implican compatibilidad; selección queda de planner; juego ausente; create/replace + previous hash/backup; plan no modifica snapshots externos | Pasó en fixtures |
+| No execution | Contenido script ejecutable sintético no se invoca durante inspección/import | Pasó en fixtures |
+| IPC contract | `PackageKind` serializa WWMI y XXMI Libraries en la forma esperada por React | Pasó con test Rust |
+| IPC contract | `PackageKind` serializa WWMI/XXMI Libraries en la forma que consume React | Pasó en test Rust |
+| Corpus upstream | Releases oficiales v1.0.0 WWMI y v1.1.7 Libraries validadas/importadas mediante `local_review` en storage `/tmp`; no se ejecutan DLL ni scripts | Comprobado fuera de test runner; ver `verificacion_0_5.md` |
+| Game local anterior | Directorio presente, ejecutable candidato no encontrado, compatdata/pfx absent; runtimes no inferidos como selección | Comprobado en filesystem local de solo lectura (2026-09-27) |
+| Game local actual | Sin manifest Wuthering Waves; carpetas Proton sin metadata/entrypoint suficiente; compatdata absent; readiness `Blocked` | Comprobado en filesystem local de solo lectura (2026-09-28) |
+
+Total workspace 0.5: 114 tests pasan (69 previos + 45 nuevos). La interacción del botón Import/Review a través de IPC en la ventana Tauri queda **NO COMPROBADA**; Tauri sí compiló e inició.
+
+## LXMI-0.5.1 — Zenless Zone Zero / ZZMI
+
+Los tests de paquetes y planes usan **FIXTURE**; solo el discovery Steam/prefix tiene un caso de host deliberadamente `#[ignore]`. Este no forma parte de `cargo test --workspace` normal y debe ejecutarse manualmente en un host donde ZZZ siga presente. El contrato upstream se contrastó el 2026-09-28, pero LXMI no descargó ni importó la release ZZMI.
+
+| ID | Escenario | Resultado esperado | Estado |
+|---|---|---|---|
+| T-105 | Manifest Steam de ZZZ con AppID `4162040` | Registrar ZZZ y derivar la instalación desde `installdir` | Pasó con fixture; confirmado contra manifest local |
+| T-106 | Instalación con `ZenlessZoneZero.exe` dentro de `games/ZenlessZoneZero Game/` | Encontrar el ejecutable en el scan acotado, sin seguir symlinks | Pasó con fixture y scan local |
+| T-107 | Manifest ZZZ con carpeta o ejecutable ausente | Conservar estados separados y no declarar la instalación lista | Pasó con fixture |
+| T-108 | ZZMI con anclas `d3dx.ini`, `Core/ZZMI/main.ini` y includes estructurales | Reconocer contrato mínimo y versión raw sin ejecutar contenido | Pasó con fixture; contrato contrastado con upstream |
+| T-109 | ZZMI incompleto o versión raw ausente | Reportar incompleto/desconocido; no inferir versión | Pasó con fixture |
+| T-110 | ZZMI asociado a Wuthering Waves o WWMI asociado a ZZZ | Rechazar asociación cruzada | Pasó con fixture; regresión WWMI conservada |
+| T-111 | ZZMI presente, XXMI Libraries ausente | Mantener dependencia insatisfecha; no clasificar conjunto como autosuficiente | Pasó con fixture |
+| T-112 | ZZMI y XXMI Libraries presentes en storage administrado | Permitir construir un plan descriptivo, con compatibilidad de plataforma no verificada | Pasó con fixture |
+| T-113 | Un único candidato Proton local para ZZZ | Selección de Proton permanece `unknown`; readiness no se promueve a Ready | Pasó con fixture y snapshot host-only |
+| T-114 | Plan ZZMI generado | Destino solo administrado por LXMI; no escribe ZZZ, Steam, compatdata ni prefix | Pasó con fixture mediante comparación de estado |
+| T-115 | Host local con manifest ZZZ, EXE y `compatdata/4162040/pfx` | Mostrar Steam, AppID, EXE y prefix candidato; no seleccionar Proton | Comprobado por test host-only `#[ignore]` y filesystem read-only |
+| T-116 | Steam/Linux/Proton y ejecución ZZMI real | No declarar compatibilidad sin prueba específica | `NO COMPROBADO`; issue upstream de Steam/Linux seguía abierto |
+
+El test host-only se ejecutó explícitamente con `cargo test -p lxmi-desktop local_steam_scan_finds_zzz_without_inferring_proton_selection -- --ignored --nocapture`. No se activó desde la ventana Tauri y no se comparó hash/snapshot completo del árbol real antes/después; las invariantes de no escritura se comprueban con fixtures y la ruta real ejercitada es read-only.

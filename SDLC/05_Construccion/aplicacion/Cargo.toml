@@ -4,6 +4,8 @@ members = [
   "apps/lxmi-desktop/src-tauri",
   "crates/lxmi-core",
   "crates/lxmi-proton",
+  "crates/lxmi-runtime",
+  "crates/lxmi-xxmi",
   "crates/lxmi-steam",
 ]
 

@@ -44,6 +44,12 @@ npm run build
 
 Las pruebas de detección crean fixtures temporales; no examinan ni modifican la instalación personal de Steam. Para un scan local bajo demanda, la aplicación solo lee los archivos y directorios descritos en el resultado; la comprobación real registrada no lanzó runtimes ni escribió en Steam.
 
-## Estado verificado en el entorno de trabajo
+## Estado histórico de LXMI-0.4
 
-En LXMI-0.3 pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`, `npm run typecheck`, `npm run lint`, `npm run format:check` y `npm run build`. El scan local reportó Wuthering Waves instalado, compatdata ausente, Proton Experimental y tres Steam Linux Runtime; una entrada symlink `Steam.dll` fue omitida. La ventana Tauri se inició y revisó visualmente con los resultados locales. El árbol inicial Git estaba limpio y remoto/branch se verificaron.
+En LXMI-0.4 pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace` (69 tests), `npm run typecheck`, `npm run lint`, `npm run format:check` y `npm run build`. El scan local read-only detectó Wuthering Waves con directorio presente, compatdata/pfx ausentes, Proton Experimental y Proton Hotfix como dos candidatos, tres Steam Linux Runtime, selección desconocida y readiness `NeedsInitialization`. La ventana Tauri inició y el scan se ejecutó desde ella. `Steam.dll` se omitió sin seguir su symlink y no hizo parcial el scan; otros symlinks candidatos siguen como advertencias. No se encontró una tool custom local. No se ejecutaron Steam, Proton, Wine ni el juego.
+
+## Estado verificado de LXMI-0.5
+
+Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D warnings`, `cargo test --workspace` (114 tests), `npm run typecheck`, `npm run lint`, `npm run format:check` y `npm run build`. `npm run tauri:dev` inició el binario nativo y el frontend Vite respondió; el proceso fue detenido al terminar la comprobación. Importación y plan se verificaron con fixtures y carpetas de releases upstream en `/tmp`; no se ejecutó contenido ni se modificaron Steam, juego o prefix.
+
+En el scan local del 2026-09-28 no apareció el manifest de Wuthering Waves; las carpetas Proton vistas no tenían metadata/entrypoint suficiente para clasificarse y `compatdata/3513350` no existía. El planner dejó runtime/prefix desconocidos y readiness `Blocked`. El resultado anterior de 0.4 se conserva como histórico. El flujo IPC de importación desde clics en ventana nativa queda **NO COMPROBADO**. Detalles en `../06_Verificacion/verificacion_0_5.md`.

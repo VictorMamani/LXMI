@@ -1,4 +1,6 @@
 mod commands;
+mod xxmi_commands;
+mod xxmi_service;
 
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let _ = tracing_subscriber::fmt()
@@ -10,7 +12,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             commands::get_system_info,
-            commands::scan_steam
+            commands::scan_steam,
+            xxmi_commands::xxmi_status,
+            xxmi_commands::import_xxmi_directory,
+            xxmi_commands::review_xxmi_plan
         ])
         .run(tauri::generate_context!())?;
 

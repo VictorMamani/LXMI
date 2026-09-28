@@ -2,7 +2,7 @@
 
 **Objetivo:** hacer comprensible el flujo principal en móvil y escritorio antes de pulir pantallas secundarias.
 
-Los flujos de importación y perfiles siguen siendo conceptuales; no hay mockup ni prueba con personas usuarias. LXMI-0.1/0.2/0.3 inspecciona el sistema, Steam Libraries, manifests, `compatdata`/`pfx` y herramientas de compatibilidad en solo lectura. El workspace compila y la ventana se abrió y revisó visualmente en Ubuntu.
+LXMI-0.5 tiene un flujo funcional mínimo para importar una carpeta runtime local a storage privado y revisar un plan que no se aplica. La importación de archives, perfiles y activación de mods siguen siendo futuras. Existe un prototipo visual separado en `05_Construccion/prototipo_visual/`; no está integrado ni se probó con personas usuarias. El discovery externo sigue siendo de solo lectura. La ventana Tauri se abrió en Ubuntu; el flujo de importación no se comprobó clic a clic por IPC.
 
 ## Documentos sugeridos
 

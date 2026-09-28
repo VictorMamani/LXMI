@@ -2,7 +2,7 @@
 
 **Objetivo:** entregar cambios pequeños, entendibles y conectados con criterios acordados.
 
-LXMI-0.1/0.2/0.3 están implementados en `aplicacion/`. Workspace Rust (incluido Tauri), tests, Clippy y validaciones/build del frontend pasaron. El escaneo Proton corrió contra Steam local en solo lectura. La ventana Tauri se inició y revisó visualmente con resultados.
+LXMI-0.1 a 0.5 están implementados en `aplicacion/`. LXMI-0.5 agrega validación e importación local de paquetes XXMI/WWMI al almacenamiento administrado de LXMI, detección de runtime, assessment y plan declarativo; no aplica cambios al juego. El prototipo visual continúa aislado en `prototipo_visual/` y no forma parte de la UI funcional.
 
 ## Documentos sugeridos
 

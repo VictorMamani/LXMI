@@ -1,6 +1,6 @@
 # Alcance inicial
 
-Este alcance es una propuesta por etapas. El primer hito no modifica instalaciones: valida detección y presenta un diagnóstico. Las acciones de escritura se habilitarán solo después de revisar fuentes, seguridad y compatibilidad.
+Este alcance es una propuesta por etapas. LXMI-0.1 a 0.4 inspeccionan y planifican sin modificar Steam ni instalaciones. LXMI-0.5 permite una importación explícita únicamente al almacenamiento privado de LXMI; aplicar cambios al juego requiere un incremento separado tras revisar fuentes, seguridad y compatibilidad.
 
 ## Incremento LXMI-0.1 — Aplicación y detección de Steam
 
@@ -31,9 +31,21 @@ Este alcance es una propuesta por etapas. El primer hito no modifica instalacion
 - Mantener Steam, juegos, compatdata y prefixes en solo lectura; no crear directorios.
 - Verificar con fixtures y escaneo local, sin inferir lanzamiento o compatibilidad.
 
-## Siguiente incremento: LXMI-0.4 — Runtime Selection & Launch Planning
+## Incremento LXMI-0.4 — Runtime Planning & Launch Readiness
 
-Explorar cómo describir una planificación de runtime por juego a partir de evidencias disponibles, sin leer formatos internos frágiles por defecto, ejecutar Proton/Wine/juegos ni modificar launch options. La selección efectiva por juego requiere evidencia fiable y un diseño separado.
+Describir una planificación de runtime por juego a partir de evidencias disponibles, sin leer formatos internos frágiles por defecto, ejecutar Proton/Wine/juegos ni modificar launch options. La selección efectiva por juego requiere evidencia fiable y un diseño separado.
+
+## Incremento LXMI-0.5 — XXMI / WWMI Integration Foundation
+
+- Modelar XXMI Libraries y las integraciones específicas, comenzando con WWMI.
+- Inspeccionar ubicaciones documentadas sin ejecutar archivos ni escribir en Steam/juego/prefix.
+- Importar solo directorios locales a staging/storage administrado; validar estructura, rutas y hashes con límites explícitos.
+- Producir un assessment y un plan revisable, sin executor ni apply.
+- Mantener autenticidad, compatibilidad de lanzamiento y política de redistribución como desconocidas hasta verificarlas.
+
+## Siguiente incremento: LXMI-0.6 — Safe XXMI/WWMI Installation
+
+Evaluar un destino Linux/Proton respaldado por evidencia; revalidar package y filesystem, preparar backup/journal, exigir revisión del plan, y probar apply/rollback antes de habilitar cualquier instalación en un juego real.
 
 ## Hito 0 — Factibilidad
 

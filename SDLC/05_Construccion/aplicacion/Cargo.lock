@@ -1738,11 +1738,13 @@ version = "0.1.0"
 
 [[package]]
 name = "lxmi-desktop"
-version = "0.1.0"
+version = "0.5.1"
 dependencies = [
  "lxmi-core",
  "lxmi-proton",
+ "lxmi-runtime",
  "lxmi-steam",
+ "lxmi-xxmi",
  "serde",
  "tauri",
  "tauri-build",
@@ -1760,10 +1762,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "lxmi-runtime"
+version = "0.1.0"
+dependencies = [
+ "lxmi-core",
+ "lxmi-proton",
+ "lxmi-steam",
+ "tracing",
+]
+
+[[package]]
 name = "lxmi-steam"
 version = "0.1.0"
 dependencies = [
  "lxmi-core",
+ "tracing",
+]
+
+[[package]]
+name = "lxmi-xxmi"
+version = "0.5.1"
+dependencies = [
+ "libc",
+ "lxmi-core",
+ "lxmi-proton",
+ "lxmi-runtime",
+ "lxmi-steam",
+ "serde",
+ "serde_json",
+ "sha2",
  "tracing",
 ]
 

@@ -2,14 +2,15 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use lxmi_core::{
-    game_for_steam_app_id, GameInstallation, GameInstallationStatus, ProtonCompatData,
-    SteamDetectionStatus, SteamDetector, SteamLibrary, SteamScanResult,
+    game_for_steam_app_id, GameDistribution, GameInstallation, GameInstallationStatus,
+    ProtonCompatData, SteamDetectionStatus, SteamDetector, SteamLibrary, SteamScanResult,
 };
 use tracing::{debug, info};
 
 use crate::compatdata::inspect_compatdata;
 use crate::game_scanner::{
-    SteamAppInstallation, SteamAppScanIssue, SteamAppScanStatus, SteamAppScanner,
+    find_expected_game_executable, SteamAppInstallation, SteamAppScanIssue, SteamAppScanStatus,
+    SteamAppScanner,
 };
 use crate::SteamScanner;
 
@@ -161,11 +162,15 @@ fn to_game_installation(
         crate::SteamAppInstallStatus::DirectoryInvalid => GameInstallationStatus::DirectoryInvalid,
         crate::SteamAppInstallStatus::PermissionDenied => GameInstallationStatus::PermissionDenied,
     };
+    let executable = find_expected_game_executable(&app.game_path, game.expected_executable_names);
     SteamGameInstallation {
         installation: GameInstallation {
             game,
             install_path: app.game_path,
             status,
+            distribution: GameDistribution::Steam,
+            executable_path: executable.path,
+            executable_status: executable.status,
         },
         steam_app_id: app.manifest.app_id,
         manifest_name: app.manifest.name,
@@ -185,6 +190,7 @@ mod tests {
 
     static NEXT_ID: AtomicU64 = AtomicU64::new(0);
     const WUWA_APP_ID: u32 = 3_513_350;
+    const ZZZ_APP_ID: u32 = 4_162_040;
 
     struct TempTree(PathBuf);
 
@@ -270,6 +276,72 @@ mod tests {
             library.join("steamapps/common/Wuthering Waves")
         );
         assert_eq!(found.compatdata.prefix_path, Some(prefix));
+    }
+
+    #[test]
+    fn discovers_zenless_zone_zero_manifest_executable_and_compatdata() {
+        use lxmi_core::{GameDistribution, GameExecutableStatus, ProtonCompatDataStatus};
+
+        let tree = TempTree::new();
+        let library = tree.steam_library();
+        tree.configure_steam(&[]);
+        let install_path = library.join("steamapps/common/Zenless Zone Zero");
+        let executable = install_path.join("games/ZenlessZoneZero Game/ZenlessZoneZero.exe");
+        fs::create_dir_all(executable.parent().expect("exe parent"))
+            .expect("synthetic ZZZ directory should be created");
+        fs::write(&executable, b"synthetic executable placeholder")
+            .expect("synthetic executable placeholder should be written");
+        fs::write(
+            library.join(format!("steamapps/appmanifest_{ZZZ_APP_ID}.acf")),
+            include_str!("../tests/fixtures/appmanifests/zenless_zone_zero.acf"),
+        )
+        .expect("synthetic ZZZ manifest should be written");
+        let prefix = library
+            .join("steamapps/compatdata")
+            .join(ZZZ_APP_ID.to_string())
+            .join("pfx");
+        fs::create_dir_all(&prefix).expect("synthetic prefix candidate should be created");
+
+        let result = scanner(&tree).scan();
+
+        assert_eq!(result.games.games.len(), 1);
+        let found = &result.games.games[0];
+        assert_eq!(found.installation.game.id, "zenless-zone-zero");
+        assert_eq!(found.steam_app_id, ZZZ_APP_ID);
+        assert_eq!(found.manifest_name, "Zenless Zone Zero");
+        assert_eq!(found.installation.distribution, GameDistribution::Steam);
+        assert_eq!(found.installation.install_path, install_path);
+        assert_eq!(found.installation.executable_path, Some(executable));
+        assert_eq!(
+            found.installation.executable_status,
+            GameExecutableStatus::Found
+        );
+        assert_eq!(found.compatdata.status, ProtonCompatDataStatus::PrefixFound);
+    }
+
+    #[test]
+    fn zzz_game_directory_without_expected_executable_is_not_complete_evidence() {
+        use lxmi_core::GameExecutableStatus;
+
+        let tree = TempTree::new();
+        let library = tree.steam_library();
+        tree.configure_steam(&[]);
+        fs::create_dir_all(library.join("steamapps/common/Zenless Zone Zero"))
+            .expect("synthetic install directory should be created");
+        fs::write(
+            library.join(format!("steamapps/appmanifest_{ZZZ_APP_ID}.acf")),
+            include_str!("../tests/fixtures/appmanifests/zenless_zone_zero.acf"),
+        )
+        .expect("synthetic ZZZ manifest should be written");
+
+        let result = scanner(&tree).scan();
+        let found = result.games.games.first().expect("ZZZ manifest recognized");
+
+        assert_eq!(
+            found.installation.executable_status,
+            GameExecutableStatus::NotFound
+        );
+        assert!(found.installation.executable_path.is_none());
     }
 
     #[test]

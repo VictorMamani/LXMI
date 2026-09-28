@@ -1,0 +1,10 @@
+[package]
+name = "lxmi-runtime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lxmi-core = { path = "../lxmi-core" }
+lxmi-proton = { path = "../lxmi-proton" }
+lxmi-steam = { path = "../lxmi-steam" }
+tracing.workspace = true

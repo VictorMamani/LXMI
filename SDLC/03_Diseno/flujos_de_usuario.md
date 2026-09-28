@@ -1,8 +1,8 @@
 # Flujos de usuario propuestos
 
-El primer diagrama corresponde al discovery LXMI-0.1/0.2/0.3 implementado en código; pasó fixtures y se ejecutó contra Steam local en solo lectura. La ventana nativa se abrió y se revisó con el resultado local visible. Los demás diagramas describen comportamiento futuro, no implementado. Se conserva una etapa de revisión antes de modificar archivos locales.
+El primer diagrama corresponde al discovery y runtime planning de LXMI-0.1 a 0.4 implementados; pasó fixtures y se ejecutó contra Steam local en solo lectura. El flujo de importación de carpetas y revisión de plan corresponde al código de LXMI-0.5, aunque la interacción completa por IPC en ventana nativa queda NO COMPROBADA. No hay extracción de archives ni apply al juego. Los flujos de selección manual de instalación y activación de perfiles siguen siendo futuros.
 
-## Flujo de LXMI-0.1/0.2/0.3: Steam, juegos, compatdata y tools
+## Flujo de LXMI-0.1 a 0.4: Steam, juegos, compatdata, tools y plan
 
 ```mermaid
 flowchart TD
@@ -11,28 +11,29 @@ flowchart TD
     C --> D[La persona selecciona Scan Steam]
     D --> E[Buscar raíces conocidas en solo lectura]
     E --> F{¿Se encontró una instalación?}
-    F -->|No| G[Mostrar Steam no encontrado]
+    F -->|No| G[Marcar discovery de juego y tools como no disponible]
     F -->|Sí| H[Leer y parsear libraryfolders.vdf]
     H --> I{¿Configuración válida?}
-    I -->|No| J[Mostrar causa y diagnóstico]
+    I -->|No| J[Guardar el estado de discovery y su diagnóstico]
     I -->|Sí| K[Validar y deduplicar bibliotecas]
     K --> L[Enumerar appmanifest acf en solo lectura]
     L --> M[Validar campos, AppID y directorio]
     M --> N{¿AppID de Wuthering Waves?}
-    N -->|No| O[Omitir del catálogo y registrar conteo]
-    N -->|Sí| P[Mostrar juego y ruta esperada]
+    N -->|No| O[Marcar juego como no encontrado si el scan fue completo]
+    N -->|Sí| P[Registrar manifest y estado del directorio]
     P --> Q[Inspeccionar compatdata y pfx sin seguir symlinks]
-    Q --> R[Explorar compatibility tools y metadata en solo lectura]
-    R --> T{¿Layer indica Proton o Steam Linux Runtime?}
-    T -->|Sí| U[Validar estructura y versión disponible]
-    T -->|No| V[Clasificar como otra herramienta o tipo desconocido]
-    U --> W[Mostrar runtimes disponibles; selección por juego no determinada]
-    V --> W
-    O --> X[Mostrar bibliotecas, resumen y avisos]
-    W --> X
+    O --> R[Explorar compatibility tools y metadata en solo lectura]
+    Q --> R
+    G --> S[Construir plan declarativo para juegos soportados]
+    J --> S
+    R --> T[Combinar instalación, compatdata y Proton candidates]
+    T --> S
+    S --> U[Conservar selección como desconocida sin evidencia por juego]
+    U --> V[Evaluar readiness y registrar evidencia]
+    V --> W[Mostrar resumen, detalles y avisos]
 ```
 
-## Inspeccionar una instalación
+## Inspeccionar y guardar una instalación (flujo futuro)
 
 ```mermaid
 flowchart TD
@@ -46,21 +47,23 @@ flowchart TD
     G --> H[Guardar selección local]
 ```
 
-## Importar un archivo local
+## Importar una carpeta runtime local y revisar plan (LXMI-0.5)
 
 ```mermaid
 flowchart TD
-    A[Seleccionar archivo local] --> B[Calcular hash y revisar formato]
-    B --> C[Validar cada ruta y entrada]
-    C --> D{¿Archivo seguro y compatible?}
-    D -->|No| E[Rechazar sin escribir en biblioteca]
-    D -->|Sí| F[Extraer a directorio temporal]
-    F --> G[Revisar estructura y metadatos]
-    G --> H[Mostrar resumen y pedir confirmación]
-    H --> I[Guardar copia gestionada en biblioteca]
+    A[Elegir carpeta local WWMI o XXMI Libraries] --> B[Inspeccionar archivos sin seguir symlinks]
+    B --> C[Validar layout soportado y límites]
+    C --> D{¿Estructura válida?}
+    D -->|No| E[Rechazar sin publicar paquete]
+    D -->|Sí| F[Copiar a staging privado de LXMI]
+    F --> G[Revalidar inventario y SHA-256]
+    G --> H[Promover a packages/xxmi sin overwrite]
+    H --> I[Usuario solicita revisar plan]
+    I --> J[Generar plan declarativo sin aplicar cambios]
+    J --> K[Mostrar destinos administrados y requisitos pendientes]
 ```
 
-## Activar un perfil
+## Activar un perfil (flujo futuro)
 
 ```mermaid
 flowchart TD

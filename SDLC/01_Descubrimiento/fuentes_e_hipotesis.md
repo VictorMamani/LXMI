@@ -7,7 +7,7 @@ La descripción inicial de LXMI y sus componentes fue aportada por el usuario en
 ## Hechos comprobados en este repositorio
 
 - Se ha creado una carpeta de documentación para el Proyecto 19.
-- La implementación de LXMI-0.1/0.2/0.3 cubre información del sistema, Steam Libraries, lectura de manifests, registro de Wuthering Waves, observación pasiva de compatdata/pfx y descubrimiento de herramientas de compatibilidad. No valida lanzamiento ni compatibilidad de juegos/XXMI.
+- La implementación de LXMI-0.1 a 0.4 cubre información del sistema, Steam Libraries, lectura de manifests, registro de Wuthering Waves, observación pasiva de compatdata/pfx, descubrimiento de herramientas de compatibilidad y planificación declarativa. No valida selección efectiva, lanzamiento ni compatibilidad de juegos/XXMI.
 - No se recibieron enlaces upstream, código, documentación de compatibilidad ni licencias de XXMI/runtimes. La fuente oficial consultada para el AppID se registra por separado; no valida compatibilidad.
 
 ## Fuente verificada para LXMI-0.2
@@ -19,6 +19,7 @@ La descripción inicial de LXMI y sus componentes fue aportada por el usuario en
 | 2026-09-27 | [Plantilla Valve `compatibilitytool.vdf`](https://github.com/ValveSoftware/Proton/blob/proton_11.0/compatibilitytool.vdf.template) | La metadata agrupa `compat_tools` y puede declarar ID, `install_path`, `display_name` y listas de OS; los paths declarados pueden ser relativos o absolutos. | LXMI valida la ruta y no ejecuta ni modifica contenido. Una plantilla no garantiza que toda versión de Proton use el mismo layout. |
 | 2026-09-27 | [Documentación Valve Steam Runtime para reportar fallos](https://github.com/ValveSoftware/steam-runtime/blob/master/doc/reporting-steamlinuxruntime-bugs.md) | Steam Linux Runtime publica metadata propia y `VERSIONS.txt`; no debe clasificarse como Proton solo por el nombre del directorio. | LXMI reconoce capas conocidas de runtime y muestra versión si puede leer la fila `depot`; la presencia no demuestra uso por Wuthering Waves. |
 | 2026-09-27 | Observación local de solo lectura con Steam Scanner y Proton Scanner | Se detectó Wuthering Waves (AppID `3513350`; directorio presente; compatdata ausente), Proton Experimental y tres Steam Linux Runtime. Un symlink `Steam.dll` se omitió y reportó. | Evidencia de discovery en esta instalación, no de la ventana visual, selección de Proton, lanzamiento, compatibilidad, salud de prefix o funcionamiento de XXMI. No se encontró una instalación custom para validar contra Steam real; esa variante se probó con fixtures. |
+| 2026-09-27 | Observación local de solo lectura con la aplicación Tauri y Runtime Planner 0.4 | Wuthering Waves presente; compatdata/pfx ausentes; Proton Experimental y Proton Hotfix como dos candidates; tres Steam Linux Runtime; selección desconocida; readiness `NeedsInitialization`; discovery completo. El symlink conocido `Steam.dll` se reporta como informativo sin seguirlo. | Confirma solo las rutas y metadata visibles en este equipo. No indica qué herramienta seleccionaría Steam, ni salud del prefix, compatibilidad del juego o funcionamiento de XXMI. No se detectó tool custom local. |
 
 ## Hipótesis técnicas por validar
 

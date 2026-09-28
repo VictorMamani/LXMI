@@ -2,7 +2,7 @@
 
 **Objetivo:** decidir la estructura técnica mínima y cuidar los datos desde el comienzo.
 
-La arquitectura mantiene decisiones conceptuales para fases futuras. La rebanada de discovery 0.1–0.3 tiene límites implementados en código: Tauri/React, `lxmi-core`, `lxmi-steam` y `lxmi-proton`, en modo de solo lectura. El análisis de amenazas para importación, instalación y ejecución todavía no está completo.
+La arquitectura mantiene decisiones conceptuales para fases futuras. LXMI-0.1–0.4 implementa discovery y planificación efímera con Tauri/React, `lxmi-core`, `lxmi-steam`, `lxmi-proton` y `lxmi-runtime`, en modo de solo lectura. LXMI 0.5 agrega `lxmi-xxmi`: importa explícitamente paquetes validados a storage XDG administrado; la inspección externa sigue siendo read-only y el plan todavía no se aplica. El análisis de amenazas y límites para importación está documentado; la seguridad de instalación y ejecución sigue pendiente.
 
 ## Documentos sugeridos
 

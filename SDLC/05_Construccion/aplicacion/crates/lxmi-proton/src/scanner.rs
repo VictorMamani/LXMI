@@ -55,7 +55,10 @@ impl ProtonScanner {
             left.path == right.path && left.internal_id == right.internal_id
         });
 
-        let status = if issues.is_empty() {
+        let status = if issues
+            .iter()
+            .all(|issue| issue.severity == CompatibilityToolIssueSeverity::Info)
+        {
             CompatibilityToolDiscoveryStatus::Complete
         } else {
             CompatibilityToolDiscoveryStatus::Partial
@@ -127,6 +130,44 @@ fn scan_steam_library(
             }
         };
         let path = entry.path();
+        let entry_metadata = match fs::symlink_metadata(&path) {
+            Ok(metadata) => metadata,
+            Err(error) => {
+                push_io_issue(
+                    issues,
+                    CompatibilityToolIssueCode::EntryUnreadable,
+                    &path,
+                    error,
+                );
+                continue;
+            }
+        };
+        if entry_metadata.file_type().is_symlink() {
+            let is_steam_dll = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.eq_ignore_ascii_case("Steam.dll"));
+            push_issue(
+                issues,
+                CompatibilityToolIssueCode::SymlinkRejected,
+                if is_steam_dll {
+                    CompatibilityToolIssueSeverity::Info
+                } else {
+                    CompatibilityToolIssueSeverity::Warning
+                },
+                path,
+                Some(if is_steam_dll {
+                    "Steam.dll is not a compatibility-tool directory and was ignored without following its symlink".to_owned()
+                } else {
+                    "possible compatibility tool directory is a symlink and was not followed"
+                        .to_owned()
+                }),
+            );
+            continue;
+        }
+        if !entry_metadata.is_dir() {
+            continue;
+        }
         let directory_state = match inspect_directory(&path) {
             Ok(state) => state,
             Err(error) => {
@@ -878,8 +919,9 @@ mod tests {
     use lxmi_core::{SteamInstallation, SteamLibrary};
 
     use crate::{
-        CompatibilityToolDiscoveryStatus, CompatibilityToolIssueCode, CompatibilityToolKind,
-        CompatibilityToolSource, CompatibilityToolStatus, ProtonScanner,
+        CompatibilityToolDiscoveryStatus, CompatibilityToolIssueCode,
+        CompatibilityToolIssueSeverity, CompatibilityToolKind, CompatibilityToolSource,
+        CompatibilityToolStatus, ProtonScanner,
     };
 
     static NEXT_ID: AtomicU64 = AtomicU64::new(0);
@@ -1012,6 +1054,56 @@ mod tests {
         let result = ProtonScanner.scan(&[tree.installation()]);
         assert!(result.tools.is_empty());
         assert_eq!(result.status, CompatibilityToolDiscoveryStatus::Complete);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ignores_irrelevant_file_symlink_without_marking_discovery_partial() {
+        use std::os::unix::fs::symlink;
+
+        let tree = TempTree::new();
+        create_library(&tree);
+        let target = tree.0.join("legacycompat/Steam.dll");
+        fs::create_dir_all(target.parent().expect("target parent should exist"))
+            .expect("synthetic link target parent should be created");
+        fs::write(&target, "synthetic shim").expect("synthetic link target should be written");
+        symlink(&target, tree.library().join("steamapps/common/Steam.dll"))
+            .expect("synthetic Steam.dll link should be created");
+
+        let result = ProtonScanner.scan(&[tree.installation()]);
+
+        assert!(result.tools.is_empty());
+        assert_eq!(result.status, CompatibilityToolDiscoveryStatus::Complete);
+        assert!(result.issues.iter().any(|issue| {
+            issue.code == CompatibilityToolIssueCode::SymlinkRejected
+                && issue.severity == CompatibilityToolIssueSeverity::Info
+                && issue
+                    .detail
+                    .as_deref()
+                    .is_some_and(|detail| detail.contains("Steam.dll"))
+        }));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn other_symlinked_tool_candidates_remain_warnings_and_make_scan_partial() {
+        use std::os::unix::fs::symlink;
+
+        let tree = TempTree::new();
+        create_library(&tree);
+        let target = tree.0.join("external/proton-tool");
+        fs::create_dir_all(&target).expect("external tool target should be created");
+        symlink(&target, tree.library().join("steamapps/common/Proton.9"))
+            .expect("possible Proton directory symlink should be created");
+
+        let result = ProtonScanner.scan(&[tree.installation()]);
+
+        assert!(result.tools.is_empty());
+        assert_eq!(result.status, CompatibilityToolDiscoveryStatus::Partial);
+        assert!(result.issues.iter().any(|issue| {
+            issue.code == CompatibilityToolIssueCode::SymlinkRejected
+                && issue.severity == CompatibilityToolIssueSeverity::Warning
+        }));
     }
 
     #[test]

@@ -58,6 +58,7 @@ pub enum CompatibilityToolIssueCode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompatibilityToolIssueSeverity {
+    Info,
     Warning,
     Error,
 }

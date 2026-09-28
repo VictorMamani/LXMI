@@ -10,8 +10,9 @@ pub use discovery::{
     SteamGameDiscoveryStatus, SteamGameInstallation,
 };
 pub use game_scanner::{
-    SteamAppInstallStatus, SteamAppInstallation, SteamAppScanIssue, SteamAppScanIssueCode,
-    SteamAppScanIssueSeverity, SteamAppScanResult, SteamAppScanStatus, SteamAppScanner,
+    find_expected_game_executable, GameExecutableDiscovery, SteamAppInstallStatus,
+    SteamAppInstallation, SteamAppScanIssue, SteamAppScanIssueCode, SteamAppScanIssueSeverity,
+    SteamAppScanResult, SteamAppScanStatus, SteamAppScanner,
 };
 pub use manifest::{parse_app_manifest, SteamAppManifest, SteamManifestError};
 pub use scanner::SteamScanner;

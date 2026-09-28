@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
+import XxmiPanel from "./XxmiPanel";
 
 type SystemInfo = {
   os: string;
@@ -39,6 +40,7 @@ type SteamScan = {
   compatibilityToolsStatus: "not_available" | "complete" | "partial";
   compatibilityTools: CompatibilityTool[];
   compatibilityToolIssues: CompatibilityToolIssue[];
+  runtimePlans: RuntimePlan[];
 };
 
 type CompatibilityTool = {
@@ -54,9 +56,73 @@ type CompatibilityTool = {
 
 type CompatibilityToolIssue = {
   code: string;
-  severity: "warning" | "error";
+  severity: "info" | "warning" | "error";
   path: string;
   detail: string | null;
+};
+
+type RuntimeCandidate = {
+  internalId: string | null;
+  displayName: string;
+  path: string;
+  source: "steam_library" | "custom";
+  version: string | null;
+};
+
+type RuntimePlan = {
+  gameId: string;
+  gameName: string;
+  expectedSteamAppIds: number[];
+  platform: "steam";
+  runtimePolicy: "expected" | "not_required" | "unknown";
+  installation:
+    | { state: "not_found"; expectedSteamAppIds: number[] }
+    | {
+        state: "detected";
+        steamAppId: number;
+        manifestName: string;
+        steamLibrary: string;
+        installPath: string;
+        distribution: "steam" | "hoyoplay" | "manual" | "unknown";
+        executablePath: string | null;
+        executableStatus: SteamGame["executableStatus"];
+        directoryStatus: SteamGame["installStatus"];
+        completeness: "unknown";
+      }
+    | {
+        state: "unknown";
+        discoveryStatus: "not_available" | "complete" | "partial";
+      };
+  selection:
+    | { state: "unknown"; reason: string }
+    | { state: "selected"; candidate: RuntimeCandidate }
+    | { state: "not_required" };
+  candidateDiscovery: "complete" | "partial" | "unavailable";
+  availableRuntimeCandidates: RuntimeCandidate[];
+  compatdata:
+    | { state: "not_required" }
+    | { state: "unknown"; discoveryStatus: string }
+    | { state: "not_found"; expectedPath: string }
+    | { state: "found"; path: string }
+    | { state: "invalid"; path: string }
+    | { state: "unreadable"; path: string; status: string };
+  prefix:
+    | { state: "not_required" }
+    | { state: "unknown"; discoveryStatus: string }
+    | { state: "not_initialized"; expectedPath: string }
+    | { state: "candidate_found"; path: string }
+    | { state: "invalid"; path: string }
+    | { state: "unreadable"; path: string; status: string };
+  readiness:
+    "ready" | "incomplete" | "needs_initialization" | "unknown" | "blocked";
+  requirements: { requirement: string; state: string }[];
+  evidence: { kind: string; [key: string]: string | number | boolean }[];
+  issues: {
+    code: string;
+    severity: "info" | "warning" | "error";
+    path: string | null;
+  }[];
+  compatibilityToolIssues: CompatibilityToolIssue[];
 };
 
 type SteamGame = {
@@ -70,6 +136,9 @@ type SteamGame = {
     | "directory_missing"
     | "directory_invalid"
     | "permission_denied";
+  distribution: "steam" | "hoyoplay" | "manual" | "unknown";
+  executablePath: string | null;
+  executableStatus: "found" | "not_found" | "search_incomplete" | "not_scanned";
   steamLibrary: string;
   compatdataStatus:
     | "not_found"
@@ -148,6 +217,13 @@ const installStatusText: Record<SteamGame["installStatus"], string> = {
   permission_denied: "No se pudo comprobar la ruta de instalación",
 };
 
+const executableStatusText: Record<SteamGame["executableStatus"], string> = {
+  found: "Ejecutable esperado encontrado",
+  not_found: "No se encontró el ejecutable esperado",
+  search_incomplete: "Búsqueda limitada; resultado no concluyente",
+  not_scanned: "Ejecutable no inspeccionado",
+};
+
 const compatdataStatusText: Record<SteamGame["compatdataStatus"], string> = {
   not_found: "No se encontró compatdata para este AppID",
   compatdata_found: "compatdata existe; no se encontró pfx",
@@ -172,6 +248,14 @@ const compatibilityToolStatusText: Record<CompatibilityTool["status"], string> =
     unreadable: "No se pudo leer",
   };
 
+const readinessText: Record<RuntimePlan["readiness"], string> = {
+  ready: "Base detectada",
+  incomplete: "Configuración pendiente",
+  needs_initialization: "Compatdata por inicializar",
+  unknown: "Estado por determinar",
+  blocked: "Juego no disponible",
+};
+
 const compatibilityToolIssueText: Record<string, string> = {
   common_directory_invalid:
     "No se pudo inspeccionar steamapps/common en esta biblioteca.",
@@ -180,7 +264,7 @@ const compatibilityToolIssueText: Record<string, string> = {
   directory_unreadable:
     "No se pudo leer un directorio de herramientas de compatibilidad.",
   entry_unreadable: "No se pudo leer una entrada del directorio.",
-  symlink_rejected: "Se omitió un enlace simbólico por seguridad.",
+  symlink_rejected: "Se omitió el enlace simbólico sin seguir su destino.",
   file_not_regular: "Se omitió una metadata que no es un archivo normal.",
   file_too_large: "Se omitió un archivo que supera el límite de lectura.",
   metadata_invalid: "La metadata de una herramienta está malformada.",
@@ -240,7 +324,7 @@ export default function App() {
             escaneo solo lee rutas y metadata.
           </p>
         </div>
-        <span className="version-tag">v0.3.0 · DESARROLLO</span>
+        <span className="version-tag">v0.5.1 · DESARROLLO</span>
       </header>
 
       <section className="panel" aria-labelledby="system-heading">
@@ -393,7 +477,9 @@ export default function App() {
         </div>
 
         {steam.kind === "loading" && (
-          <p className="muted">Escanea Steam para buscar Wuthering Waves.</p>
+          <p className="muted">
+            Escanea Steam para buscar juegos registrados en LXMI.
+          </p>
         )}
         {steam.kind === "error" && (
           <p className="message message-error" role="alert">
@@ -403,15 +489,25 @@ export default function App() {
         {steam.kind === "ready" && (
           <div className="game-results">
             {steam.value.gameScanStatus === "not_available" ? (
-              <p className="status-line" role="status">
-                Steam no está disponible para buscar juegos.
-              </p>
+              <>
+                <p className="status-line" role="status">
+                  Steam no está disponible para buscar juegos.
+                </p>
+                {steam.value.runtimePlans.map((plan) => (
+                  <RuntimePlanSummary key={plan.gameId} plan={plan} />
+                ))}
+              </>
             ) : steam.value.games.length === 0 ? (
-              <p className="status-line" role="status">
-                {steam.value.gameScanStatus === "partial"
-                  ? "No se pudo confirmar si Wuthering Waves está instalado; revisa los avisos."
-                  : "Wuthering Waves no se encontró en las bibliotecas Steam detectadas."}
-              </p>
+              <>
+                <p className="status-line" role="status">
+                  {steam.value.gameScanStatus === "partial"
+                    ? "No se pudo confirmar la presencia de todos los juegos registrados; revisa los avisos."
+                    : "No se encontraron juegos registrados en las bibliotecas Steam detectadas."}
+                </p>
+                {steam.value.runtimePlans.map((plan) => (
+                  <RuntimePlanSummary key={plan.gameId} plan={plan} />
+                ))}
+              </>
             ) : (
               steam.value.games.map((game) => (
                 <article className="game-installation" key={game.steamLibrary}>
@@ -425,6 +521,14 @@ export default function App() {
                     <span className="app-id">AppID {game.steamAppId}</span>
                   </div>
                   <dl className="details-grid game-details">
+                    <div>
+                      <dt>Distribución detectada</dt>
+                      <dd>
+                        {game.distribution === "steam"
+                          ? "Steam"
+                          : game.distribution}
+                      </dd>
+                    </div>
                     <div className="detail-wide">
                       <dt>Ruta de instalación esperada</dt>
                       <dd className="path-value">{game.installPath}</dd>
@@ -432,6 +536,13 @@ export default function App() {
                     <div className="detail-wide">
                       <dt>Biblioteca Steam</dt>
                       <dd className="path-value">{game.steamLibrary}</dd>
+                    </div>
+                    <div className="detail-wide">
+                      <dt>Ejecutable esperado</dt>
+                      <dd>{executableStatusText[game.executableStatus]}</dd>
+                      {game.executablePath && (
+                        <p className="path-value">{game.executablePath}</p>
+                      )}
                     </div>
                     <div className="detail-wide">
                       <dt>Compatdata</dt>
@@ -444,11 +555,12 @@ export default function App() {
                         <dd className="path-value">{game.prefixPath}</dd>
                       </div>
                     )}
-                    <div>
-                      <dt>Proton seleccionado para este juego</dt>
-                      <dd>No determinado</dd>
-                    </div>
                   </dl>
+                  <RuntimePlanSummary
+                    plan={steam.value.runtimePlans.find(
+                      (plan) => plan.gameId === game.id,
+                    )}
+                  />
                   <p className="discovery-note">
                     LXMI muestra herramientas instaladas por separado. No
                     determina cuál seleccionará Steam para este juego; la
@@ -605,13 +717,17 @@ export default function App() {
                 {steam.value.compatibilityToolIssues.length > 0 && (
                   <ul
                     className="issue-list tool-issue-list"
-                    aria-label="Avisos de herramientas de compatibilidad"
+                    aria-label="Observaciones de herramientas de compatibilidad"
                   >
                     {steam.value.compatibilityToolIssues.map((issue, index) => (
                       <li
                         key={`${issue.code}-${issue.path}-${index}`}
                         className={
-                          issue.severity === "error" ? "issue-error" : ""
+                          issue.severity === "error"
+                            ? "issue-error"
+                            : issue.severity === "info"
+                              ? "issue-info"
+                              : ""
                         }
                       >
                         <span>
@@ -632,13 +748,114 @@ export default function App() {
         )}
       </section>
 
+      <XxmiPanel />
+
       <footer className="page-footer">
         <span>
-          LXMI solo lee metadata; no ejecuta Proton/Wine ni modifica Steam,
-          juegos o prefixes.
+          LXMI escribe importaciones solo en su almacenamiento; no ejecuta
+          Proton/Wine ni modifica Steam, juegos o prefixes.
         </span>
         <span>BYTE-CX</span>
       </footer>
     </main>
   );
+}
+
+function RuntimePlanSummary({ plan }: { plan: RuntimePlan | undefined }) {
+  if (!plan) return null;
+
+  const selectedRuntime =
+    plan.selection.state === "unknown"
+      ? "No determinada"
+      : plan.selection.state === "not_required"
+        ? "No necesaria"
+        : plan.selection.candidate.displayName;
+  const candidateNames = plan.availableRuntimeCandidates.length
+    ? plan.availableRuntimeCandidates
+        .map((candidate) =>
+          candidate.version
+            ? `${candidate.displayName} · ${candidate.version}`
+            : candidate.displayName,
+        )
+        .join(", ")
+    : plan.candidateDiscovery === "unavailable"
+      ? "No se pudo evaluar"
+      : "Ninguno detectado";
+  const prefixText =
+    plan.prefix.state === "not_initialized"
+      ? "No inicializado"
+      : plan.prefix.state === "candidate_found"
+        ? "Encontrado; queda como candidato"
+        : plan.prefix.state === "not_required"
+          ? "No requerido"
+          : plan.prefix.state === "unknown"
+            ? "No se pudo determinar"
+            : plan.prefix.state === "invalid"
+              ? "Ruta no válida"
+              : plan.prefix.state === "unreadable"
+                ? "No se pudo leer"
+                : "No disponible";
+
+  return (
+    <section
+      className="runtime-assessment"
+      aria-label="Planificación del runtime"
+    >
+      <div className="runtime-assessment-heading">
+        <h4>Preparación del entorno</h4>
+        <span className={`runtime-readiness readiness-${plan.readiness}`}>
+          {readinessText[plan.readiness]}
+        </span>
+      </div>
+      <dl className="runtime-summary">
+        <div>
+          <dt>Runtime seleccionado</dt>
+          <dd>{selectedRuntime}</dd>
+        </div>
+        <div>
+          <dt>Candidatos Proton</dt>
+          <dd>{candidateNames}</dd>
+        </div>
+        <div>
+          <dt>Prefix</dt>
+          <dd>{prefixText}</dd>
+        </div>
+      </dl>
+      <details className="runtime-evidence">
+        <summary>Evidencia de esta evaluación</summary>
+        <ul>
+          {plan.evidence.map((evidence, index) => (
+            <li key={`${evidence.kind}-${index}`}>
+              {runtimeEvidenceText(evidence)}
+            </li>
+          ))}
+        </ul>
+      </details>
+    </section>
+  );
+}
+
+function runtimeEvidenceText(
+  evidence: RuntimePlan["evidence"][number],
+): string {
+  switch (evidence.kind) {
+    case "game_discovery_evaluated":
+      return `Descubrimiento de juegos: ${evidence.status ?? "sin estado"}.`;
+    case "game_manifest_observed":
+      return `Manifest ${evidence.appId ?? ""} (${evidence.name ?? "juego"}) observado en ${evidence.library ?? "biblioteca desconocida"}.`;
+    case "game_directory_observed":
+      return `Directorio del juego: ${evidence.status ?? "sin estado"} · ${evidence.path ?? "ruta desconocida"}. Completitud: ${evidence.completeness ?? "desconocida"}.`;
+    case "runtime_discovery_evaluated":
+      return `Discovery Proton: ${evidence.status ?? "sin estado"}; ${evidence.protonCandidateCount ?? 0} candidato(s).`;
+    case "proton_candidate_observed":
+      return `Candidato observado: ${evidence.displayName ?? "Proton"} · ${evidence.path ?? "ruta desconocida"}.`;
+    case "runtime_selection_not_observed":
+      return "No se encontró evidencia fiable de selección de runtime para este juego.";
+    case "compat_data_observed":
+      return `Compatdata: ${evidence.status ?? "sin estado"} · ${evidence.path ?? "ruta desconocida"}.`;
+    case "prefix_observed":
+      return `Prefix: ${evidence.state ?? "sin estado"} · ${evidence.expectedPath ?? "ruta desconocida"}.`;
+    default:
+      return "Evidencia registrada por LXMI.";
+  }
 }

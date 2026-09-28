@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -8,6 +9,119 @@ use tracing::{info, warn};
 use crate::{parse_app_manifest, SteamAppManifest};
 
 const MAX_APP_MANIFEST_BYTES: u64 = 2 * 1024 * 1024;
+const MAX_EXECUTABLE_SEARCH_DEPTH: usize = 8;
+const MAX_EXECUTABLE_SEARCH_ENTRIES: usize = 4096;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameExecutableDiscovery {
+    pub path: Option<PathBuf>,
+    pub status: lxmi_core::GameExecutableStatus,
+}
+
+/// Searches a bounded tree without following symlinks or opening/executing files.
+pub fn find_expected_game_executable(
+    install_path: &Path,
+    expected_names: &[&str],
+) -> GameExecutableDiscovery {
+    use lxmi_core::GameExecutableStatus;
+    use std::fs;
+
+    if expected_names.is_empty() {
+        return GameExecutableDiscovery {
+            path: None,
+            status: GameExecutableStatus::NotScanned,
+        };
+    }
+
+    let root_metadata = match fs::symlink_metadata(install_path) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => metadata,
+        _ => {
+            return GameExecutableDiscovery {
+                path: None,
+                status: GameExecutableStatus::SearchIncomplete,
+            }
+        }
+    };
+    let _ = root_metadata;
+
+    let mut pending = VecDeque::from([(install_path.to_owned(), 0usize)]);
+    let mut examined = 0usize;
+    let mut incomplete = false;
+    while !pending.is_empty() && examined < MAX_EXECUTABLE_SEARCH_ENTRIES {
+        let level_len = pending.len();
+        let mut found = Vec::new();
+        for _ in 0..level_len {
+            let Some((directory, depth)) = pending.pop_front() else {
+                break;
+            };
+            let entries = match fs::read_dir(&directory) {
+                Ok(entries) => entries,
+                Err(_) => {
+                    incomplete = true;
+                    continue;
+                }
+            };
+            for entry in entries {
+                examined += 1;
+                if examined > MAX_EXECUTABLE_SEARCH_ENTRIES {
+                    incomplete = true;
+                    break;
+                }
+                let entry = match entry {
+                    Ok(entry) => entry,
+                    Err(_) => {
+                        incomplete = true;
+                        continue;
+                    }
+                };
+                let path = entry.path();
+                let metadata = match fs::symlink_metadata(&path) {
+                    Ok(metadata) => metadata,
+                    Err(_) => {
+                        incomplete = true;
+                        continue;
+                    }
+                };
+                if metadata.file_type().is_symlink() {
+                    continue;
+                }
+                if metadata.is_file() {
+                    let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
+                        continue;
+                    };
+                    if let Some(priority) = expected_names
+                        .iter()
+                        .position(|expected| name.eq_ignore_ascii_case(expected))
+                    {
+                        found.push((priority, path));
+                    }
+                } else if metadata.is_dir() {
+                    if depth < MAX_EXECUTABLE_SEARCH_DEPTH {
+                        pending.push_back((path, depth + 1));
+                    } else {
+                        incomplete = true;
+                    }
+                }
+            }
+        }
+        if !found.is_empty() {
+            found.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+            return GameExecutableDiscovery {
+                path: found.into_iter().next().map(|(_, path)| path),
+                status: GameExecutableStatus::Found,
+            };
+        }
+    }
+
+    GameExecutableDiscovery {
+        path: None,
+        status: if incomplete || !pending.is_empty() {
+            GameExecutableStatus::SearchIncomplete
+        } else {
+            GameExecutableStatus::NotFound
+        },
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SteamAppInstallStatus {
