@@ -1,0 +1,23 @@
+:root {
+  color-scheme: dark;
+  --deep: #090b0c;
+  --background: #0e1011;
+  --surface: #151819;
+  --elevated: #1b1f20;
+  --soft-surface: #202526;
+  --text: #f0eee9;
+  --secondary: #aaa9a4;
+  --muted: #858c86;
+  --border: #292d2e;
+  --accent: #86b8a9;
+  --accent-quiet: #6d9182;
+  --warning: #c4a96f;
+  --danger: #bc7c72;
+  --rail-width: 74px;
+  --radius-window: 9px;
+  --radius-control: 5px;
+  --font-ui:
+    "Inter", "Noto Sans", "Ubuntu", "DejaVu Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}

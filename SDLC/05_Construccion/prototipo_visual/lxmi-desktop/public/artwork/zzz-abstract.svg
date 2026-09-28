@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 920" fill="none">
+  <defs>
+    <linearGradient id="night" x1=".1" y1="0" x2=".9" y2="1">
+      <stop stop-color="#24231e"/>
+      <stop offset=".52" stop-color="#39372e"/>
+      <stop offset="1" stop-color="#161714"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#d6c690" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#b29e64" stop-opacity=".03"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="matrix(0 380 -380 0 1030 350)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d7c990" stop-opacity=".36"/>
+      <stop offset="1" stop-color="#d7c990" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <path fill="url(#night)" d="M0 0h1500v920H0z"/>
+  <path fill="url(#glow)" d="M610-30h850v780H610z"/>
+  <path d="M891 0h211l-288 920H605L891 0Z" fill="url(#panel)" fill-opacity=".48"/>
+  <path d="m1128 0-286 920h92L1220 0h-92Z" fill="#dfd1a1" fill-opacity=".13"/>
+  <circle cx="1100" cy="316" r="193" stroke="#dfd7bd" stroke-opacity=".25"/>
+  <circle cx="1100" cy="316" r="252" stroke="#dfd7bd" stroke-opacity=".12"/>
+  <path d="M0 636h1500M0 669h1500M0 702h1500" stroke="#e2dcbf" stroke-opacity=".07"/>
+  <path d="M0 760c201-79 336-86 469-27 127 57 233 123 368 114 165-11 346-143 663-88v161H0V760Z" fill="#171916" fill-opacity=".8"/>
+  <path d="M0 829c224-58 385-30 530 25 176 66 286 37 425-26 199-90 369-81 545-16v108H0v-91Z" fill="#0d100f" fill-opacity=".67"/>
+  <path d="M1100 139v354M923 316h354" stroke="#e8e1c8" stroke-opacity=".18"/>
+  <path d="M0 0h1500v920H0z" fill="#080908" fill-opacity=".12"/>
+</svg>
