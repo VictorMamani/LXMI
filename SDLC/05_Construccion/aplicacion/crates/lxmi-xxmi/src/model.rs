@@ -63,12 +63,88 @@ pub struct PackageManifest {
     /// Identifies the structural specification, not the origin/authenticity of local bytes.
     pub layout_reference: String,
     pub authenticity: PackageAuthenticity,
+    #[serde(default)]
+    pub upstream: Option<UpstreamProvenance>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PackageAuthenticity {
     NotAuthenticated,
+    MissingSignature,
+    SignatureInvalid,
+    OfficialReleaseVerified,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OfficialPackageKind {
+    Zzmi,
+    XxmiLibraries,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceTrust {
+    Official,
+    Untrusted,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReleaseAsset {
+    pub id: u64,
+    pub name: String,
+    pub download_url: String,
+    pub size: u64,
+    pub content_type: Option<String>,
+    pub sha256: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpstreamRelease {
+    pub package_kind: OfficialPackageKind,
+    pub repository: String,
+    pub release_id: u64,
+    pub tag: String,
+    pub commit: String,
+    pub release_url: String,
+    pub version: String,
+    pub published_at: String,
+    pub metadata_retrieved_at: String,
+    pub signature_base64: Option<String>,
+    pub assets: Vec<ReleaseAsset>,
+    pub source_trust: SourceTrust,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpstreamProvenance {
+    pub repository: String,
+    pub release_id: u64,
+    pub tag: String,
+    pub commit: String,
+    pub release_url: String,
+    pub asset_name: String,
+    pub asset_url: String,
+    pub published_at: String,
+    pub metadata_retrieved_at: String,
+    pub downloaded_at: String,
+    pub download_sha256: String,
+    pub expected_asset_sha256: Option<String>,
+    pub signature_base64: Option<String>,
+    pub signature_status: SignatureStatus,
+    pub companion_asset_name: Option<String>,
+    pub companion_asset_sha256: Option<String>,
+    pub component_signatures_verified: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SignatureStatus {
+    Verified,
+    Invalid,
+    Missing,
+    Unsupported,
+    NotChecked,
 }
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -90,6 +166,9 @@ pub struct ImportLimits {
     pub max_file_bytes: u64,
     pub max_total_bytes: u64,
     pub max_depth: usize,
+    pub max_archive_bytes: u64,
+    pub max_archive_entries: usize,
+    pub max_compression_ratio: u64,
 }
 impl Default for ImportLimits {
     fn default() -> Self {
@@ -98,6 +177,9 @@ impl Default for ImportLimits {
             max_file_bytes: 128 * 1024 * 1024,
             max_total_bytes: 512 * 1024 * 1024,
             max_depth: 24,
+            max_archive_bytes: 32 * 1024 * 1024,
+            max_archive_entries: 4096,
+            max_compression_ratio: 1_000,
         }
     }
 }
@@ -119,6 +201,12 @@ pub enum ErrorCode {
     InvalidMetadata,
     Busy,
     NotFound,
+    InvalidSignature,
+    MissingSignature,
+    UnsafeArchive,
+    Network,
+    RedirectRejected,
+    ReleaseUnavailable,
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct XxmiError {
@@ -238,5 +326,71 @@ pub struct InstallationPlan {
     pub game_executable_candidate: Option<PathBuf>,
     pub configuration_changes: Vec<String>,
     pub warnings: Vec<String>,
+    pub deployment_mapping: Vec<DeploymentMapping>,
+    pub dry_run: DryRunInstallation,
     pub executable: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DeploymentOperation {
+    MergePackageIntoConfiguredImporterDirectory,
+    DeployRuntimeDllToConfiguredImporterDirectory,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DeploymentMapping {
+    pub source_package_id: String,
+    pub source_relative_path: String,
+    pub target_relative_path: String,
+    pub operation: DeploymentOperation,
+    pub target_root_basis: String,
+    pub evidence: String,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DryRunStatus {
+    WouldCreate,
+    WouldReplace,
+    AlreadyMatches,
+    TargetMissing,
+    Conflict,
+    PermissionIssue,
+    UnsafeTarget,
+    Unresolved,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum InstallSafetyState {
+    NeedsReview,
+    PlatformCompatibilityUnverified,
+    Blocked,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DryRunFile {
+    pub source_package_id: String,
+    pub source_path: PathBuf,
+    pub target_relative_path: String,
+    pub comparison_path: Option<PathBuf>,
+    pub expected_sha256: String,
+    pub existing_sha256: Option<String>,
+    pub status: DryRunStatus,
+    pub evidence: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DryRunInstallation {
+    /// None means LXMI has not captured XXMI's configurable importer_folder.
+    pub configured_target_root: Option<PathBuf>,
+    /// The executable directory is inspected as a candidate only; it is not asserted as target.
+    pub comparison_root_candidate: Option<PathBuf>,
+    pub comparison_root_evidence: String,
+    pub root_is_authoritative: bool,
+    pub files: Vec<DryRunFile>,
+    pub safety: InstallSafetyState,
+    pub apply_allowed: bool,
+    pub writes_performed: bool,
 }

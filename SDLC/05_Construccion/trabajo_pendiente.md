@@ -1,6 +1,6 @@
 # Trabajo pendiente
 
-## LXMI-0.1 a 0.5.1 — estado
+## LXMI-0.1 a 0.5.2 — estado
 
 - [x] Workspace Tauri 2/React/TypeScript/Rust con `lxmi-core`, `lxmi-steam`, `lxmi-proton` y `lxmi-runtime`.
 - [x] Detección Steam roots y bibliotecas, manifests, Wuthering Waves, compatdata/pfx y compatibility tools en modo de solo lectura.
@@ -33,8 +33,10 @@
 - [x] Añadir tests sintéticos ZZZ/ZZMI y prueba host-only ignorada para el scan real; conservar selección de Proton desconocida.
 - [x] Scan local read-only ZZZ: Steam/AppID 4162040, directorio/exe presentes, `compatdata/4162040/pfx` candidato; un Proton candidate, selection `unknown`, readiness `incomplete`.
 - [x] Tauri v0.5.1 compila e inicia. Scan ejecutado por el snapshot del command; click manual en la ventana queda **NO COMPROBADO**.
-- [ ] Importar una carpeta ZZMI real proporcionada localmente a managed storage y revisar el plan completo con XXMI Libraries real; no descargar assets automáticamente.
-- [ ] Recorrer el flujo de importar/revisar plan desde la ventana nativa mediante interacción real; el backend se probó con fixtures, no con una release ZZMI local real.
+- [x] Consultar releases oficiales fijadas y usar la selección vigente que mostró LXMI: ZZMI v1.5.0 y XXMI Libraries v1.1.7; descargar ambos assets oficialmente, verificar SHA-256 y firmas upstream, extraer de forma segura e importar a storage administrado. La versión ZZMI v1.4.5 consultada inicialmente permanece como paquete histórico. Ver `06_Verificacion/verificacion_0_5_2.md`.
+- [x] Construir package inventories reales y resolver la dependencia ZZMI + XXMI Libraries sin fusionar los paquetes.
+- [x] Generar mapping relativo y ejecutar dry-run hash-only contra la carpeta candidata derivada del ejecutable ZZZ. La raíz configurada `importer_path` sigue desconocida; no se aprueba apply.
+- [x] Completar interacción manual nativa: scan Steam/ZZZ, consulta de releases, descarga/verificación/import de ZZMI y XXMI Libraries, confirmación de dependencia y revisión del dry-run de 49 mappings; UI reportó `apply` y escrituras deshabilitados.
 
 ## Siguiente incremento: LXMI-0.6 — Safe ZZMI Installation Engine (con apply bloqueado por evidencia)
 
@@ -51,13 +53,13 @@
 
 ## Estado de Git
 
-- Worktree contiene cambios de LXMI-0.4, 0.5 y 0.5.1; no se crearon commits y no se hizo push.
+- Worktree contiene cambios de LXMI-0.5.2 sobre el checkpoint `386ca5c`; todavía no se creó commit ni se hizo push.
 - El remoto y branch son correctos; no reorganizar el repositorio.
 
 ## Antes de integrar runtimes o contenido de mods
 
 - [x] Registrar repositorios upstream oficiales consultados de XXMI/WWMI y licencias publicadas; revisar individualmente todo binario/recurso redistribuible antes de distribución.
 - [ ] Verificar documentación y políticas aplicables del juego/runtime; no evadir anti-cheat ni controles.
-- [x] Diseñar importación segura de directorio y probar traversal/enlaces/tamaño. Archive extraction no está implementado.
+- [x] Diseñar importación segura de directorio y ZIP; probar traversal, rutas absolutas, enlaces, colisiones, profundidad, tamaño y relación de compresión.
 - [ ] Investigar función live e IPC de forma separada; no asumir que existe un protocolo upstream.
 - [ ] Evaluar SteamOS y distribución solo después de un MVP probado.

@@ -4,8 +4,9 @@ use lxmi_proton::ProtonScanner;
 use lxmi_runtime::{GameInstallationAssessment, RuntimePlanner};
 use lxmi_steam::{SteamDiscoveryResult, SteamDiscoveryScanner};
 use lxmi_xxmi::{
-    inspect_runtime, integration_for_game, plan_installation_for_integration, ErrorCode,
-    InstallationPlan, ManagedStore, PackageManifest, Result, RuntimeDiscovery, XxmiError,
+    inspect_runtime, integration_for_game, plan_installation_for_integration, DownloadCache,
+    ErrorCode, GitHubReleaseProvider, InstallationPlan, ManagedStore, OfficialPackageKind,
+    PackageManifest, ReleaseProvider, Result, RuntimeDiscovery, UpstreamRelease, XxmiError,
 };
 use serde::Serialize;
 use std::path::Path;
@@ -99,6 +100,22 @@ pub fn import_directory(path: &Path) -> Result<PackageManifest> {
         .import_directory(path)?
         .manifest()
         .clone())
+}
+
+pub fn check_official_releases() -> Result<Vec<UpstreamRelease>> {
+    let provider = GitHubReleaseProvider::new()?;
+    Ok(vec![
+        provider.latest_release(OfficialPackageKind::Zzmi)?,
+        provider.latest_release(OfficialPackageKind::XxmiLibraries)?,
+    ])
+}
+
+pub fn download_official_package(kind: OfficialPackageKind, tag: &str) -> Result<PackageManifest> {
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery)?;
+    let provider = GitHubReleaseProvider::new()?;
+    let cache = DownloadCache::from_environment()?;
+    lxmi_xxmi::download_and_import_official(&store, &cache, &provider, kind, tag)
 }
 pub fn plan(
     game_id: &str,

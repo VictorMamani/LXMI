@@ -94,7 +94,7 @@ pub fn assess_for_integration(
     };
     let integration_evidence = match integration {
         IntegrationKind::Wwmi => "WWMIv1 structure was checked; authenticity and launch remain unverified.",
-        IntegrationKind::Zzmi => "ZZMI structure was checked against the current upstream package tree; authenticity and launch remain unverified.",
+        IntegrationKind::Zzmi => "ZZMI package structure is inventoried; upstream authenticity is recorded separately and launch compatibility remains unverified.",
         IntegrationKind::Gimi | IntegrationKind::Unknown => "No structural contract is implemented for this integration.",
     };
     let package_layout_known = supported && package_state == Satisfied;
@@ -127,7 +127,7 @@ pub fn assess_for_integration(
         requirement(
             "XXMIPackageAvailable",
             libraries_state,
-            "XXMI Libraries is a separate package dependency; LXMI does not verify its upstream signatures.",
+            "XXMI Libraries is a separate package dependency; the managed manifest records release and component signature states.",
         ),
         requirement(integration_name, package_state, integration_evidence),
         requirement(
@@ -314,6 +314,28 @@ pub fn plan_installation_for_integration(
             });
         }
     }
+    let (deployment_mapping, dry_run) = if integration == IntegrationKind::Zzmi {
+        crate::mapping::map_zzmi_installation(
+            &package,
+            libraries.as_ref(),
+            game_executable_candidate.as_deref(),
+        )?
+    } else {
+        (
+            Vec::new(),
+            DryRunInstallation {
+                configured_target_root: None,
+                comparison_root_candidate: None,
+                comparison_root_evidence:
+                    "El mapeo de destino real solo se investigó para ZZMI en 0.5.2.".into(),
+                root_is_authoritative: false,
+                files: Vec::new(),
+                safety: InstallSafetyState::NeedsReview,
+                apply_allowed: false,
+                writes_performed: false,
+            },
+        )
+    };
     tracing::info!(
         files = files.len(),
         ?integration,
@@ -324,16 +346,18 @@ pub fn plan_installation_for_integration(
         files,
         managed_target: target,
         game_executable_candidate,
+        deployment_mapping,
+        dry_run,
         configuration_changes: vec![
             "El destino incluido en este plan pertenece al almacenamiento administrado por LXMI; no es el directorio del juego.".into(),
             "Steam y Linux/Proton permanecen sin verificar para la integración seleccionada.".into(),
-            "La configuración requerida para aplicar archivos al juego todavía no está definida; no se modifican launch options, prefix ni Steam.".into(),
+            "XXMI Launcher separa game_folder de importer_folder. LXMI no conoce esa configuración; el directorio del ejecutable se inspecciona solo como candidato.".into(),
         ],
         warnings: vec![
-            "Plan declarativo para revisión; no existe una operación apply en LXMI 0.5.1.".into(),
-            "SHA-256 detecta cambios desde la importación local, pero no autentica el origen ni prueba compatibilidad.".into(),
+            "Plan declarativo para revisión; no existe una operación apply en LXMI 0.5.2.".into(),
+            "SHA-256 local detecta cambios; la procedencia oficial solo se atribuye si la firma del asset y, para Libraries, las firmas de sus DLLs pasan.".into(),
             "La compatibilidad del paquete con esta distribución y Linux/Proton no está verificada.".into(),
-            "Antes de una futura instalación se deben definir destino real, backups, journal, rollback y compatibilidad.".into(),
+            "El dry-run compara una carpeta candidata derivada del ejecutable detectado; no afirma que sea el importer_folder configurado. Apply está bloqueado.".into(),
         ],
         executable: false,
     })

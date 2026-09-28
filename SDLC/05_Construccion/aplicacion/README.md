@@ -1,6 +1,6 @@
 # LXMI — aplicación
 
-**LXMI 0.5.1 — Tauri 2 + React/TypeScript + Rust.** Workspace crates: `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime` y `lxmi-xxmi`. Discovery y planificación Steam/juego siguen read-only; import explícito solo crea datos administrados bajo `$XDG_DATA_HOME/lxmi`. No hay SQLite, executor ni ejecución de procesos/contenido importado. Import, install y apply son etapas distintas; 0.5.1 no instala al juego.
+**LXMI 0.5.2 — Tauri 2 + React/TypeScript + Rust.** Workspace crates: `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime` y `lxmi-xxmi`. Discovery, planificación y dry-run sobre Steam/juego siguen read-only. La consulta/descarga oficial se inicia explícitamente; extracción e import solo escriben bajo cache XDG y `$XDG_DATA_HOME/lxmi`. No hay SQLite, executor ni ejecución de procesos/contenido importado. No se instala al juego.
 
 En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para discovery y planificación de solo lectura. El workspace añadió en 0.5 `lxmi-xxmi`. No usa SQLite ni escribe en Steam, juegos, compatibility tools o prefixes; el import explícito sí conserva paquetes bajo el storage privado de LXMI.
 
@@ -94,3 +94,13 @@ En el scan local del 2026-09-28 no apareció el manifest de Wuthering Waves; los
 La investigación upstream y los límites de licencia/compatibilidad están en `../../01_Descubrimiento/ecosistema_xxmi_zzmi.md`. El SHA-256 local no autentica al publisher; LXMI no verifica firmas upstream. No se descargó ni importó una release real en este incremento.
 
 **Validación local read-only:** manifest Steam local confirma AppID `4162040`; directorio y `ZenlessZoneZero.exe` existen; `compatdata/4162040/pfx` existe como candidato. El command snapshot reportó un candidato Proton, selección `unknown` y readiness `incomplete`. No se lanzó el juego ni se escribió en Steam, ZZZ o el prefix. Tauri dev inició y compiló, pero el click manual de Scan en la ventana no fue comprobado. Ver `../../06_Verificacion/verificacion_0_5_1.md`.
+
+## LXMI-0.5.2: releases oficiales y dry-run
+
+`lxmi-xxmi` ofrece `ReleaseProvider` offline-testable y adaptador GitHub con allowlist exacta para ZZMI y XXMI Libraries. Guarda identity reproducible (release ID/tag/commit, asset, hashes y timestamps), descarga con streaming/límites a XDG cache, verifica firma ECDSA P-384/SHA-256 usando claves fijadas de XXMI Launcher, extrae ZIP con límites a staging y promueve paquetes validados al storage privado. En Libraries también verifica las firmas DLL declaradas en el `Manifest.json` separado. El SHA-256 local continúa siendo integridad, no autenticidad.
+
+La UI permite consultar releases solo tras click explícito, elegir el tag consultado, descargar/verificar/importar ZZMI y Libraries por separado y revisar el plan/dry-run. Mapeo relativo sigue el `importer_path` configurable de XXMI; su raíz efectiva no se conoce automáticamente. La carpeta del ejecutable ZZZ es un candidato de comparación, no un target aprobado. `apply_allowed=false`; no se escribe en juego/Steam/compatdata/prefix y no se ejecuta contenido. Steam/Linux/Proton sigue sin verificar. Las releases recomiendan XXMI Launcher para instalación; LXMI no reemplaza ese flujo.
+
+Pins, digests, commits, firmas, inventario y fuentes upstream: `../../01_Descubrimiento/adquisicion_paquetes_xxmi_0_5_2.md`. Security/decision: `../../04_Arquitectura_y_seguridad/ADR/024_official_upstream_package_trust.md`. El estado real de validación y UI está en `../../06_Verificacion/verificacion_0_5_2.md`.
+
+Durante la validación local, la consulta de LXMI seleccionó ZZMI `v1.5.0` (release `393483881`) y XXMI Libraries `v1.1.7` (release `387957029`). Ambos se descargaron, autenticaron e importaron; la UI Tauri recorrió también el plan de 49 destinos sin aplicarlo. La autenticidad upstream no verifica compatibilidad con Steam/Linux/Proton. La prueba HTTP está ignorada en la suite normal y usa store/cache temporales con `LXMI_CONFIRM_OFFICIAL_DOWNLOAD_AND_STORE=YES`.

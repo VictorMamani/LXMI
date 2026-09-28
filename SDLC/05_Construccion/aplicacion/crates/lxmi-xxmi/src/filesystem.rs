@@ -260,6 +260,17 @@ impl Directory {
             .and_then(|()| f.sync_all())
             .map_err(|e| XxmiError::io(Path::new(name), e))
     }
+    pub fn create_new_file(&self, name: &str) -> Result<File> {
+        let (parent, base) = self.parent_for(name)?;
+        let path = parent.path().join(base);
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+            .open(&path)
+            .map_err(|e| XxmiError::io(Path::new(name), e))
+    }
     pub fn ensure_parents(&self, relative: &str) -> Result<()> {
         validate_relative_path(relative)?;
         if let Some((parent, _)) = relative.rsplit_once('/') {
@@ -272,6 +283,19 @@ impl Directory {
             for c in parent.split('/') {
                 dir = dir.private_child(c)?;
             }
+        }
+        Ok(())
+    }
+    pub fn ensure_directory(&self, relative: &str) -> Result<()> {
+        validate_relative_path(relative)?;
+        let mut dir = Self {
+            file: self
+                .file
+                .try_clone()
+                .map_err(|e| XxmiError::io(&self.path(), e))?,
+        };
+        for component in relative.split('/') {
+            dir = dir.private_child(component)?;
         }
         Ok(())
     }
@@ -305,6 +329,45 @@ impl Directory {
         }
         target.sync()?;
         self.sync()
+    }
+    pub fn promote_file(&self, from: &str, to: &str) -> Result<()> {
+        validate_relative_path(from)?;
+        validate_relative_path(to)?;
+        let a = std::ffi::CString::new(from)
+            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Nombre inválido"))?;
+        let b = std::ffi::CString::new(to)
+            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Nombre inválido"))?;
+        // SAFETY: the directory fd and NUL-terminated names live during the syscall.
+        let result = unsafe {
+            libc::renameat2(
+                self.file.as_raw_fd(),
+                a.as_ptr(),
+                self.file.as_raw_fd(),
+                b.as_ptr(),
+                libc::RENAME_NOREPLACE,
+            )
+        };
+        if result != 0 {
+            return Err(XxmiError::io(
+                &self.path().join(to),
+                std::io::Error::last_os_error(),
+            ));
+        }
+        self.sync()
+    }
+    pub fn remove_file(&self, name: &str) -> Result<()> {
+        let (parent, base) = self.parent_for(name)?;
+        let c_name = std::ffi::CString::new(base)
+            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Nombre inválido"))?;
+        // SAFETY: the directory fd and file name are valid for unlinkat.
+        let result = unsafe { libc::unlinkat(parent.file.as_raw_fd(), c_name.as_ptr(), 0) };
+        if result != 0 {
+            return Err(XxmiError::io(
+                &parent.path().join(c_name.to_string_lossy().as_ref()),
+                std::io::Error::last_os_error(),
+            ));
+        }
+        Ok(())
     }
     /// Only for our private temporary directory, never an imported source.
     pub fn remove_stage(&self, name: &str) -> Result<()> {

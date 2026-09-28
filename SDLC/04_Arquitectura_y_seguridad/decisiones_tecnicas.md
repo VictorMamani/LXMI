@@ -29,3 +29,7 @@ Todas las decisiones son provisionales hasta terminar el estudio de factibilidad
 | ADR-023 | Tratar compatibilidad y autenticidad como dimensiones separadas | SHA-256 local no equivale a firma upstream; soporte del juego no implica soporte de distribución/plataforma | ZZMI necesita XXMI Libraries por separado; firma del launcher no implementada; Steam y Linux/Proton siguen `Unverified` |
 
 La decisión de stack inicial está tomada. LXMI-0.5/0.5.1 agrega import explícito y storage local administrado, pero no executor/apply, downloader ni cambios a Steam/juego/prefix. Las revisiones upstream/licencias no son una aprobación legal ni validación de compatibilidad. Resultado y límites en `registro_de_cambios.md`, `06_Verificacion/verificacion_0_5.md` y `06_Verificacion/verificacion_0_5_1.md`.
+
+| ADR-024 | Limitar y verificar paquetes oficiales upstream antes de guardarlos | Los SHA-256 del import local no prueban procedencia; los ZIP upstream son input no confiable | Repositorios fijos, tags/commits y metadata capturados, ECDSA P-384/SHA-256, extracción ZIP acotada, storage privado y plan-before-apply. No redistribuir ni desplegar; ver `ADR/024_official_upstream_package_trust.md` |
+
+LXMI-0.5.2 implementa esa decisión en `lxmi-xxmi`: provider de releases, cache XDG explícita, firma, extraction, package inventory, provenance y dry-run read-only. Sigue sin executor/apply y no cambia Steam, juego o prefix. Las fuentes, IDs y digests están fijados en `../01_Descubrimiento/adquisicion_paquetes_xxmi_0_5_2.md`.

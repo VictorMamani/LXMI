@@ -159,3 +159,34 @@ Fuentes y límites completos: `SDLC/01_Descubrimiento/ecosistema_xxmi_zzmi.md`.
 - Este incremento no confirma compatibilidad de ZZMI con Steam, Linux o Proton.
 
 La evidencia detallada está en `SDLC/06_Verificacion/verificacion_0_5_1.md`.
+
+## LXMI-0.5.2 — Official Package Acquisition, Authenticity & Install Mapping (2026-09-28)
+
+### Implementado
+
+- Adaptador de releases GitHub limitado a los repositorios oficiales ZZMI y XXMI Libraries. Conserva release ID/tag/commit/asset, SHA-256 de GitHub, timestamps y el archivo companion `Manifest.json`; consulta solo al iniciar la acción del usuario.
+- Descarga HTTPS con hosts permitidos, redirects acotados, límites de bytes/tiempo, streaming a cache XDG `.partial`, hash y limpieza en error.
+- Verificación upstream reproducida desde el XXMI Launcher fijado: ECDSA P-384 sobre SHA-256, firma Base64 ASN.1 DER aplicada a los bytes ZIP. `Manifest.json` de Libraries se coteja por SHA-256 publicado; además se verifican las firmas upstream de `3dmloader.dll`, `d3d11.dll` y `d3dcompiler_47.dll`.
+- Inspección/extracción ZIP con staging privado, límites de archivo/entrada/expansión y rechazo de traversal, rutas absolutas, colisiones normalizadas, enlaces y archivos especiales; inventario con SHA-256 y promoción a storage XDG.
+- Paquetes oficiales ZZMI y XXMI Libraries permanecen separados; la dependencia se resuelve cuando ambos están gestionados. La metadata de provenance está en `lxmi-package.json` fuera del payload.
+- Mapeo declarativo derivado de la configuración upstream, inventario de release y hash-read dry-run de la carpeta candidata del ejecutable. El `importer_path` configurable de XXMI no se conoce aún; raíz configurada permanece `null`, destino candidato no autoritativo, `apply_allowed=false` y `writes_performed=false`.
+- Panel Tauri consulta y presenta releases pinneadas, descarga/verifica/importa cada paquete, estado de dependencia y dry-run. No se integró el prototipo visual.
+- Investigación fijada en `SDLC/01_Descubrimiento/adquisicion_paquetes_xxmi_0_5_2.md`; ADR-024 registra confianza por fuente; la verificación está en `SDLC/06_Verificacion/verificacion_0_5_2.md`.
+
+### Verificado
+
+- **UPSTREAM VERIFIED:** tags, release IDs, assets, commits resueltos, fecha, SHA-256 GitHub, companion manifest y claves se consultaron en las fuentes oficiales indicadas en la investigación.
+- **UPSTREAM VERIFIED:** en la consulta explícita de LXMI se seleccionaron ZZMI v1.5.0 (release `393483881`, commit `e59f87047cd405c5db5476d3b1b499574bc43d67`, asset `580682882`, publicado 2026-09-22T05:54:50Z) y XXMI Libraries v1.1.7 (release `387957029`, commit `6bf6a746a198c82fb34dbd336cac7ad8e0f4ddc9`). La v1.4.5 inicial permanece como versión histórica administrada; no se presenta como la selección vigente.
+- **CRYPTOGRAPHICALLY VERIFIED:** ZIP de ZZMI v1.5.0 y Libraries v1.1.7 pasaron la firma P-384/SHA-256. El Manifest de Libraries declaró tres firmas DLL, todas verificadas con la clave upstream.
+- **COMPROBADO:** el cliente LXMI descargó por HTTPS los dos paquetes y el Manifest en cache/store temporales mediante prueba explícita de red. La UI también descargó/verificó/importó los paquetes seleccionados a storage XDG. El inventory contiene ZZMI v1.5.0 (47 archivos, 1,116,062 B), v1.4.5 histórica (33 archivos, 1,041,827 B) y Libraries v1.1.7 (4 archivos, 8,096,499 B).
+- El dry-run sobre ZZZ real combinó v1.5.0 + Libraries v1.1.7 y comparó 49 mappings contra la carpeta candidata del ejecutable: 49 `WouldCreate`; el snapshot de cada destino candidato quedó igual antes y después. El candidato no es el `importer_path` configurado y no es destino aprobado.
+- Suite offline del crate y los quality gates completos se registran en `verificacion_0_5_2.md`. La prueba real upstream está marcada `#[ignore]`; la suite normal no accede a Internet.
+- La ventana Tauri inició; desde ella se escaneó Steam/ZZZ, se consultaron releases, se descargaron/importaron los dos paquetes, se confirmó el set de dependencia y se generó el plan de 49 destinos. La UI mostró Steam/Linux/Proton `unverified`, apply no permitido y ninguna escritura.
+- No se escribió en Steam, ZZZ, `compatdata` o prefix, y no se ejecutó contenido upstream.
+
+### Límites
+
+- **NO COMPROBADO:** compatibilidad de ZZMI con Steam, Linux/Proton, inyección o ejecución con mods; no se lanzó ZZZ.
+- **NO RESUELTO:** la carpeta efectiva de `importer_path` se configura en XXMI y no está registrada por LXMI; el directorio del ejecutable es solo candidato de comparación.
+- La autenticidad respecto a la clave fijada no implica que el publisher sea el mismo que el maintainer de cada componente; licencias de Libraries requieren revisión por componente. LXMI no redistribuye estos archivos.
+- No existe apply, rollback, ni escritura al juego.

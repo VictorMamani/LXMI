@@ -100,3 +100,24 @@ Proton es parte de Platform Integration, no el dominio principal del producto. L
 ## Adaptabilidad
 
 La detección debe describir explícitamente las ubicaciones y formatos soportados, permitir corrección manual y guardar versión/plataforma para diagnóstico. No se debe asumir un único layout de Steam ni de Proton sin evidencia.
+
+## Incremento LXMI-0.5.2: releases oficiales y dry-run
+
+`lxmi-xxmi` mantiene una frontera de red detrás de `ReleaseProvider`: el adaptador GitHub consulta únicamente los dos repositorios permitidos, resuelve el tag seleccionado y transmite assets a XDG cache con límites de redirect, tiempo y tamaño. Metadata de release, archivo cache y paquete administrado son objetos distintos. La consulta y descarga son acciones explícitas, no se hacen al abrir LXMI.
+
+El ZIP se autentica contra la firma upstream antes de extraerse a staging privado. La extracción valida límites/rutas; después se valida el contrato del package, inventario y, para Libraries, firmas de DLL. El paquete se promueve al store LXMI sin modificar su payload. SHA-256 local y autenticidad de publisher permanecen separados de compatibilidad de plataforma.
+
+El plan toma las rutas relativas del package y las reglas verificadas de XXMI Launcher. `importer_path` es configuración del launcher y no se conoce automáticamente; `configured_target_root` queda sin resolver. La carpeta del ejecutable ZZZ solo es un candidato de comparación para un dry-run de lectura. No se implementa apply ni se afirma compatibilidad Steam/Linux/Proton. Pins y evidencias: `../01_Descubrimiento/adquisicion_paquetes_xxmi_0_5_2.md`; ver ADR-024.
+
+```mermaid
+flowchart TD
+    User[Acción explícita] --> Provider[Allowlist y release/tag exactos]
+    Provider --> Cache[HTTPS stream hacia XDG cache]
+    Cache --> Signature[Digest publicado y firma del asset]
+    Signature --> Staging[Extracción segura a staging privado]
+    Staging --> Validation[Estructura, inventario y firmas de componentes]
+    Validation --> Store[Managed storage LXMI]
+    Store --> Dependency[Assessment ZZMI + XXMI Libraries]
+    Dependency --> Plan[Mapping relativo y dry-run read-only]
+    Plan -. apply deshabilitado .-> Game[Zenless Zone Zero]
+```
