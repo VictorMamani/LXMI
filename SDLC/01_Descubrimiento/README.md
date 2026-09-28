@@ -14,6 +14,9 @@ En LXMI, la oportunidad de uso y la factibilidad técnica siguen siendo hipótes
 ## Documentación de LXMI
 
 - [Fuentes e hipótesis](fuentes_e_hipotesis.md)
+- [Ecosistema XXMI/ZZMI](ecosistema_xxmi_zzmi.md)
+- [Adquisición de paquetes XXMI 0.5.2](adquisicion_paquetes_xxmi_0_5_2.md)
+- [Topología del runtime XXMI en Linux — 0.5.3](topologia_runtime_xxmi_linux.md)
 
 ## Salida de fase
 

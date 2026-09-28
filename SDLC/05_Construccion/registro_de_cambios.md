@@ -190,3 +190,40 @@ La evidencia detallada está en `SDLC/06_Verificacion/verificacion_0_5_1.md`.
 - **NO RESUELTO:** la carpeta efectiva de `importer_path` se configura en XXMI y no está registrada por LXMI; el directorio del ejecutable es solo candidato de comparación.
 - La autenticidad respecto a la clave fijada no implica que el publisher sea el mismo que el maintainer de cada componente; licencias de Libraries requieren revisión por componente. LXMI no redistribuye estos archivos.
 - No existe apply, rollback, ni escritura al juego.
+
+## LXMI-0.5.3 — Managed Importer Runtime & Launch Topology (2026-09-28)
+
+### Implementado
+
+- `lxmi-xxmi` ahora resuelve el importer de ZZMI como `App.Root/ZZMI/`, fuera de la carpeta del juego. El mapping del dry-run 0.5.2 contra la carpeta vecina al executable se conserva solo como comparación histórica, no como target aprobado.
+- `RuntimeAssemblyPlan` compone packages oficiales autenticados ZZMI + XXMI Libraries. `assemble_zzmi_runtime` copia a staging privado, revalida hashes, deriva `d3dx.ini` cambiando solo `[Loader] target`, preserva `loader = XXMI Launcher.exe`, crea `Mods/` bajo LXMI y promueve a un root versionado bajo XDG. Los packages originales quedan separados e inmutables.
+- Se ensamblan bajo `ZZMI/` los archivos ZZMI y las DLL que el código upstream de XXMI Launcher despliega en `importer_path` (`d3d11.dll`, `d3dcompiler_47.dll`). `3dmloader.dll` permanece en su package XXMI Libraries autenticado y se referencia mediante ruta/hash; no se ejecuta ni se designa como helper.
+- `runtime-manifest.json` describe provenance, versiones, hashes y configuración fuera del payload upstream. El root administrado pertenece a LXMI y la operación se bloquea si solapa Steam, ZZZ, compatdata o prefix.
+- `topology.rs` inspecciona `pfx/dosdevices` de forma no recursiva, registra symlinks/targets y calcula mappings Linux→Windows con validación de componentes. El resultado es evidence de filesystem, no prueba de carga del runtime.
+- `LaunchTopologyPlan` combina ZZZ, compatdata/prefix, Proton candidates, runtime gestionado, mappings y blockers. La selección de Proton, loader/helper y requisito de mismo prefix quedan `Unknown`; ejecución sigue deshabilitada.
+- UI Tauri añade revisar composición, preparar el runtime XDG e inspeccionar topología. No se fusiona el prototipo visual ni se habilita `apply`.
+- Se registra la investigación fijada de upstream y ADR-025. La próxima fase se redefine como experimento de topología/bridge, no como instalador.
+
+### Upstream verified
+
+- XXMI Launcher v2.2.1, commit `d56786b8dacb00c35204bff45ff5b8b83bd8962a`: `importer_path` relativo se resuelve desde `App.Root`; ZZMI fija `importer_folder = "ZZMI/"`. La semántica upstream de `loader` es identidad de proceso Windows en la configuración Loader, no nombre de proceso Linux LXMI.
+- El código del paquete Migoto pasa `3dmloader.dll` al API `DllInjector` y coloca `d3d11.dll`/`d3dcompiler_47.dll` en el importer. `3dmloader.exe` es una ruta/herramienta mencionada por release notes para inyección directa y no se asume parte del runtime mínimo actual.
+- Upstream documenta XXMI Launcher Portable para Linux bajo Wine 9.22+ y Microsoft Visual C++ Redistributable; eso no demuestra ZZZ Steam + Proton + ZZMI.
+- Repositorios/versiones/archivos y límites de licencia están fijados en `../01_Descubrimiento/topologia_runtime_xxmi_linux.md`. La redistribución de cada binario sigue pendiente de revisar individualmente.
+
+### Comprobado
+
+- Quality gates Rust: `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy de workspace con `-D warnings`, `cargo test --workspace`: pasaron; 149 tests, 5 ignorados por ser explícitos/host-only/network.
+- Quality gates frontend: `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run build`: pasaron.
+- Prueba opt-in `assembles_verified_zzmi_runtime_and_inspects_local_zzz_topology_without_game_writes`: 1 pasó con packages oficiales administrados ZZMI v1.5.0 y Libraries v1.1.7. Ensambló 49 archivos bajo `/home/university/.local/share/lxmi/runtimes/zenless-zone-zero/zzmi/`; el importer se mapeó por `Z:`. Selección de Proton `unknown`, `SamePrefixRequirement::Unknown`, `execution_enabled=false`, `external_files_modified=false`.
+- Antes/después quedaron iguales las rutas candidatas `d3d11.dll`, `d3dcompiler_47.dll`, `d3dx.ini`, `ZZMI` bajo el directorio comparativo del executable, y el reporte de symlinks `pfx/dosdevices`. Los hashes/manifests de ambos packages fuente volvieron a validarse.
+- **NO COMPROBADO:** no se hizo click a click en la ventana Tauri. Ya había una sesión `tauri dev` y una ventana LXMI; el browser externo renderizó el frontend sin bridge Tauri y no sirve como verificación funcional de sus commands. No se ejecutó ZZZ, Steam, Proton, Wine, launcher/helper, DLL, ni contenido del package.
+
+### Límites
+
+- El runtime ensamblado es administrado, pero no se ha probado que pueda lanzarse/cargarse bajo Proton.
+- No se eligió estrategia entre launcher portable, componente upstream o helper propio; no hay autorización/licencia resuelta para redistribuir un helper.
+- No se conoce qué proceso Windows satisface la identidad `XXMI Launcher.exe`, si debe compartir prefix con ZZZ, ni qué Proton seleccionará Steam.
+- No se modificaron Steam, ZZZ, compatdata o prefix. No hay executor, inyección, anti-cheat bypass, launch options, `apply` ni rollback.
+
+Detalles reproducibles en `../06_Verificacion/verificacion_0_5_3.md`.

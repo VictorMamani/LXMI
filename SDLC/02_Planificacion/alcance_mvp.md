@@ -1,6 +1,6 @@
 # Alcance inicial
 
-Este alcance es una propuesta por etapas. LXMI-0.1 a 0.4 inspeccionan y planifican sin modificar Steam ni instalaciones. LXMI-0.5 permite una importación explícita únicamente al almacenamiento privado de LXMI; aplicar cambios al juego requiere un incremento separado tras revisar fuentes, seguridad y compatibilidad.
+Este alcance es una propuesta por etapas. LXMI-0.1 a 0.4 inspeccionan y planifican sin modificar Steam ni instalaciones. LXMI-0.5 a 0.5.2 importa y autentica paquetes en almacenamiento privado; LXMI-0.5.3 ensambla el runtime privado ZZMI y describe una topología, sin modificar Steam, juego o prefix. Ejecutar o aplicar cambios queda fuera hasta validar el bridge y la compatibilidad de plataforma.
 
 ## Incremento LXMI-0.1 — Aplicación y detección de Steam
 
@@ -43,9 +43,9 @@ Describir una planificación de runtime por juego a partir de evidencias disponi
 - Producir un assessment y un plan revisable, sin executor ni apply.
 - Mantener autenticidad, compatibilidad de lanzamiento y política de redistribución como desconocidas hasta verificarlas.
 
-## Siguiente incremento: LXMI-0.6 — Safe XXMI/WWMI Installation
+## Siguiente incremento: LXMI-0.6 — Proton Launch Topology Experiment
 
-Evaluar un destino Linux/Proton respaldado por evidencia; revalidar package y filesystem, preparar backup/journal, exigir revisión del plan, y probar apply/rollback antes de habilitar cualquier instalación en un juego real.
+Resolver en un entorno autorizado, sin inyección ni mutaciones, la identidad del loader, el helper Windows, visibilidad de la ruta administrada en el prefix y la exigencia de compartir prefix. Mantener la selección Proton y compatibilidad desconocidas donde no exista evidencia. No habilitar `apply` ni escribir al juego/Steam/prefix en ese incremento.
 
 ## Hito 0 — Factibilidad
 

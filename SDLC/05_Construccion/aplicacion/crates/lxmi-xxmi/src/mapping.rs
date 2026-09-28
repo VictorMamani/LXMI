@@ -1,7 +1,6 @@
-use crate::{
-    filesystem::{missing, Directory},
-    *,
-};
+#[cfg(test)]
+use crate::filesystem::{missing, Directory};
+use crate::*;
 use std::path::Path;
 
 const LIBRARY_DLLS_DEPLOYED_BY_UPSTREAM: &[&str] = &["d3d11.dll", "d3dcompiler_47.dll"];
@@ -9,7 +8,7 @@ const LIBRARY_DLLS_DEPLOYED_BY_UPSTREAM: &[&str] = &["d3d11.dll", "d3dcompiler_4
 pub(crate) fn map_zzmi_installation(
     integration: &VerifiedPackage,
     libraries: Option<&VerifiedPackage>,
-    game_executable: Option<&Path>,
+    _game_executable: Option<&Path>,
 ) -> Result<(Vec<DeploymentMapping>, DryRunInstallation)> {
     if integration.manifest.kind != PackageKind::GameIntegration(IntegrationKind::Zzmi) {
         return Err(XxmiError::new(
@@ -57,29 +56,10 @@ pub(crate) fn map_zzmi_installation(
     }
     mappings.sort_by(|a, b| a.target_relative_path.cmp(&b.target_relative_path));
 
-    let comparison_root_candidate = game_executable
-        .and_then(Path::parent)
-        .map(Path::to_path_buf);
-    let comparison_root_evidence = match (game_executable, &comparison_root_candidate) {
-        (Some(executable), Some(_root)) => format!(
-            "Candidato de comparación derivado del ejecutable detectado {}; upstream no confirma que sea importer_path.",
-            executable.display()
-        ),
-        _ => "No se detectó un ejecutable para construir una carpeta candidata de comparación.".into(),
-    };
-    let root_directory = match &comparison_root_candidate {
-        None => None,
-        Some(path) => match Directory::open_absolute(path) {
-            Ok(directory) => Some(directory),
-            Err(error) if missing(&error) => None,
-            Err(_) => None,
-        },
-    };
-    let root_status = match (&comparison_root_candidate, &root_directory) {
-        (None, _) => DryRunStatus::Unresolved,
-        (Some(_), Some(_)) => DryRunStatus::WouldCreate,
-        (Some(_), None) => DryRunStatus::TargetMissing,
-    };
+    // The executable-directory comparison performed by 0.5.2 is historical only.
+    // The active importer root is now assembled under LXMI-managed XDG storage.
+    let comparison_root_candidate: Option<std::path::PathBuf> = None;
+    let comparison_root_evidence = "Comparación de 0.5.2 contra la carpeta del ejecutable: antecedente histórico solamente, no target aprobado ni usado. El importer root activo de LXMI 0.5.3 queda bajo XDG/lxmi/runtimes/zenless-zone-zero/zzmi/<runtime-id>/ZZMI.".to_owned();
 
     let mut dry_run_files = Vec::with_capacity(mappings.len());
     for mapping in &mappings {
@@ -110,24 +90,15 @@ pub(crate) fn map_zzmi_installation(
                     "El archivo de mapeo no está en el inventario validado.",
                 )
             })?;
-        let comparison_path = comparison_root_candidate
-            .as_ref()
-            .map(|root| root.join(&mapping.target_relative_path));
-        let (status, existing_sha256, evidence) = match &root_directory {
-            None => (root_status, None, comparison_root_evidence.clone()),
-            Some(directory) => {
-                inspect_candidate(directory, &mapping.target_relative_path, &expected_sha256)
-            }
-        };
         dry_run_files.push(DryRunFile {
             source_package_id: mapping.source_package_id.clone(),
             source_path: source,
             target_relative_path: mapping.target_relative_path.clone(),
-            comparison_path,
+            comparison_path: None,
             expected_sha256,
-            existing_sha256,
-            status,
-            evidence,
+            existing_sha256: None,
+            status: DryRunStatus::Unresolved,
+            evidence: "Mapping retained for 0.5.2 traceability; no game directory is inspected or proposed as a target. The managed runtime assembly supersedes this comparison.".into(),
         });
     }
     Ok((
@@ -145,6 +116,7 @@ pub(crate) fn map_zzmi_installation(
     ))
 }
 
+#[cfg(test)]
 fn inspect_candidate(
     directory: &Directory,
     relative: &str,
@@ -272,7 +244,9 @@ mod tests {
             mapping[0].operation,
             DeploymentOperation::MergePackageIntoConfiguredImporterDirectory
         );
-        assert_eq!(dry_run.files[0].status, DryRunStatus::WouldCreate);
+        assert_eq!(dry_run.files[0].status, DryRunStatus::Unresolved);
+        assert!(dry_run.comparison_root_candidate.is_none());
+        assert!(dry_run.files[0].comparison_path.is_none());
         assert!(!dry_run.root_is_authoritative);
         assert!(!dry_run.apply_allowed);
         assert!(!dry_run.writes_performed);

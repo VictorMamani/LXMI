@@ -2020,7 +2020,7 @@ version = "0.1.0"
 
 [[package]]
 name = "lxmi-desktop"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "lxmi-core",
  "lxmi-proton",
@@ -2063,7 +2063,7 @@ dependencies = [
 
 [[package]]
 name = "lxmi-xxmi"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "base64 0.22.1",
  "libc",

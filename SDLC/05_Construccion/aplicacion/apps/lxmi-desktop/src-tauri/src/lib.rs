@@ -17,7 +17,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             xxmi_commands::xxmi_check_official_releases,
             xxmi_commands::xxmi_download_official_package,
             xxmi_commands::import_xxmi_directory,
-            xxmi_commands::review_xxmi_plan
+            xxmi_commands::review_xxmi_plan,
+            xxmi_commands::prepare_zzmi_runtime,
+            xxmi_commands::review_zzmi_assembly,
+            xxmi_commands::inspect_zzmi_launch_topology
         ])
         .run(tauri::generate_context!())?;
 

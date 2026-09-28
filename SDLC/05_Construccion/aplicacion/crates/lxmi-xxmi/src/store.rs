@@ -87,7 +87,7 @@ impl ManagedStore {
         d.assert_private()?;
         Ok(d)
     }
-    fn initialize(&self) -> Result<Directory> {
+    pub(crate) fn initialize(&self) -> Result<Directory> {
         // XDG base must exist: do not create arbitrary ancestors, nor write outside LXMI.
         let parent = self.root.parent().ok_or_else(|| {
             XxmiError::new(ErrorCode::StorageUnavailable, None, "Sin directorio XDG.")

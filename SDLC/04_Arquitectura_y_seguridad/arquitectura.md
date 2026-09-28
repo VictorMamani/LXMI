@@ -121,3 +121,28 @@ flowchart TD
     Dependency --> Plan[Mapping relativo y dry-run read-only]
     Plan -. apply deshabilitado .-> Game[Zenless Zone Zero]
 ```
+
+## Incremento LXMI-0.5.3: runtime administrado y topología
+
+La regla upstream `App.Root / importer_path` cambia el destino conceptual: ZZMI vive bajo `App.Root/ZZMI/`, no dentro de la carpeta del juego. LXMI crea un ensamblado versionado en `$XDG_DATA_HOME/lxmi/runtimes/zenless-zone-zero/zzmi/<runtime-id>/`; su `runtime-manifest.json` permanece al lado del payload. Los paquetes ZZMI y XXMI Libraries originales siguen separados e inmutables. El ensamblado escribe exclusivamente dentro del storage privado LXMI, y copia `d3d11.dll`/`d3dcompiler_47.dll` al importer de acuerdo con el layout upstream; `3dmloader.dll` continúa en el package Libraries.
+
+`RuntimeAssemblyPlan` y `RuntimeConfigPlan` describen y derivan la copia de `d3dx.ini`; solo se cambia el target al executable observado de ZZZ, y se conserva `loader = XXMI Launcher.exe`. `ManagedRuntime` se promueve sin reemplazar runtime IDs existentes. Esto produce un runtime administrado, no uno lanzable: no se selecciona un helper ni se ejecutan binarios.
+
+`LaunchTopologyPlan` combina el juego y prefix detectados, candidates Proton, runtime administrado y las rutas Windows observadas desde `pfx/dosdevices`. La selección Proton, estrategia de loader y requisito de compartir prefix permanecen desconocidos. El mapping de ruta solo traduce evidencia del filesystem; no prueba que Wine/Proton pueda cargar el DLL. `dosdevices` se inspecciona sin modificar ni recorrer symlinks de forma recursiva.
+
+```mermaid
+flowchart LR
+    ZZMI[Paquete ZZMI autenticado] --> Stage[Staging privado LXMI]
+    Libs[XXMI Libraries autenticadas] --> Stage
+    Stage -->|validar y promover| Root[App.Root administrado bajo XDG]
+    Root --> Importer[Importer relativo ZZMI/]
+    Prefix[pfx/dosdevices observado] --> Map[Mapeo Linux a Windows]
+    Game[ZZZ y executable observados] --> Plan[LaunchTopologyPlan]
+    Importer --> Plan
+    Map --> Plan
+    Proton[Proton candidates, no selección] --> Plan
+    Plan -. helper/runtime aún unknown; ejecución deshabilitada .-> Wine[Proton/Wine]
+    Wine -. no probado .-> Game
+```
+
+El dry-run de 0.5.2 contra el directorio candidato del ejecutable queda como **comparación histórica** y no es un target de instalación autorizado ni activo. No existe `apply`, launcher, injector, mutación de juego, Steam o prefix. La investigación fijada está en `../01_Descubrimiento/topologia_runtime_xxmi_linux.md`; la frontera de puente se registra en ADR-025.

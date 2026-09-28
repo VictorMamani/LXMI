@@ -324,7 +324,7 @@ export default function App() {
             escaneo solo lee rutas y metadata.
           </p>
         </div>
-        <span className="version-tag">v0.5.2 · DESARROLLO</span>
+        <span className="version-tag">v0.5.3 · DESARROLLO</span>
       </header>
 
       <section className="panel" aria-labelledby="system-heading">

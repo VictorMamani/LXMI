@@ -194,6 +194,27 @@ h3 {
   opacity: 0.7;
 }
 
+.secondary-button {
+  min-height: 40px;
+  padding: 0 15px;
+  border: 1px solid #526460;
+  border-radius: 5px;
+  background: #182222;
+  color: #e2e9e8;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.secondary-button:hover:not(:disabled) {
+  border-color: #91aaa6;
+  background: #202d2d;
+}
+
+.secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .status-line {
   display: flex;
   align-items: flex-start;

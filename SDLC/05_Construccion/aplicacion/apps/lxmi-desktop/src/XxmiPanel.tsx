@@ -109,6 +109,98 @@ type Plan = {
     writes_performed: boolean;
   };
 };
+type ManagedRuntime = {
+  runtime_id: string;
+  app_root: string;
+  importer_root: string;
+  manifest_path: string;
+  loader_library_path: string;
+  zzmi_version: string | null;
+  libraries_version: string | null;
+  target_process: string;
+  loader_process_identity: string;
+  file_count: number;
+  newly_created: boolean;
+  installed_into_game: boolean;
+};
+type AssemblyPlan = {
+  runtime_id: string;
+  game_id: string;
+  integration: string;
+  app_root: string;
+  importer_root: string;
+  import_path_from_app_root: string;
+  zzmi_package_id: string;
+  libraries_package_id: string;
+  zzmi_version: string | null;
+  libraries_version: string | null;
+  target_process: string;
+  loader_library_source: string;
+  loader_library_sha256: string;
+  config: {
+    source_relative_path: string;
+    source_sha256: string;
+    derived_sha256: string;
+    target_process: string;
+    loader_process_identity: string;
+    loader_identity_change: string | null;
+  };
+  files: {
+    source_component: string;
+    source_relative_path: string;
+    destination_relative_path: string;
+    size: number;
+    sha256: string;
+    derived: boolean;
+    reason: string;
+  }[];
+  directories_to_create: string[];
+  evidence: string[];
+  warnings: string[];
+};
+type WindowsPathMapping = {
+  status: string;
+  windows_path: string | null;
+};
+type LaunchTopology = {
+  game_name: string;
+  distribution: string;
+  steam_app_id: number | null;
+  game_installation: string;
+  game_executable: string | null;
+  compatdata: string;
+  prefix_path: string | null;
+  selected_proton: string;
+  available_proton_candidates: {
+    display_name: string;
+    version: string | null;
+  }[];
+  app_root: string | null;
+  importer_folder: string;
+  importer_root: string | null;
+  loader_library_path: string | null;
+  loader_library_windows_mapping: WindowsPathMapping | null;
+  game_executable_windows_mapping: WindowsPathMapping | null;
+  importer_root_windows_mapping: WindowsPathMapping | null;
+  dosdevices: {
+    state: string;
+    mappings: {
+      drive_letter: string;
+      raw_target: string | null;
+      state: string;
+    }[];
+  } | null;
+  loader_strategy: string;
+  loader_process_identity: string | null;
+  same_prefix_requirement: string;
+  module: string;
+  readiness: string;
+  capabilities: { name: string; state: string; evidence: string }[];
+  unknowns: string[];
+  blockers: string[];
+  execution_enabled: boolean;
+  external_files_modified: boolean;
+};
 type GameId = "wuthering-waves" | "zenless-zone-zero";
 const games: Record<GameId, { name: string; integration: "wwmi" | "zzmi" }> = {
   "wuthering-waves": { name: "Wuthering Waves", integration: "wwmi" },
@@ -149,12 +241,42 @@ export default function XxmiPanel() {
   const [notice, setNotice] = useState("");
   const [releases, setReleases] = useState<OfficialRelease[]>([]);
   const [selectedTags, setSelectedTags] = useState<Record<string, string>>({});
+  const [managedRuntime, setManagedRuntime] = useState<ManagedRuntime | null>(
+    null,
+  );
+  const [topology, setTopology] = useState<LaunchTopology | null>(null);
+  const [assemblyPlan, setAssemblyPlan] = useState<AssemblyPlan | null>(null);
+
+  function selectDefaultPackages(nextStatus: Status) {
+    const preferredZzmi = nextStatus.packages
+      .filter(
+        (p) =>
+          typeof p.kind === "object" &&
+          p.kind.game_integration === "zzmi" &&
+          p.authenticity === "official_release_verified",
+      )
+      .sort((a, b) => b.imported_unix_seconds - a.imported_unix_seconds)[0];
+    const preferredLibraries = nextStatus.packages
+      .filter(
+        (p) =>
+          p.kind === "xxmi_libraries" &&
+          p.authenticity === "official_release_verified",
+      )
+      .sort((a, b) => b.imported_unix_seconds - a.imported_unix_seconds)[0];
+    setSelected((current) => current || preferredZzmi?.id || "");
+    setLibraries((current) => current || preferredLibraries?.id || "");
+  }
 
   async function run(action: "inspect" | "import" | "plan") {
     setBusy(true);
     setError("");
     setNotice("");
     setPlan(null);
+    if (action === "import") {
+      setAssemblyPlan(null);
+      setManagedRuntime(null);
+      setTopology(null);
+    }
     try {
       if (action === "plan") {
         setPlan(
@@ -183,7 +305,9 @@ export default function XxmiPanel() {
             }
           }
         }
-        setStatus(await invoke<Status>("xxmi_status"));
+        const nextStatus = await invoke<Status>("xxmi_status");
+        setStatus(nextStatus);
+        selectDefaultPackages(nextStatus);
       }
     } catch (e: unknown) {
       setError(errorText(e));
@@ -219,12 +343,17 @@ export default function XxmiPanel() {
     setError("");
     setNotice("");
     setPlan(null);
+    setAssemblyPlan(null);
+    setManagedRuntime(null);
+    setTopology(null);
     try {
       const imported = await invoke<Package>("xxmi_download_official_package", {
         packageKind: kind,
         tag,
       });
-      setStatus(await invoke<Status>("xxmi_status"));
+      const nextStatus = await invoke<Status>("xxmi_status");
+      setStatus(nextStatus);
+      selectDefaultPackages(nextStatus);
       if (kind === "zzmi") setSelected(imported.id);
       else setLibraries(imported.id);
       const verified = imported.authenticity === "official_release_verified";
@@ -232,6 +361,83 @@ export default function XxmiPanel() {
         verified
           ? `${kind === "zzmi" ? "ZZMI" : "XXMI Libraries"} ${imported.upstream?.tag ?? tag}: firma del ZIP verificada; ${imported.upstream?.component_signatures_verified ? "firmas de componentes verificadas; " : ""}inventario guardado en LXMI. No instalado en el juego.`
           : "El paquete no alcanzó el estado de autenticidad verificada; revisa el diagnóstico.",
+      );
+    } catch (e: unknown) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function prepareRuntime() {
+    if (gameId !== "zenless-zone-zero" || !selected || !libraries) return;
+    if (
+      !assemblyPlan ||
+      assemblyPlan.zzmi_package_id !== selected ||
+      assemblyPlan.libraries_package_id !== libraries
+    ) {
+      setError(
+        "Revisa de nuevo el plan de ensamblado para los paquetes seleccionados.",
+      );
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setTopology(null);
+    try {
+      const runtime = await invoke<ManagedRuntime>("prepare_zzmi_runtime", {
+        zzmiId: selected,
+        librariesId: libraries,
+      });
+      setManagedRuntime(runtime);
+      setNotice(
+        `Runtime ensamblado en almacenamiento privado LXMI (${runtime.file_count} archivos). No se modificaron juego, Steam ni prefix.`,
+      );
+    } catch (e: unknown) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reviewAssembly() {
+    if (gameId !== "zenless-zone-zero" || !selected || !libraries) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setManagedRuntime(null);
+    setTopology(null);
+    try {
+      const result = await invoke<AssemblyPlan>("review_zzmi_assembly", {
+        zzmiId: selected,
+        librariesId: libraries,
+      });
+      setAssemblyPlan(result);
+      setNotice(
+        "Plan de composición listo para revisar. Todavía no se escribieron archivos.",
+      );
+    } catch (e: unknown) {
+      setAssemblyPlan(null);
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function inspectTopology() {
+    if (gameId !== "zenless-zone-zero" || !selected || !libraries) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await invoke<LaunchTopology>(
+        "inspect_zzmi_launch_topology",
+        { zzmiId: selected, librariesId: libraries },
+      );
+      setTopology(result);
+      setNotice(
+        "Topología inspeccionada en modo de solo lectura; nada se ejecutó.",
       );
     } catch (e: unknown) {
       setError(errorText(e));
@@ -261,6 +467,11 @@ export default function XxmiPanel() {
         p.authenticity === "official_release_verified",
     )
     .sort((a, b) => b.imported_unix_seconds - a.imported_unix_seconds);
+  const reviewedAssemblyMatchesSelection = Boolean(
+    assemblyPlan &&
+    assemblyPlan.zzmi_package_id === selected &&
+    assemblyPlan.libraries_package_id === libraries,
+  );
   return (
     <section
       className="panel xxmi-panel"
@@ -400,6 +611,9 @@ export default function XxmiPanel() {
             setGameId(event.target.value as GameId);
             setSelected("");
             setPlan(null);
+            setManagedRuntime(null);
+            setTopology(null);
+            setAssemblyPlan(null);
           }}
         >
           <option value="zenless-zone-zero">Zenless Zone Zero · ZZMI</option>
@@ -492,6 +706,9 @@ export default function XxmiPanel() {
           onChange={(event) => {
             setSelected(event.target.value);
             setPlan(null);
+            setManagedRuntime(null);
+            setTopology(null);
+            setAssemblyPlan(null);
           }}
         >
           <option value="">Seleccionar paquete…</option>
@@ -518,6 +735,9 @@ export default function XxmiPanel() {
           onChange={(event) => {
             setLibraries(event.target.value);
             setPlan(null);
+            setManagedRuntime(null);
+            setTopology(null);
+            setAssemblyPlan(null);
           }}
         >
           <option value="">No disponible / no seleccionado</option>
@@ -535,9 +755,244 @@ export default function XxmiPanel() {
           disabled={busy || !selected}
           onClick={() => void run("plan")}
         >
-          Revisar plan de instalación
+          Ver mapping histórico 0.5.2
         </button>
       </div>
+      {gameId === "zenless-zone-zero" && (
+        <div
+          className="runtime-assessment"
+          aria-labelledby="managed-runtime-heading"
+        >
+          <h3 id="managed-runtime-heading">ZZMI · runtime administrado</h3>
+          <p>
+            El importer queda fuera de la carpeta del juego. Preparar este
+            runtime solo escribe bajo el almacenamiento XDG de LXMI; no inicia
+            ZZZ ni modifica Steam, compatdata o el prefix.
+          </p>
+          <div className="xxmi-form">
+            <button
+              className="primary-button"
+              disabled={busy || !selected || !libraries}
+              onClick={() => void reviewAssembly()}
+            >
+              {busy ? "Revisando…" : "Revisar composición"}
+            </button>
+            <button
+              className="primary-button"
+              disabled={busy || !reviewedAssemblyMatchesSelection}
+              onClick={() => void prepareRuntime()}
+            >
+              {busy ? "Preparando…" : "Preparar runtime administrado"}
+            </button>
+            <button
+              className="secondary-button"
+              disabled={busy || !selected || !libraries}
+              onClick={() => void inspectTopology()}
+            >
+              Inspeccionar topología
+            </button>
+          </div>
+          {assemblyPlan && (
+            <details className="runtime-evidence" open>
+              <summary>
+                Composición revisada · {assemblyPlan.files.length} archivos
+              </summary>
+              <p>
+                App.Root:{" "}
+                <code className="path-value">{assemblyPlan.app_root}</code>
+              </p>
+              <p>
+                Importer relativo:{" "}
+                <code>{assemblyPlan.import_path_from_app_root}</code> · destino
+                calculado:{" "}
+                <code className="path-value">{assemblyPlan.importer_root}</code>
+              </p>
+              <p>
+                Target: <code>{assemblyPlan.target_process}</code> · loader
+                identity sin cambiar:{" "}
+                <code>{assemblyPlan.config.loader_process_identity}</code>
+              </p>
+              <p>
+                Config derivada:{" "}
+                <code>{assemblyPlan.config.source_relative_path}</code> · origen
+                SHA-256 <code>{assemblyPlan.config.source_sha256}</code> ·
+                derivada SHA-256{" "}
+                <code>{assemblyPlan.config.derived_sha256}</code>
+              </p>
+              <p>
+                `3dmloader.dll` permanece en el paquete de Libraries:{" "}
+                <code className="path-value">
+                  {assemblyPlan.loader_library_source}
+                </code>
+              </p>
+              <ul>
+                {assemblyPlan.files.map((file) => (
+                  <li
+                    key={`${file.source_component}:${file.destination_relative_path}`}
+                  >
+                    {file.source_component}:{" "}
+                    <code>{file.source_relative_path}</code> →{" "}
+                    <code>{file.destination_relative_path}</code> ·{" "}
+                    {file.size.toLocaleString()} bytes
+                    {file.derived ? " · configuración derivada" : ""}
+                  </li>
+                ))}
+              </ul>
+              <ul>
+                {assemblyPlan.evidence.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+                {assemblyPlan.warnings.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <p>
+                Este plan prepara únicamente almacenamiento LXMI. No instala
+                contenido en ZZZ y no autoriza compatibilidad ni lanzamiento.
+              </p>
+            </details>
+          )}
+          {(!selected || !libraries) && (
+            <p className="discovery-note">
+              Selecciona paquetes ZZMI y XXMI Libraries autenticados para
+              continuar.
+            </p>
+          )}
+          {managedRuntime && (
+            <details className="runtime-evidence" open>
+              <summary>
+                Runtime{" "}
+                {managedRuntime.newly_created ? "preparado" : "verificado"} ·{" "}
+                {managedRuntime.file_count} archivos
+              </summary>
+              <p>
+                ZZMI {managedRuntime.zzmi_version ?? "versión desconocida"} ·
+                XXMI Libraries{" "}
+                {managedRuntime.libraries_version ?? "versión desconocida"}
+              </p>
+              <p>
+                App.Root:{" "}
+                <code className="path-value">{managedRuntime.app_root}</code>
+              </p>
+              <p>
+                Importer:{" "}
+                <code className="path-value">
+                  {managedRuntime.importer_root}
+                </code>
+              </p>
+              <p>
+                Target process: <code>{managedRuntime.target_process}</code>
+              </p>
+              <p>
+                Loader identity:{" "}
+                <code>{managedRuntime.loader_process_identity}</code> ·
+                estrategia de helper: no seleccionada.
+              </p>
+              <p>
+                Injector library administrada:{" "}
+                <code className="path-value">
+                  {managedRuntime.loader_library_path}
+                </code>
+              </p>
+              <p>
+                Instalado en el juego:{" "}
+                {managedRuntime.installed_into_game ? "sí" : "no"}. Este runtime
+                aún no es un helper ejecutable.
+              </p>
+              <p>
+                Manifest:{" "}
+                <code className="path-value">
+                  {managedRuntime.manifest_path}
+                </code>
+              </p>
+            </details>
+          )}
+          {topology && (
+            <details className="runtime-evidence" open>
+              <summary>
+                Launch topology · {topology.readiness.replaceAll("_", " ")}
+              </summary>
+              <p>
+                {topology.game_name} · {topology.distribution} · AppID{" "}
+                {topology.steam_app_id ?? "desconocido"}
+              </p>
+              <p>
+                Instalación: {topology.game_installation} · compatdata:{" "}
+                {topology.compatdata} · prefix:{" "}
+                {topology.prefix_path ?? "no detectado"}
+              </p>
+              <p>
+                Proton seleccionado: {topology.selected_proton} · candidatos:{" "}
+                {topology.available_proton_candidates.length}
+              </p>
+              <p>
+                Ejecutable:{" "}
+                <code className="path-value">
+                  {topology.game_executable ?? "no detectado"}
+                </code>
+              </p>
+              <p>
+                Mapeo del ejecutable:{" "}
+                {topology.game_executable_windows_mapping?.windows_path ??
+                  topology.game_executable_windows_mapping?.status ??
+                  "sin mapping"}
+              </p>
+              <p>
+                Importer en Windows:{" "}
+                {topology.importer_root_windows_mapping?.windows_path ??
+                  topology.importer_root_windows_mapping?.status ??
+                  "sin mapping"}
+              </p>
+              <p>
+                Loader strategy: {topology.loader_strategy} · mismo prefix:{" "}
+                {topology.same_prefix_requirement} · módulo: {topology.module}
+              </p>
+              <p>
+                Ejecución habilitada: {topology.execution_enabled ? "sí" : "no"}{" "}
+                · archivos externos modificados:{" "}
+                {topology.external_files_modified ? "sí" : "no"}
+              </p>
+              {topology.dosdevices && (
+                <details>
+                  <summary>
+                    Mapeos de Wine · {topology.dosdevices.state}
+                  </summary>
+                  <ul>
+                    {topology.dosdevices.mappings.map((mapping) => (
+                      <li key={mapping.drive_letter}>
+                        <code>{mapping.drive_letter.toUpperCase()}:</code> ·{" "}
+                        {mapping.state} ·{" "}
+                        <code className="path-value">
+                          {mapping.raw_target ?? "sin target"}
+                        </code>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              <details>
+                <summary>Capacidades y asuntos sin resolver</summary>
+                <ul>
+                  {topology.capabilities.map((item) => (
+                    <li key={item.name}>
+                      <strong>
+                        {item.name}: {item.state}
+                      </strong>{" "}
+                      — {item.evidence}
+                    </li>
+                  ))}
+                  {topology.unknowns.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                  {topology.blockers.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </details>
+            </details>
+          )}
+        </div>
+      )}
       <p id="xxmi-error" className="message-error" role="alert">
         {error}
       </p>
@@ -546,9 +1001,7 @@ export default function XxmiPanel() {
       </p>
       {plan && (
         <div className="runtime-assessment">
-          <h3>
-            Plan {plan.assessment.integration.toUpperCase()} · sin aplicar
-          </h3>
+          <h3>Mapping histórico 0.5.2 · no es target activo</h3>
           <p>
             {plan.assessment.planning_possible
               ? "El paquete, las bibliotecas y el registro del juego permiten revisar un plan técnico. Esto no confirma compatibilidad ni habilita instalación."
@@ -563,7 +1016,7 @@ export default function XxmiPanel() {
             <strong>Compatibilidad verificada: no.</strong>
           </p>
           <p>
-            Destino propuesto fuera del juego:{" "}
+            Staging histórico propuesto (no configuración activa):{" "}
             <code className="path-value">{plan.managed_target}</code>
           </p>
           <details className="runtime-evidence">
@@ -586,8 +1039,8 @@ export default function XxmiPanel() {
           </details>
           <details className="runtime-evidence">
             <summary>
-              {plan.deployment_mapping.length} destinos relativos y dry-run de
-              solo lectura
+              {plan.deployment_mapping.length} rutas relativas históricas; sin
+              comparación con el juego
             </summary>
             <p>
               Root configurado:{" "}

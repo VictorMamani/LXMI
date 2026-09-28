@@ -349,15 +349,15 @@ pub fn plan_installation_for_integration(
         deployment_mapping,
         dry_run,
         configuration_changes: vec![
-            "El destino incluido en este plan pertenece al almacenamiento administrado por LXMI; no es el directorio del juego.".into(),
+            "El destino de este plan genérico pertenece al almacenamiento LXMI y es una referencia histórica de 0.5.2; no es el ManagedImporterRoot activo de 0.5.3.".into(),
             "Steam y Linux/Proton permanecen sin verificar para la integración seleccionada.".into(),
-            "XXMI Launcher separa game_folder de importer_folder. LXMI no conoce esa configuración; el directorio del ejecutable se inspecciona solo como candidato.".into(),
+            "Upstream resuelve importer_path relativo a App.Root; para ZZMI es ZZMI/. LXMI ensambla ahora esa raíz dentro de su almacenamiento XDG, fuera del juego y del prefix.".into(),
         ],
         warnings: vec![
-            "Plan declarativo para revisión; no existe una operación apply en LXMI 0.5.2.".into(),
+            "Mapping genérico de 0.5.2 conservado únicamente para trazabilidad; no existe una operación apply y no es el target de runtime activo.".into(),
             "SHA-256 local detecta cambios; la procedencia oficial solo se atribuye si la firma del asset y, para Libraries, las firmas de sus DLLs pasan.".into(),
             "La compatibilidad del paquete con esta distribución y Linux/Proton no está verificada.".into(),
-            "El dry-run compara una carpeta candidata derivada del ejecutable detectado; no afirma que sea el importer_folder configurado. Apply está bloqueado.".into(),
+            "La comparación de 0.5.2 contra el directorio del ejecutable se conserva solo como antecedente histórico; no se inspecciona ni propone ningún target dentro de ZZZ.".into(),
         ],
         executable: false,
     })

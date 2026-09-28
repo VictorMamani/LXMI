@@ -1,6 +1,6 @@
 # LXMI — aplicación
 
-**LXMI 0.5.2 — Tauri 2 + React/TypeScript + Rust.** Workspace crates: `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime` y `lxmi-xxmi`. Discovery, planificación y dry-run sobre Steam/juego siguen read-only. La consulta/descarga oficial se inicia explícitamente; extracción e import solo escriben bajo cache XDG y `$XDG_DATA_HOME/lxmi`. No hay SQLite, executor ni ejecución de procesos/contenido importado. No se instala al juego.
+**LXMI 0.5.3 — Tauri 2 + React/TypeScript + Rust.** Workspace crates: `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime` y `lxmi-xxmi`. Discovery, planificación y topología siguen read-only. La consulta/descarga requiere acción explícita; import y ensamblado solo escriben bajo cache/storage privado XDG de LXMI. No hay SQLite, executor ni ejecución de procesos/contenido importado. No se instala al juego.
 
 En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para discovery y planificación de solo lectura. El workspace añadió en 0.5 `lxmi-xxmi`. No usa SQLite ni escribe en Steam, juegos, compatibility tools o prefixes; el import explícito sí conserva paquetes bajo el storage privado de LXMI.
 
@@ -23,7 +23,7 @@ No se necesitan credenciales, permisos root, Steam en ejecución, juegos instala
 | crates/lxmi-steam/ | Steam roots/bibliotecas, parser KeyValues, manifests, game scanner y compatdata discovery |
 | crates/lxmi-proton/ | Discovery de compatibility tools Steam/custom; parser Valve KeyValues reutilizado; metadata, clasificación y versión |
 | crates/lxmi-runtime/ | Plan declarativo por juego; agrega observaciones de instalación, Proton candidates, compatdata/prefix, requirements, evidence, issues y readiness |
-| crates/lxmi-xxmi/ | Modelos de paquete, detección acotada, SHA-256, importación a storage administrado y plan sin executor |
+| crates/lxmi-xxmi/ | Paquetes y provenance, import seguro, assembler de ZZMI + XXMI Libraries a XDG, configuración derivada, discovery de `dosdevices` y plan de topología sin executor |
 
 ## Instalar dependencias y ejecutar
 
@@ -95,12 +95,20 @@ La investigación upstream y los límites de licencia/compatibilidad están en `
 
 **Validación local read-only:** manifest Steam local confirma AppID `4162040`; directorio y `ZenlessZoneZero.exe` existen; `compatdata/4162040/pfx` existe como candidato. El command snapshot reportó un candidato Proton, selección `unknown` y readiness `incomplete`. No se lanzó el juego ni se escribió en Steam, ZZZ o el prefix. Tauri dev inició y compiló, pero el click manual de Scan en la ventana no fue comprobado. Ver `../../06_Verificacion/verificacion_0_5_1.md`.
 
-## LXMI-0.5.2: releases oficiales y dry-run
+## LXMI-0.5.2: releases oficiales y dry-run histórico
 
 `lxmi-xxmi` ofrece `ReleaseProvider` offline-testable y adaptador GitHub con allowlist exacta para ZZMI y XXMI Libraries. Guarda identity reproducible (release ID/tag/commit, asset, hashes y timestamps), descarga con streaming/límites a XDG cache, verifica firma ECDSA P-384/SHA-256 usando claves fijadas de XXMI Launcher, extrae ZIP con límites a staging y promueve paquetes validados al storage privado. En Libraries también verifica las firmas DLL declaradas en el `Manifest.json` separado. El SHA-256 local continúa siendo integridad, no autenticidad.
 
-La UI permite consultar releases solo tras click explícito, elegir el tag consultado, descargar/verificar/importar ZZMI y Libraries por separado y revisar el plan/dry-run. Mapeo relativo sigue el `importer_path` configurable de XXMI; su raíz efectiva no se conoce automáticamente. La carpeta del ejecutable ZZZ es un candidato de comparación, no un target aprobado. `apply_allowed=false`; no se escribe en juego/Steam/compatdata/prefix y no se ejecuta contenido. Steam/Linux/Proton sigue sin verificar. Las releases recomiendan XXMI Launcher para instalación; LXMI no reemplaza ese flujo.
+La UI permite consultar releases solo tras click explícito, elegir el tag consultado, descargar/verificar/importar ZZMI y Libraries por separado y revisar el plan/dry-run. Ese dry-run de 49 rutas contra la carpeta candidata derivada del ejecutable es **comparación histórica solamente**: no representa un target autorizado ni la topología activa de LXMI 0.5.3. No se escribe en juego/Steam/compatdata/prefix y no se ejecuta contenido.
 
 Pins, digests, commits, firmas, inventario y fuentes upstream: `../../01_Descubrimiento/adquisicion_paquetes_xxmi_0_5_2.md`. Security/decision: `../../04_Arquitectura_y_seguridad/ADR/024_official_upstream_package_trust.md`. El estado real de validación y UI está en `../../06_Verificacion/verificacion_0_5_2.md`.
 
 Durante la validación local, la consulta de LXMI seleccionó ZZMI `v1.5.0` (release `393483881`) y XXMI Libraries `v1.1.7` (release `387957029`). Ambos se descargaron, autenticaron e importaron; la UI Tauri recorrió también el plan de 49 destinos sin aplicarlo. La autenticidad upstream no verifica compatibilidad con Steam/Linux/Proton. La prueba HTTP está ignorada en la suite normal y usa store/cache temporales con `LXMI_CONFIRM_OFFICIAL_DOWNLOAD_AND_STORE=YES`.
+
+## LXMI-0.5.3: managed importer runtime y launch topology
+
+`lxmi-xxmi` interpreta `App.Root` e `importer_path` con el modelo upstream: `ZZMI/` se resuelve relativo al root del launcher. LXMI compone paquetes ZZMI y XXMI Libraries verificados en `$XDG_DATA_HOME/lxmi/runtimes/zenless-zone-zero/zzmi/<runtime-id>/`; los paquetes originales permanecen inmutables. `d3dx.ini` se deriva durante staging para el target ZZZ observado y conserva `loader = XXMI Launcher.exe`. Las DLLs que upstream despliega bajo el importer se copian dentro de la raíz LXMI; `3dmloader.dll` permanece en el paquete Libraries y se referencia por ruta/hash.
+
+La UI permite revisar el plan de ensamblado antes de preparar la copia privada y después inspeccionar una `LaunchTopologyPlan`. La inspección de `pfx/dosdevices` solo lee los symlinks inmediatos; no los crea ni recorre sus destinos. La estrategia de helper, el requisito de compartir prefix y la selección Proton siguen `Unknown`. Ningún proceso se lanza ni se modifica ZZZ/Steam/compatdata/prefix. El mapping 0.5.2 queda etiquetado como histórico, sin inspección activa del directorio del ejecutable como target.
+
+Fuentes y arquitectura: `../../01_Descubrimiento/topologia_runtime_xxmi_linux.md`; decisión bridge: `../../04_Arquitectura_y_seguridad/ADR/025_native_lxmi_windows_runtime_bridge.md`. Verificación: `../../06_Verificacion/verificacion_0_5_3.md`.

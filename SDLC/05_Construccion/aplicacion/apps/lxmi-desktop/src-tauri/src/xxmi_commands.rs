@@ -1,7 +1,7 @@
 use crate::xxmi_service::{self, IntegrationStatus};
 use lxmi_xxmi::{
-    ErrorCode, InstallationPlan, OfficialPackageKind, PackageManifest, Result, UpstreamRelease,
-    XxmiError,
+    ErrorCode, InstallationPlan, LaunchTopologyPlan, ManagedRuntime, OfficialPackageKind,
+    PackageManifest, Result, RuntimeAssemblyPlan, UpstreamRelease, XxmiError,
 };
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
@@ -39,4 +39,25 @@ pub async fn review_xxmi_plan(
     libraries_id: Option<String>,
 ) -> Result<InstallationPlan> {
     blocking(move || xxmi_service::plan(&game_id, &package_id, libraries_id.as_deref())).await
+}
+
+#[tauri::command]
+pub async fn prepare_zzmi_runtime(zzmi_id: String, libraries_id: String) -> Result<ManagedRuntime> {
+    blocking(move || xxmi_service::prepare_zzmi_runtime(&zzmi_id, &libraries_id)).await
+}
+
+#[tauri::command]
+pub async fn review_zzmi_assembly(
+    zzmi_id: String,
+    libraries_id: String,
+) -> Result<RuntimeAssemblyPlan> {
+    blocking(move || xxmi_service::review_zzmi_assembly(&zzmi_id, &libraries_id)).await
+}
+
+#[tauri::command]
+pub async fn inspect_zzmi_launch_topology(
+    zzmi_id: String,
+    libraries_id: String,
+) -> Result<LaunchTopologyPlan> {
+    blocking(move || xxmi_service::inspect_zzmi_launch_topology(&zzmi_id, &libraries_id)).await
 }

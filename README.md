@@ -4,7 +4,7 @@
 
 ## Estado
 
-- **Etapa:** construcción; LXMI-0.1 a 0.5.2 en implementación/validación. La investigación de necesidad y compatibilidad de ejecución sigue abierta.
+- **Etapa:** construcción; LXMI-0.1 a 0.5.3 implementado con validación técnica. La investigación de necesidad y compatibilidad de ejecución sigue abierta.
 - **Tipo de proyecto:** herramienta técnica de escritorio y posible proyecto de portafolio; no hay validación de demanda, modelo de ingresos ni rentabilidad confirmada.
 - **Base de trabajo:** idea aportada por el usuario. Las estructuras de Proton consultadas se contrastaron con fuentes de Valve; esto no valida compatibilidad del juego, mods, ni políticas aplicables.
 - **Código:** aplicación Tauri 2 con React/TypeScript y workspace Rust. Los escaneos de Steam/juegos/tools son de solo lectura; el import explícito solo escribe en almacenamiento XDG privado de LXMI.
@@ -24,7 +24,7 @@ LXMI-0.1 prepara una aplicación Tauri 2 con React/TypeScript y Rust, muestra in
 
 El AppID `3513350` se verificó en la [página oficial de Wuthering Waves en Steam](https://store.steampowered.com/app/3513350/Wuthering_Waves/). El discovery de Proton sigue la estructura documentada por [Valve Proton](https://github.com/ValveSoftware/Proton) y su [plantilla de `compatibilitytool.vdf`](https://github.com/ValveSoftware/Proton/blob/proton_11.0/compatibilitytool.vdf.template). Detectar un manifest o una carpeta `pfx` no demuestra compatibilidad ni salud del prefix. Tener candidatos instalados tampoco demuestra cuál seleccionó Steam para Wuthering Waves. LXMI-0.4 no ejecuta procesos ni modifica configuraciones.
 
-LXMI-0.5 integra importación de carpetas XXMI/WWMI a staging privado bajo XDG, inventario SHA-256 y plan declarativo revisable. LXMI-0.5.1 agrega Zenless Zone Zero y ZZMI con XXMI Libraries como dependencia separada. LXMI-0.5.2 incorpora releases oficiales fijables, descarga bajo acción explícita, firma upstream, extracción ZIP segura, inventory y dry-run sobre una carpeta candidata. No aplica cambios a juego, Steam, compatdata o prefix. La raíz real `importer_path` de XXMI sigue sin resolver y la compatibilidad Steam/Linux/Proton no está verificada. La investigación fijada de esta fase está en [adquisición de packages XXMI 0.5.2](SDLC/01_Descubrimiento/adquisicion_paquetes_xxmi_0_5_2.md); antecedentes: [ecosistema XXMI/ZZMI](SDLC/01_Descubrimiento/ecosistema_xxmi_zzmi.md) y [ecosistema XXMI/WWMI](SDLC/01_Descubrimiento/ecosistema_xxmi_wwmi.md).
+LXMI-0.5 integra paquetes XXMI/WWMI bajo XDG; 0.5.1 agrega Zenless Zone Zero y ZZMI; 0.5.2 consulta/descarga releases oficiales y las autentica. LXMI-0.5.3 resuelve `App.Root/importer_path` como un runtime administrado por LXMI fuera del juego, ensambla ZZMI + XXMI Libraries y crea un plan de topología Linux/Windows. El dry-run 0.5.2 contra la carpeta candidata del ejecutable es una comparación histórica, no un destino autorizado. No se lanza ni inyecta nada, y no se modifica juego, Steam, compatdata o prefix. La selección Proton, helper y requisito de mismo prefix siguen desconocidos; Steam/Linux/Proton no están verificados. Fuentes: [adquisición oficial de paquetes 0.5.2](SDLC/01_Descubrimiento/adquisicion_paquetes_xxmi_0_5_2.md), [topología runtime XXMI Linux 0.5.3](SDLC/01_Descubrimiento/topologia_runtime_xxmi_linux.md), y los antecedentes de [XXMI/ZZMI](SDLC/01_Descubrimiento/ecosistema_xxmi_zzmi.md) y [XXMI/WWMI](SDLC/01_Descubrimiento/ecosistema_xxmi_wwmi.md).
 
 ## Documentos SDLC
 
@@ -42,7 +42,7 @@ LXMI-0.5 integra importación de carpetas XXMI/WWMI a staging privado bajo XDG, 
 
 ## Estado verificado
 
-LXMI-0.5.1 detectó en modo de solo lectura una instalación Steam de Zenless Zone Zero: manifest/AppID `4162040`, directorio presente, `ZenlessZoneZero.exe` encontrado y `compatdata/4162040/pfx` presente como candidato. El scan encontró un candidato Proton, pero la selección por juego permaneció `unknown` y la readiness `incomplete`. Esto no demuestra que ZZMI funcione con ZZZ, Steam o Linux/Proton. La adquisición real en 0.5.2 se contrasta en [verificación 0.5.2](SDLC/06_Verificacion/verificacion_0_5_2.md).
+La validación host-only de 0.5.3 detectó ZZZ Steam/AppID `4162040`, encontró `ZenlessZoneZero.exe` y `compatdata/4162040/pfx`, e inspeccionó sus drive mappings sin escritura. Ensambló 49 archivos desde ZZMI v1.5.0 + XXMI Libraries v1.1.7 bajo `/home/university/.local/share/lxmi/runtimes/.../ZZMI`; la ruta quedó mapeada por `Z:`. La selección Proton permaneció `unknown`; no se ejecutó launcher, helper, Proton, Wine ni ZZZ. Capturas puntuales antes/después confirmaron que las rutas candidatas del juego y `dosdevices` no cambiaron. Detalles: [verificación 0.5.3](SDLC/06_Verificacion/verificacion_0_5_3.md).
 
 LXMI-0.4 pasó `cargo fmt`, `cargo check`, Clippy con `-D warnings`, 69 tests Rust y typecheck/lint/format/build del frontend. `npm run tauri:dev` inició la ventana Tauri y ejecutó un escaneo local en modo de solo lectura.
 
@@ -54,7 +54,7 @@ LXMI-0.5 pasó los quality gates del workspace con 114 tests Rust (45 nuevos) y 
 
 ## Siguiente resultado
 
-LXMI-0.6: aplicar una instalación segura únicamente tras resolver requisitos upstream y de compatibilidad, con destino exacto aprobado, backups, journal, rollback y verificación. No se implementó en 0.5.
+LXMI-0.6: experimento de topología/bridge Windows-Proton sin inyección ni mutación, para resolver loader/helper, visibilidad de rutas y requisito de prefix. No avanzar a `apply` ni declarar compatibilidad hasta tener evidencia de plataforma y rollback verificado.
 
 ## Estado local de Git
 

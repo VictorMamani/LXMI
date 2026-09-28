@@ -2,9 +2,10 @@ use lxmi_proton::ProtonScanner;
 use lxmi_runtime::{GameInstallationAssessment, RuntimePlanner};
 use lxmi_steam::SteamDiscoveryScanner;
 use lxmi_xxmi::{
+    assemble_zzmi_runtime, inspect_launch_topology, inspect_prefix_dosdevices,
     parse_github_release, plan_installation_for_integration, verify_release_file, ImportLimits,
     IntegrationKind, ManagedStore, OfficialPackageKind, PackageAuthenticity, PackageKind,
-    SignatureStatus,
+    SamePrefixRequirement, SignatureStatus, TopologyReadiness,
 };
 use serde_json::Value;
 use std::{
@@ -426,5 +427,156 @@ fn dry_runs_current_official_zzmi_and_libraries_against_local_zzz_read_only() {
         comparison_root.display(),
         plan.dry_run.apply_allowed,
         plan.dry_run.writes_performed,
+    );
+}
+
+/// Explicit host-only validation. Writes are limited to LXMI's XDG managed runtime root.
+#[test]
+#[ignore = "requires LXMI_CONFIRM_REAL_ZZZ_ASSEMBLY=YES, official packages in XDG storage, Steam and ZZZ"]
+fn assembles_verified_zzmi_runtime_and_inspects_local_zzz_topology_without_game_writes() {
+    assert_eq!(
+        env::var("LXMI_CONFIRM_REAL_ZZZ_ASSEMBLY").as_deref(),
+        Ok("YES"),
+        "explicitly set LXMI_CONFIRM_REAL_ZZZ_ASSEMBLY=YES to write only LXMI's private XDG runtime"
+    );
+    let expected_executable = required_path("LXMI_REAL_ZZZ_EXECUTABLE");
+    let store = ManagedStore::from_system(&lxmi_core::SystemInfo::current()).unwrap();
+    let zzmi = same_official_package(
+        &store,
+        PackageKind::GameIntegration(IntegrationKind::Zzmi),
+        "v1.5.0",
+    )
+    .expect("verified official ZZMI v1.5.0 must be present in XDG storage");
+    let libraries = same_official_package(&store, PackageKind::XxmiLibraries, "v1.1.7")
+        .expect("verified official XXMI Libraries v1.1.7 must be present in XDG storage");
+    let source_package_ids = (zzmi.manifest().id.clone(), libraries.manifest().id.clone());
+    let source_inventories = (
+        zzmi.manifest().files.clone(),
+        libraries.manifest().files.clone(),
+    );
+
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let tools = ProtonScanner.scan(&discovery.steam.installations);
+    let platform = RuntimePlanner::plan_all(&discovery, &tools)
+        .into_iter()
+        .find(|plan| plan.game.id == "zenless-zone-zero")
+        .expect("Steam discovery should include the local ZZZ installation");
+    let (game_root, steam_library, prefix_path, executable) = match &platform.installation {
+        GameInstallationAssessment::Detected {
+            install_path,
+            steam_library,
+            executable_path: Some(executable),
+            ..
+        } => {
+            assert_eq!(executable, &expected_executable);
+            let prefix = match &platform.prefix {
+                lxmi_runtime::PrefixAssessment::CandidateFound { path } => path.clone(),
+                other => panic!("expected local prefix candidate, got {other:?}"),
+            };
+            (
+                install_path.clone(),
+                steam_library.clone(),
+                prefix,
+                executable.clone(),
+            )
+        }
+        other => panic!("expected detected local ZZZ executable, got {other:?}"),
+    };
+
+    let mut protected = vec![game_root.clone(), steam_library];
+    for steam in &discovery.steam.installations {
+        protected.push(steam.root_path.clone());
+        protected.extend(steam.libraries.iter().map(|library| library.path.clone()));
+    }
+    for game in &discovery.games.games {
+        protected.push(game.installation.install_path.clone());
+        protected.push(game.compatdata.compatdata_path.clone());
+        protected.push(game.compatdata.compatdata_path.join("pfx"));
+    }
+    store.ensure_outside(&protected).unwrap();
+
+    let game_comparison_root = executable.parent().unwrap();
+    let game_targets_before = ["d3d11.dll", "d3dcompiler_47.dll", "d3dx.ini", "ZZMI"]
+        .map(|name| (name, file_state(&game_comparison_root.join(name))));
+    let prefix_mappings_before = inspect_prefix_dosdevices(&prefix_path);
+
+    let runtime = assemble_zzmi_runtime(
+        &store,
+        &platform,
+        &source_package_ids.0,
+        &source_package_ids.1,
+        &protected,
+    )
+    .unwrap();
+    assert!(runtime.app_root.starts_with(store.root().join("runtimes")));
+    assert!(!runtime.app_root.starts_with(&game_root));
+    assert!(!runtime.app_root.starts_with(&prefix_path));
+    assert!(!runtime.installed_into_game);
+    assert_eq!(runtime.file_count, runtime.manifest.files.len());
+    assert!(runtime.importer_root.join("Mods").is_dir());
+    assert!(runtime.importer_root.join("d3dx.ini").is_file());
+
+    let topology = inspect_launch_topology(&platform, Some(&runtime));
+    assert_eq!(topology.steam_app_id, Some(4162040));
+    assert_eq!(
+        topology.game_executable.as_ref(),
+        Some(&expected_executable)
+    );
+    assert_eq!(topology.prefix_path.as_ref(), Some(&prefix_path));
+    assert_eq!(topology.selected_proton, "unknown");
+    assert_eq!(
+        topology.same_prefix_requirement,
+        SamePrefixRequirement::Unknown
+    );
+    assert_eq!(topology.readiness, TopologyReadiness::PlannedIncomplete);
+    assert!(!topology.execution_enabled);
+    assert!(!topology.external_files_modified);
+    assert_eq!(
+        topology.dosdevices.as_ref().map(|report| report.state),
+        Some(lxmi_xxmi::DosDevicesState::Found)
+    );
+    assert_eq!(
+        topology
+            .importer_root_windows_mapping
+            .as_ref()
+            .map(|mapping| mapping.status),
+        Some(lxmi_xxmi::MappingStatus::Mapped)
+    );
+
+    let verified_zzmi = store.verify(&source_package_ids.0).unwrap();
+    let verified_libraries = store.verify(&source_package_ids.1).unwrap();
+    assert_eq!(verified_zzmi.manifest().files, source_inventories.0);
+    assert_eq!(verified_libraries.manifest().files, source_inventories.1);
+    let game_targets_after = ["d3d11.dll", "d3dcompiler_47.dll", "d3dx.ini", "ZZMI"]
+        .map(|name| (name, file_state(&game_comparison_root.join(name))));
+    assert_eq!(game_targets_before, game_targets_after);
+    assert_eq!(
+        prefix_mappings_before,
+        inspect_prefix_dosdevices(&prefix_path)
+    );
+
+    let selected = topology
+        .available_proton_candidates
+        .iter()
+        .map(|candidate| candidate.display_name.as_str())
+        .collect::<Vec<_>>();
+    println!(
+        "REAL_RUNTIME_ASSEMBLY game={} appid={} executable={} app_root={} importer_root={} files={} game_paths_unchanged={} prefix_mappings_unchanged={} proton_selection={} proton_candidates={selected:?} importer_windows_mapping={:?} same_prefix={:?} execution_enabled={} external_files_modified={}",
+        platform.game.name,
+        topology.steam_app_id.unwrap(),
+        executable.display(),
+        runtime.app_root.display(),
+        runtime.importer_root.display(),
+        runtime.file_count,
+        game_targets_before == game_targets_after,
+        prefix_mappings_before == inspect_prefix_dosdevices(&prefix_path),
+        topology.selected_proton,
+        topology
+            .importer_root_windows_mapping
+            .as_ref()
+            .and_then(|mapping| mapping.windows_path.as_deref()),
+        topology.same_prefix_requirement,
+        topology.execution_enabled,
+        topology.external_files_modified,
     );
 }

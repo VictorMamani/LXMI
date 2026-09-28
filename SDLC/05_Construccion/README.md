@@ -2,7 +2,7 @@
 
 **Objetivo:** entregar cambios pequeños, entendibles y conectados con criterios acordados.
 
-LXMI-0.1 a 0.5 están implementados en `aplicacion/`. LXMI-0.5 agrega validación e importación local de paquetes XXMI/WWMI al almacenamiento administrado de LXMI, detección de runtime, assessment y plan declarativo; no aplica cambios al juego. El prototipo visual continúa aislado en `prototipo_visual/` y no forma parte de la UI funcional.
+LXMI-0.1 a 0.5.3 están implementados en `aplicacion/`. LXMI-0.5.3 agrega un runtime ZZMI ensamblado en storage privado XDG y una topología de rutas Wine/Proton solo descriptiva. No lanza, inyecta ni escribe en ZZZ, Steam, compatdata o prefix. El prototipo visual continúa aislado en `prototipo_visual/` y no forma parte de la UI funcional.
 
 ## Documentos sugeridos
 

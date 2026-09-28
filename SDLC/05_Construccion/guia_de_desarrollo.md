@@ -53,3 +53,11 @@ En LXMI-0.4 pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, `ca
 Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D warnings`, `cargo test --workspace` (114 tests), `npm run typecheck`, `npm run lint`, `npm run format:check` y `npm run build`. `npm run tauri:dev` inició el binario nativo y el frontend Vite respondió; el proceso fue detenido al terminar la comprobación. Importación y plan se verificaron con fixtures y carpetas de releases upstream en `/tmp`; no se ejecutó contenido ni se modificaron Steam, juego o prefix.
 
 En el scan local del 2026-09-28 no apareció el manifest de Wuthering Waves; las carpetas Proton vistas no tenían metadata/entrypoint suficiente para clasificarse y `compatdata/3513350` no existía. El planner dejó runtime/prefix desconocidos y readiness `Blocked`. El resultado anterior de 0.4 se conserva como histórico. El flujo IPC de importación desde clics en ventana nativa queda **NO COMPROBADO**. Detalles en `../06_Verificacion/verificacion_0_5.md`.
+
+## Estado verificado de LXMI-0.5.3
+
+`cargo fmt --all -- --check`, `cargo check --workspace`, `cargo clippy --workspace --all-targets --all-features -- -D warnings` y `cargo test --workspace` pasaron; el run estándar tuvo 149 tests aprobados y 5 ignorados por requerir confirmación, red o un host con ZZZ. Pasaron `npm run typecheck`, `npm run lint`, `npm run format:check` y `npm run build`.
+
+La prueba host-only opt-in validó los packages administrados ZZMI v1.5.0 y XXMI Libraries v1.1.7, ensambló 49 archivos bajo XDG y mapeó el importer por `Z:`. Selección de Proton y requisito de compartir prefix siguen desconocidos. Rutas candidatas del juego y `pfx/dosdevices` quedaron iguales antes/después. No se ejecutaron Steam, Proton, Wine, helper o ZZZ, y no se escribió en el juego ni en prefix.
+
+Había una ventana/proceso `tauri dev` ya activo. No se cerró ni se reemplazó; tampoco se completó interacción manual de sus comandos en esta revisión. La validación funcional manual de los botones de ensamblado/topología sigue **NO COMPROBADA**. Ver `../06_Verificacion/verificacion_0_5_3.md`.

@@ -1,6 +1,6 @@
 # Trabajo pendiente
 
-## LXMI-0.1 a 0.5.2 — estado
+## LXMI-0.1 a 0.5.3 — estado
 
 - [x] Workspace Tauri 2/React/TypeScript/Rust con `lxmi-core`, `lxmi-steam`, `lxmi-proton` y `lxmi-runtime`.
 - [x] Detección Steam roots y bibliotecas, manifests, Wuthering Waves, compatdata/pfx y compatibility tools en modo de solo lectura.
@@ -37,24 +37,27 @@
 - [x] Construir package inventories reales y resolver la dependencia ZZMI + XXMI Libraries sin fusionar los paquetes.
 - [x] Generar mapping relativo y ejecutar dry-run hash-only contra la carpeta candidata derivada del ejecutable ZZZ. La raíz configurada `importer_path` sigue desconocida; no se aprueba apply.
 - [x] Completar interacción manual nativa: scan Steam/ZZZ, consulta de releases, descarga/verificación/import de ZZMI y XXMI Libraries, confirmación de dependencia y revisión del dry-run de 49 mappings; UI reportó `apply` y escrituras deshabilitados.
+- [x] Fijar la topología upstream de `App.Root`/`ZZMI/`, desplazar el runtime a storage privado LXMI y reclasificar el dry-run 0.5.2 como comparación histórica, no target autorizado.
+- [x] Crear un plan de ensamblado y materializar ZZMI + las DLL que upstream ubica en `importer_path`, preservando paquetes fuente, autenticidad e inventarios; derivar `d3dx.ini` sin mutar upstream y mantener `Mods/` bajo LXMI.
+- [x] Inspeccionar `pfx/dosdevices` mediante lectura directa y mapear rutas Linux a Windows sin crear o alterar mappings; mantener selección Proton, estrategia loader y requisito de mismo prefix como `Unknown`.
+- [x] Añadir `LaunchTopologyPlan`, comandos Tauri y revisión/ensamblado separados; no hay executor, lanzamiento, inyección ni escrituras en Steam, ZZZ, compatdata o prefix.
+- [x] Validación host-only opt-in con paquetes oficiales ZZMI v1.5.0 y XXMI Libraries v1.1.7: runtime privado de 49 archivos ensamblado; mapping del importer por `Z:`; selección Proton desconocida; snapshots de rutas candidatas del juego y `dosdevices` idénticos antes/después.
+- [x] Fijar upstream XXMI Launcher v2.2.1 por tag/commit y registrar límites de `3dmloader.dll`/`3dmloader.exe`, launcher portable y licencias por componente. La evidencia no basta para elegir helper ni afirmar compatibilidad ZZZ + Steam + Linux/Proton.
 
-## Siguiente incremento: LXMI-0.6 — Safe ZZMI Installation Engine (con apply bloqueado por evidencia)
+## Siguiente incremento: LXMI-0.6 — Proton Launch Topology Experiment (sin inyección)
 
-- [ ] Investigar autorización/compatibilidad de ZZZ Steam + Linux/Proton con fuentes upstream y un entorno permitido. El issue de soporte consultado permanece abierto; no asumir compatibilidad.
-- [ ] Definir la estrategia de activación y los destinos Linux/Proton con evidencia. No copiar DLLs al juego por inferencia del layout Windows.
-- [ ] Determinar política de firmas/origen y revisar licencias por componente redistribuible; tratar ZZMI release y XXMI Libraries como paquetes distintos.
-- [ ] Congelar y revisar un plan concreto con ambos paquetes reales, juego verificado, runtime/prefix requisitos, destinos y hashes previos.
-- [ ] Diseñar backups independientes, journal durable, detección de modificaciones concurrentes y apply transaccional.
-- [ ] Mantener apply deshabilitado hasta que destino conocido, backups, journal, rollback y restricciones de plataforma estén entendidos y probados.
-- [ ] Implementar apply únicamente tras la compuerta anterior, con confirmación explícita, permisos no-root y límites de rutas al storage/juego aprobados.
-- [ ] Probar rollback ante fallo en cada paso y tras interrupción; verificar checksum/estado final.
-- [ ] Asegurar que uninstall/repair no sobrescriba cambios externos y que la reversión restaure el estado previo.
-- [ ] Mantener producción sin instalación real hasta que la prueba aislada y su rollback hayan pasado.
+- [ ] Resolver con evidencia el proceso Windows responsable de iniciar/cargar el importer; comparar launcher portable, componentes upstream y helper propio sin ejecutar el juego.
+- [ ] Comprobar en un entorno permitido qué proceso/prefix debe compartir el helper y ZZZ. Mantenerlo `Unknown` hasta obtener evidencia.
+- [ ] Probar, sin modificar el prefix, la visibilidad de `App.Root` por el mapping observado y las rutas Windows derivadas; separar resolución de ruta de capacidad de carga.
+- [ ] Identificar licencias y requisitos redistribuibles de cada helper/DLL; no empaquetar componentes cuyo permiso de uso/distribución no esté aclarado.
+- [ ] Definir un protocolo/control boundary compatible con una futura comunicación LXMI Linux ↔ runtime Windows solo después de elegir una estrategia viable.
+- [ ] Establecer si existe una prueba permitida para ZZZ Steam + Linux/Proton + ZZMI sin bypass, evasión o modificación de anti-cheat; detener la ruta si el entorno no es apropiado.
+- [ ] Mantener sin implementar ejecución, inyección, modificación del juego/prefix/Steam, gestión real de mods y `apply` hasta cerrar esos puntos en un incremento posterior.
 
 ## Estado de Git
 
-- Worktree contiene cambios de LXMI-0.5.2 sobre el checkpoint `386ca5c`; todavía no se creó commit ni se hizo push.
-- El remoto y branch son correctos; no reorganizar el repositorio.
+- El checkpoint anterior es `9646631`; LXMI-0.5.3 está implementado y validado técnicamente en `main`. El siguiente checkpoint debe conservarse en `origin` sin publicar cambios hasta autorización.
+- Root confirmado: `04_Proyectos/19_LXMI`; remote `origin` correcto. No reorganizar el repositorio.
 
 ## Antes de integrar runtimes o contenido de mods
 

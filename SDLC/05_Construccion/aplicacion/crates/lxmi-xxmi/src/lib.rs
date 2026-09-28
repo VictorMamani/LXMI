@@ -1,6 +1,7 @@
 //! Offline XXMI package inspection, managed staging and declarative planning.
 //! No process execution and no installation executor are provided.
 mod archive;
+mod assembly;
 mod cache;
 mod crypto;
 mod filesystem;
@@ -10,7 +11,12 @@ mod package;
 mod planning;
 mod release;
 mod store;
+mod topology;
 
+pub use assembly::{
+    assemble_zzmi_runtime, existing_zzmi_runtime, plan_zzmi_assembly, ManagedRuntime,
+    RuntimeAssemblyFile, RuntimeAssemblyPlan, RuntimeConfigPlan, RuntimeManifest,
+};
 pub use cache::{CachedAsset, DownloadCache};
 pub use crypto::{
     verify_component_signature, verify_file as verify_signature_file, verify_release_file,
@@ -29,3 +35,8 @@ pub use release::{
     ReleaseProvider,
 };
 pub use store::{ManagedStore, VerifiedPackage};
+pub use topology::{
+    inspect_launch_topology, inspect_prefix_dosdevices, map_linux_path, DosDeviceMapping,
+    DosDeviceState, DosDevicesReport, DosDevicesState, LaunchTopologyPlan, LoaderStrategy,
+    MappingStatus, SamePrefixRequirement, TopologyReadiness, WindowsPathMapping,
+};
