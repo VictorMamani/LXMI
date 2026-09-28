@@ -2,11 +2,14 @@
 resolver = "2"
 members = [
   "apps/lxmi-desktop/src-tauri",
+  "crates/lxmi-bridge",
+  "crates/lxmi-bridge-protocol",
   "crates/lxmi-core",
   "crates/lxmi-proton",
   "crates/lxmi-runtime",
   "crates/lxmi-xxmi",
   "crates/lxmi-steam",
+  "tools/lxmi-bridge-helper",
 ]
 
 [workspace.dependencies]

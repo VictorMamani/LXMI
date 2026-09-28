@@ -1,6 +1,6 @@
 # LXMI — aplicación
 
-**LXMI 0.5.3 — Tauri 2 + React/TypeScript + Rust.** Workspace crates: `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime` y `lxmi-xxmi`. Discovery, planificación y topología siguen read-only. La consulta/descarga requiere acción explícita; import y ensamblado solo escriben bajo cache/storage privado XDG de LXMI. No hay SQLite, executor ni ejecución de procesos/contenido importado. No se instala al juego.
+**LXMI 0.6.0 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/lxmi-bridge-helper`. Discovery, planificación y topología siguen read-only. La consulta/descarga requiere acción explícita; import y ensamblado solo escriben bajo cache/storage privado XDG de LXMI. El bridge de diagnóstico no se ejecuta automáticamente; usa un helper inocuo y un prefix de prueba LXMI aislado. No hay SQLite, launcher de juego, injector, ni instalación en ZZZ.
 
 En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para discovery y planificación de solo lectura. El workspace añadió en 0.5 `lxmi-xxmi`. No usa SQLite ni escribe en Steam, juegos, compatibility tools o prefixes; el import explícito sí conserva paquetes bajo el storage privado de LXMI.
 
@@ -24,6 +24,9 @@ No se necesitan credenciales, permisos root, Steam en ejecución, juegos instala
 | crates/lxmi-proton/ | Discovery de compatibility tools Steam/custom; parser Valve KeyValues reutilizado; metadata, clasificación y versión |
 | crates/lxmi-runtime/ | Plan declarativo por juego; agrega observaciones de instalación, Proton candidates, compatdata/prefix, requirements, evidence, issues y readiness |
 | crates/lxmi-xxmi/ | Paquetes y provenance, import seguro, assembler de ZZMI + XXMI Libraries a XDG, configuración derivada, discovery de `dosdevices` y plan de topología sin executor |
+| crates/lxmi-bridge/ | Validación de helper/runtime, test-prefix aislado, proceso Proton explícito y bounded, handshake y path/hash result |
+| crates/lxmi-bridge-protocol/ | Request/response JSON versionado compartido por LXMI y helper |
+| tools/lxmi-bridge-helper/ | Helper Windows inocuo: inspecciona únicamente un marker JSON dentro del storage administrado de LXMI |
 
 ## Instalar dependencias y ejecutar
 
@@ -112,3 +115,36 @@ Durante la validación local, la consulta de LXMI seleccionó ZZMI `v1.5.0` (rel
 La UI permite revisar el plan de ensamblado antes de preparar la copia privada y después inspeccionar una `LaunchTopologyPlan`. La inspección de `pfx/dosdevices` solo lee los symlinks inmediatos; no los crea ni recorre sus destinos. La estrategia de helper, el requisito de compartir prefix y la selección Proton siguen `Unknown`. Ningún proceso se lanza ni se modifica ZZZ/Steam/compatdata/prefix. El mapping 0.5.2 queda etiquetado como histórico, sin inspección activa del directorio del ejecutable como target.
 
 Fuentes y arquitectura: `../../01_Descubrimiento/topologia_runtime_xxmi_linux.md`; decisión bridge: `../../04_Arquitectura_y_seguridad/ADR/025_native_lxmi_windows_runtime_bridge.md`. Verificación: `../../06_Verificacion/verificacion_0_5_3.md`.
+
+## LXMI-0.6: Controlled Windows Runtime Bridge
+
+La sección Advanced del panel ZZMI puede inspeccionar el helper LXMI staged, el runtime ZZMI administrado y las herramientas Proton elegibles. Elegir un Proton ahí significa **Bridge test runtime** únicamente: no escribe ni infiere qué Proton seleccionará Steam para ZZZ. La acción está deshabilitada hasta que existan paquetes seleccionados, runtime ensamblado, helper con SHA-256 coincidente y un candidato Proton que el backend vuelve a validar.
+
+El helper Windows usa protocolo stdin/stdout JSON v1, nonce por request, respuesta estructurada, límites de 64 KiB por request, 1 MiB por stream y 20 segundos. Solo puede leer runtime-manifest.json debajo del root administrado. No enumera procesos, no abre ZZZ, no carga DLL ni modifica el juego. El nonce correlaciona; no autentica. SHA-256 es integridad local, no firma del publisher.
+
+### Compilar y preparar el helper (optativo)
+
+Requiere el target Rust x86_64-pc-windows-gnu y MinGW-w64 (`gcc-mingw-w64-x86-64`, `mingw-w64-x86-64-dev`) en el host. Desde la raíz de esta aplicación:
+
+~~~bash
+CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc \
+  cargo build --manifest-path tools/lxmi-bridge-helper/Cargo.toml \
+  --target x86_64-pc-windows-gnu --release
+bash tools/install-bridge-helper.sh
+~~~
+
+El segundo comando copia el binario a helpers/ y genera su sidecar SHA-256 bajo el storage LXMI definido por XDG. La UI no descarga ni compila helpers por su cuenta. No usar sudo para preparar el toolchain.
+
+### Efectos del test
+
+Al pulsar Run Runtime Bridge Test, LXMI invoca el entrypoint Proton con `runinprefix` mediante argv, un entorno limpio/allowlisted y el CompatData:
+
+~~~text
+$XDG_DATA_HOME/lxmi/test-prefixes/bridge-v1/compatdata
+~~~
+
+Proton puede crear/actualizar pfx allí y mantener su propia distribución, por ejemplo procesar fixups o retirar un dist/ legacy. La UI obliga a aceptar estos efectos. Nunca se pasa compatdata/4162040. **Host test comprobado:** Proton Experimental ejecutó el helper, verificó el nonce, leyó el runtime marker por su ruta Windows y obtuvo el mismo SHA-256. Un path inexistente produjo una respuesta negativa estructurada. El `.exe` staged es PE32+ x86-64 con SHA-256 `2a1939728e18bd3190b8dbb102d943bd5d65fa509617dbe42d48c45d02463fd2`. La ventana Tauri nativa mostró el resultado; la selección Proton del juego sigue `unknown` y no se afirma compatibilidad ZZMI/ZZZ/Linux.
+
+El test escribió en el prefix/contexto privado `$XDG_DATA_HOME/lxmi/test-prefixes/bridge-v1/compatdata` y modificó el timestamp de `dist.lock` de Proton Experimental. No alteró `compatdata/4162040`, el ejecutable ZZZ ni los targets de juego vigilados. Ver el detalle completo en `../../06_Verificacion/verificacion_0_6.md`.
+
+Fuentes Valve fijadas y detalles de invocación: ../../01_Descubrimiento/bridge_linux_windows.md. Decisión: ../../04_Arquitectura_y_seguridad/ADR/026_lxmi_windows_bridge_protocol.md. Verificación y limitaciones: ../../06_Verificacion/verificacion_0_6.md.

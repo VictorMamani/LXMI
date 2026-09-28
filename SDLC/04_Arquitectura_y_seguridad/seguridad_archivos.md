@@ -97,3 +97,16 @@ La licencia de LXMI no debe elegirse hasta conocer dependencias y componentes qu
 - El runtime ensamblado incluye archivos upstream ejecutables/DLL como bytes inertes. No se ejecutan durante import, ensamblado, discovery, hash o validación. Una futura ruta de helper requerirá revisión separada de licencia, proceso, IPC y política de seguridad.
 
 Riesgos residuales: procesos bajo la misma cuenta pueden leer/modificar el storage propio; la promoción no es una transacción resistente a pérdida abrupta de energía demostrada; un mapping Windows observado no demuestra compatibilidad de runtime; el nombre de proceso permitido por upstream aún referencia a `XXMI Launcher.exe`. No distribuir ni ejecutar el ensamblado con ZZZ hasta resolver estas incertidumbres en un entorno autorizado.
+
+## LXMI-0.6 — frontera del Windows bridge
+
+- El helper Windows es un probe de almacenamiento y protocolo; no contiene enumeración de procesos, carga de DLL, hooks ni APIs de memoria de otros procesos.
+- El backend acepta solo un Proton candidate válido que vuelve a encontrar en el scan actual. Nunca ejecuta shell ni acepta una orden arbitraria desde React.
+- Las únicas rutas enviadas al helper son relativas al root de datos LXMI; el helper deriva el root desde su ubicación, rechaza traversal/symlinks y solo lee runtime-manifest.json con límite de tamaño.
+- El helper se valida por hash local contra su sidecar de build y se reporta además el hash que calcula sobre sí mismo. Esto es integridad local, no autenticidad. El nonce correlaciona mensajes, no autentica.
+- Entrada JSON: máximo 64 KiB. Salida del proceso: máximo 1 MiB por stdout/stderr con drenado acotado. Deadline: 20 s; el executor termina el grupo de procesos creado por LXMI.
+- El child inicia con entorno limpio y una allowlist mínima. No propaga WINEPREFIX, WINEDLLOVERRIDES ni variables PROTON_* heredadas.
+- Proton solo recibe el test CompatData privado de LXMI. El executor rechaza el modo de compatdata de juego. El UI requiere aceptar que Proton puede inicializar este prefix y ejecutar mantenimiento dentro de su propia distribución.
+- El test host 0.6 solo ejecutó el helper inocuo con un prefix LXMI aislado y leyó un marker bajo storage administrado. No inició el juego ni prueba carga de DLL, injector o compatibilidad ZZMI. Proton escribió en el prefix de prueba y actualizó el timestamp de `dist.lock` de su propia distribución.
+
+Amenazas residuales: una release/versión futura de Proton puede cambiar CLI o efectos; Proton es un proceso confiable externo y no está sandboxed por esta crate; procesos del mismo usuario pueden alterar storage entre validación y lectura; el sidecar del helper y binario no ofrecen raíz criptográfica remota. Mantener la función avanzada desactivada por falta del helper o si falla cualquier hash/política.

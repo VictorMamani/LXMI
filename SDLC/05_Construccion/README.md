@@ -2,7 +2,7 @@
 
 **Objetivo:** entregar cambios pequeños, entendibles y conectados con criterios acordados.
 
-LXMI-0.1 a 0.5.3 están implementados en `aplicacion/`. LXMI-0.5.3 agrega un runtime ZZMI ensamblado en storage privado XDG y una topología de rutas Wine/Proton solo descriptiva. No lanza, inyecta ni escribe en ZZZ, Steam, compatdata o prefix. El prototipo visual continúa aislado en `prototipo_visual/` y no forma parte de la UI funcional.
+LXMI-0.1 a 0.6 están implementados en `aplicacion/`. El helper Windows se compiló con MinGW, fue staged y se ejecutó mediante Proton Experimental en el prefix aislado de LXMI; handshake, mapping de path y lectura/hash del marker pasaron, junto con una respuesta negativa estructurada. No se abrió ZZZ ni se usó su compatdata. Proton sí inicializó el prefix de prueba y actualizó su propio `dist.lock`. El prototipo visual continúa aislado en `prototipo_visual/` y no forma parte de la UI funcional.
 
 ## Documentos sugeridos
 

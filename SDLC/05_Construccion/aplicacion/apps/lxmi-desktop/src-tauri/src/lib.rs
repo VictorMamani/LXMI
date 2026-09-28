@@ -20,7 +20,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             xxmi_commands::review_xxmi_plan,
             xxmi_commands::prepare_zzmi_runtime,
             xxmi_commands::review_zzmi_assembly,
-            xxmi_commands::inspect_zzmi_launch_topology
+            xxmi_commands::inspect_zzmi_launch_topology,
+            xxmi_commands::inspect_runtime_bridge,
+            xxmi_commands::run_runtime_bridge_test
         ])
         .run(tauri::generate_context!())?;
 

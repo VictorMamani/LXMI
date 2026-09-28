@@ -4,7 +4,7 @@
 
 ## Estado
 
-- **Etapa:** construcción; LXMI-0.1 a 0.5.3 implementado con validación técnica. La investigación de necesidad y compatibilidad de ejecución sigue abierta.
+- **Etapa:** construcción; LXMI-0.1 a 0.6 están implementados y el host bridge inocuo de 0.6 fue comprobado. La investigación de necesidad y compatibilidad de ejecución sigue abierta.
 - **Tipo de proyecto:** herramienta técnica de escritorio y posible proyecto de portafolio; no hay validación de demanda, modelo de ingresos ni rentabilidad confirmada.
 - **Base de trabajo:** idea aportada por el usuario. Las estructuras de Proton consultadas se contrastaron con fuentes de Valve; esto no valida compatibilidad del juego, mods, ni políticas aplicables.
 - **Código:** aplicación Tauri 2 con React/TypeScript y workspace Rust. Los escaneos de Steam/juegos/tools son de solo lectura; el import explícito solo escribe en almacenamiento XDG privado de LXMI.
@@ -25,6 +25,8 @@ LXMI-0.1 prepara una aplicación Tauri 2 con React/TypeScript y Rust, muestra in
 El AppID `3513350` se verificó en la [página oficial de Wuthering Waves en Steam](https://store.steampowered.com/app/3513350/Wuthering_Waves/). El discovery de Proton sigue la estructura documentada por [Valve Proton](https://github.com/ValveSoftware/Proton) y su [plantilla de `compatibilitytool.vdf`](https://github.com/ValveSoftware/Proton/blob/proton_11.0/compatibilitytool.vdf.template). Detectar un manifest o una carpeta `pfx` no demuestra compatibilidad ni salud del prefix. Tener candidatos instalados tampoco demuestra cuál seleccionó Steam para Wuthering Waves. LXMI-0.4 no ejecuta procesos ni modifica configuraciones.
 
 LXMI-0.5 integra paquetes XXMI/WWMI bajo XDG; 0.5.1 agrega Zenless Zone Zero y ZZMI; 0.5.2 consulta/descarga releases oficiales y las autentica. LXMI-0.5.3 resuelve `App.Root/importer_path` como un runtime administrado por LXMI fuera del juego, ensambla ZZMI + XXMI Libraries y crea un plan de topología Linux/Windows. El dry-run 0.5.2 contra la carpeta candidata del ejecutable es una comparación histórica, no un destino autorizado. No se lanza ni inyecta nada, y no se modifica juego, Steam, compatdata o prefix. La selección Proton, helper y requisito de mismo prefix siguen desconocidos; Steam/Linux/Proton no están verificados. Fuentes: [adquisición oficial de paquetes 0.5.2](SDLC/01_Descubrimiento/adquisicion_paquetes_xxmi_0_5_2.md), [topología runtime XXMI Linux 0.5.3](SDLC/01_Descubrimiento/topologia_runtime_xxmi_linux.md), y los antecedentes de [XXMI/ZZMI](SDLC/01_Descubrimiento/ecosistema_xxmi_zzmi.md) y [XXMI/WWMI](SDLC/01_Descubrimiento/ecosistema_xxmi_wwmi.md).
+
+LXMI-0.6 agrega un helper Windows inocuo y un bridge de diagnóstico por stdin/stdout JSON, con Proton explícita y prefix aislado. MinGW enlazó el `.exe`; Proton Experimental ejecutó el helper, que devolvió el nonce, leyó el runtime marker mediante una ruta Windows y coincidió el hash. Un caso negativo devolvió JSON estructurado. La ventana Tauri nativa mostró los resultados. Esta prueba no carga XXMI ni demuestra compatibilidad de ZZZ/Steam/Linux/Proton; la selección de runtime del juego sigue desconocida. Ver [verificación del bridge 0.6](SDLC/06_Verificacion/verificacion_0_6.md).
 
 ## Documentos SDLC
 
@@ -54,11 +56,11 @@ LXMI-0.5 pasó los quality gates del workspace con 114 tests Rust (45 nuevos) y 
 
 ## Siguiente resultado
 
-LXMI-0.6: experimento de topología/bridge Windows-Proton sin inyección ni mutación, para resolver loader/helper, visibilidad de rutas y requisito de prefix. No avanzar a `apply` ni declarar compatibilidad hasta tener evidencia de plataforma y rollback verificado.
+LXMI-0.6 está cerrado. LXMI-0.7 —experimento de compatibilidad del loader upstream— queda como posible trabajo futuro y no se inició; no avanzar a `apply` ni declarar compatibilidad sin evidencia de plataforma y rollback verificado.
 
 ## Estado local de Git
 
-El repositorio efectivo es esta carpeta LXMI, rama `main`, remote `origin` en `git@github.com:VictorMamani/LXMI.git`. El árbol estaba limpio al comenzar LXMI-0.4; sus cambios siguen en desarrollo hasta que se confirmen.
+El repositorio efectivo es esta carpeta LXMI, rama `main`, remote `origin` en `git@github.com:VictorMamani/LXMI.git`. LXMI-0.6 parte del checkpoint `844008b`; los cambios actuales están sin commit ni push.
 
 ## Criterio de honestidad
 

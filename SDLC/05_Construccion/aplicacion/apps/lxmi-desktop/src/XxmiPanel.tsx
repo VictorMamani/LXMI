@@ -201,6 +201,56 @@ type LaunchTopology = {
   execution_enabled: boolean;
   external_files_modified: boolean;
 };
+type BridgeRuntimeOption = {
+  display_name: string;
+  version: string | null;
+  source: string;
+  proton_script: string;
+};
+type RuntimeBridgePanel = {
+  options: {
+    helper:
+      | { state: "missing" }
+      | {
+          state: "available";
+          expected_sha256: string;
+          actual_sha256: string;
+          integrity_matches: boolean;
+          helper_version: string;
+          protocol_version: number;
+          build_target: string;
+        }
+      | { state: "invalid"; detail: string };
+    managed_runtime_available: boolean;
+    managed_runtime_path: string | null;
+    compatdata_path: string;
+    prefix_path: string;
+    prefix_mode: string;
+    warning: string;
+  };
+  runtimes: BridgeRuntimeOption[];
+  game_runtime_selection: string;
+};
+type BridgeTestResult = {
+  explicit_runtime: { display_name: string; version: string | null };
+  prefix_mode: string;
+  compatdata_path: string;
+  helper_version: string;
+  helper_protocol_version: number;
+  handshake: string;
+  runtime_path_linux: string;
+  runtime_path_windows: string;
+  path_visibility: string;
+  runtime_manifest_sha256: string;
+  runtime_manifest_hash_matches: boolean;
+  environment_marker_matches: boolean;
+  process: {
+    exit_code: number;
+    elapsed_millis: number;
+    stderr: string;
+  };
+  warnings: string[];
+};
 type GameId = "wuthering-waves" | "zenless-zone-zero";
 const games: Record<GameId, { name: string; integration: "wwmi" | "zzmi" }> = {
   "wuthering-waves": { name: "Wuthering Waves", integration: "wwmi" },
@@ -246,6 +296,15 @@ export default function XxmiPanel() {
   );
   const [topology, setTopology] = useState<LaunchTopology | null>(null);
   const [assemblyPlan, setAssemblyPlan] = useState<AssemblyPlan | null>(null);
+  const [bridgePanel, setBridgePanel] = useState<RuntimeBridgePanel | null>(
+    null,
+  );
+  const [bridgeRuntimePath, setBridgeRuntimePath] = useState("");
+  const [bridgeResult, setBridgeResult] = useState<BridgeTestResult | null>(
+    null,
+  );
+  const [bridgeSideEffectsAcknowledged, setBridgeSideEffectsAcknowledged] =
+    useState(false);
 
   function selectDefaultPackages(nextStatus: Status) {
     const preferredZzmi = nextStatus.packages
@@ -445,6 +504,65 @@ export default function XxmiPanel() {
       setBusy(false);
     }
   }
+
+  async function inspectBridge() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setBridgeResult(null);
+    setBridgeSideEffectsAcknowledged(false);
+    try {
+      const result = await invoke<RuntimeBridgePanel>(
+        "inspect_runtime_bridge",
+        {
+          zzmiId: selected || null,
+          librariesId: libraries || null,
+        },
+      );
+      setBridgePanel(result);
+      setBridgeRuntimePath((current) =>
+        result.runtimes.some((runtime) => runtime.proton_script === current)
+          ? current
+          : "",
+      );
+      setNotice(
+        "Discovery de runtimes para una prueba explícita completado. La selección de Proton del juego sigue desconocida.",
+      );
+    } catch (e: unknown) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runBridgeTest() {
+    if (
+      !selected ||
+      !libraries ||
+      !bridgeRuntimePath ||
+      !bridgeSideEffectsAcknowledged
+    )
+      return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setBridgeResult(null);
+    try {
+      const result = await invoke<BridgeTestResult>("run_runtime_bridge_test", {
+        zzmiId: selected,
+        librariesId: libraries,
+        protonScript: bridgeRuntimePath,
+      });
+      setBridgeResult(result);
+      setNotice(
+        "Bridge test completado. Solo se usó el prefix aislado de LXMI; ZZZ no fue iniciado ni inspeccionado como proceso.",
+      );
+    } catch (e: unknown) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
   const packages = status?.packages ?? [];
   const zzmiRelease = releases.find(
     (release) => release.package_kind === "zzmi",
@@ -614,6 +732,9 @@ export default function XxmiPanel() {
             setManagedRuntime(null);
             setTopology(null);
             setAssemblyPlan(null);
+            setBridgePanel(null);
+            setBridgeRuntimePath("");
+            setBridgeResult(null);
           }}
         >
           <option value="zenless-zone-zero">Zenless Zone Zero · ZZMI</option>
@@ -709,6 +830,8 @@ export default function XxmiPanel() {
             setManagedRuntime(null);
             setTopology(null);
             setAssemblyPlan(null);
+            setBridgePanel(null);
+            setBridgeResult(null);
           }}
         >
           <option value="">Seleccionar paquete…</option>
@@ -738,6 +861,8 @@ export default function XxmiPanel() {
             setManagedRuntime(null);
             setTopology(null);
             setAssemblyPlan(null);
+            setBridgePanel(null);
+            setBridgeResult(null);
           }}
         >
           <option value="">No disponible / no seleccionado</option>
@@ -991,6 +1116,193 @@ export default function XxmiPanel() {
               </details>
             </details>
           )}
+          <details className="runtime-evidence bridge-test-panel">
+            <summary>Advanced · Runtime Bridge Test (desarrollo)</summary>
+            <p>
+              Esta prueba inicia únicamente el helper inocuo de LXMI mediante
+              una versión Proton elegida explícitamente. No determina ni cambia
+              el Proton que Steam selecciona para ZZZ. Proton inicializará un
+              prefix aislado bajo el almacenamiento de LXMI; nunca se usa
+              compatdata/4162040.
+            </p>
+            <button
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => void inspectBridge()}
+            >
+              {busy ? "Inspeccionando…" : "Inspeccionar bridge y runtimes"}
+            </button>
+            {bridgePanel && (
+              <>
+                <div>
+                  <p>
+                    Helper: {bridgePanel.options.helper.state}
+                    {bridgePanel.options.helper.state === "available" && (
+                      <>
+                        {" · "}
+                        {bridgePanel.options.helper.helper_version}
+                        {" · SHA-256 "}
+                        {bridgePanel.options.helper.integrity_matches
+                          ? "coincide"
+                          : "no coincide"}
+                      </>
+                    )}
+                    {bridgePanel.options.helper.state === "invalid" && (
+                      <> · {bridgePanel.options.helper.detail}</>
+                    )}
+                  </p>
+                  {bridgePanel.options.helper.state === "missing" && (
+                    <div className="discovery-note">
+                      Falta el helper Windows. Desde la raíz de la aplicación,
+                      compílalo para x86_64-pc-windows-gnu y prepara el hash
+                      local:
+                      <br />
+                      <code className="path-value">
+                        cargo build --manifest-path
+                        tools/lxmi-bridge-helper/Cargo.toml --target
+                        x86_64-pc-windows-gnu --release
+                      </code>
+                      <br />
+                      <code className="path-value">
+                        bash tools/install-bridge-helper.sh
+                      </code>
+                    </div>
+                  )}
+                </div>
+                <p>
+                  Runtime ZZMI administrado:{" "}
+                  {bridgePanel.options.managed_runtime_available
+                    ? bridgePanel.options.managed_runtime_path
+                    : "no disponible para los paquetes seleccionados"}
+                </p>
+                <label htmlFor="bridge-test-runtime">
+                  Runtime Proton explícito para esta prueba
+                </label>
+                <select
+                  id="bridge-test-runtime"
+                  value={bridgeRuntimePath}
+                  disabled={busy || !bridgePanel.runtimes.length}
+                  onChange={(event) => setBridgeRuntimePath(event.target.value)}
+                >
+                  <option value="">Elegir Proton…</option>
+                  {bridgePanel.runtimes.map((runtime) => (
+                    <option
+                      key={runtime.proton_script}
+                      value={runtime.proton_script}
+                    >
+                      {runtime.display_name} ·{" "}
+                      {runtime.version ?? "versión desconocida"} ·{" "}
+                      {runtime.source}
+                    </option>
+                  ))}
+                </select>
+                {!bridgePanel.runtimes.length && (
+                  <p className="discovery-note">
+                    No se encontró un Proton válido con entrypoint ejecutable.
+                  </p>
+                )}
+                <p>
+                  Selección del juego: {bridgePanel.game_runtime_selection} ·
+                  prefix de prueba: {bridgePanel.options.prefix_mode} · Proton
+                  puede crear o actualizar el prefix aislado de LXMI.
+                </p>
+                <label className="discovery-note">
+                  <input
+                    type="checkbox"
+                    checked={bridgeSideEffectsAcknowledged}
+                    disabled={busy}
+                    onChange={(event) =>
+                      setBridgeSideEffectsAcknowledged(event.target.checked)
+                    }
+                  />{" "}
+                  Entiendo que Proton puede escribir en el prefix de prueba y
+                  aplicar mantenimiento a su propia distribución (por ejemplo,
+                  retirar archivos legacy de dist o procesar fixups). El prefix
+                  de ZZZ no se usa.
+                </label>
+                <details>
+                  <summary>Rutas de diagnóstico del test</summary>
+                  <p>
+                    Compatdata aislado:{" "}
+                    <code className="path-value">
+                      {bridgePanel.options.compatdata_path}
+                    </code>
+                  </p>
+                  <p>{bridgePanel.options.warning}</p>
+                </details>
+                <button
+                  className="primary-button"
+                  disabled={
+                    busy ||
+                    !selected ||
+                    !libraries ||
+                    !bridgeRuntimePath ||
+                    !bridgeSideEffectsAcknowledged ||
+                    !bridgePanel.options.managed_runtime_available ||
+                    bridgePanel.options.helper.state !== "available" ||
+                    !bridgePanel.options.helper.integrity_matches
+                  }
+                  onClick={() => void runBridgeTest()}
+                >
+                  {busy ? "Ejecutando helper…" : "Run Runtime Bridge Test"}
+                </button>
+              </>
+            )}
+            {bridgeResult && (
+              <div className="runtime-evidence" role="status">
+                <strong>
+                  Helper iniciado · handshake {bridgeResult.handshake} · path{" "}
+                  {bridgeResult.path_visibility}
+                </strong>
+                <p>
+                  {bridgeResult.explicit_runtime.display_name} · helper v
+                  {bridgeResult.helper_version} · protocolo{" "}
+                  {bridgeResult.helper_protocol_version} · exit{" "}
+                  {bridgeResult.process.exit_code} ·{" "}
+                  {bridgeResult.process.elapsed_millis} ms
+                </p>
+                <p>
+                  Manifiesto runtime · SHA-256:{" "}
+                  {bridgeResult.runtime_manifest_hash_matches
+                    ? "coincide · "
+                    : "no coincide · "}
+                  <code className="path-value">
+                    {bridgeResult.runtime_manifest_sha256}
+                  </code>
+                </p>
+                <p>
+                  Linux:{" "}
+                  <code className="path-value">
+                    {bridgeResult.runtime_path_linux}
+                  </code>
+                  <br />
+                  Windows:{" "}
+                  <code className="path-value">
+                    {bridgeResult.runtime_path_windows}
+                  </code>
+                </p>
+                <p>
+                  Prefix aislado:{" "}
+                  <code className="path-value">
+                    {bridgeResult.compatdata_path}
+                  </code>{" "}
+                  · entorno propagado:{" "}
+                  {bridgeResult.environment_marker_matches ? "sí" : "no"}
+                </p>
+                {bridgeResult.process.stderr && (
+                  <details>
+                    <summary>Diagnóstico stderr de Proton</summary>
+                    <pre>{bridgeResult.process.stderr}</pre>
+                  </details>
+                )}
+                <ul>
+                  {bridgeResult.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </details>
         </div>
       )}
       <p id="xxmi-error" className="message-error" role="alert">

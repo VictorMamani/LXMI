@@ -227,3 +227,46 @@ La evidencia detallada está en `SDLC/06_Verificacion/verificacion_0_5_1.md`.
 - No se modificaron Steam, ZZZ, compatdata o prefix. No hay executor, inyección, anti-cheat bypass, launch options, `apply` ni rollback.
 
 Detalles reproducibles en `../06_Verificacion/verificacion_0_5_3.md`.
+
+## LXMI-0.6 — Controlled Windows Runtime Bridge Prototype (2026-09-28)
+
+### Implementado
+
+- Crates lxmi-bridge y lxmi-bridge-protocol, más el binario tools/lxmi-bridge-helper orientado a Windows.
+- Protocolo stdin/stdout JSON versión 1, nonce aleatorio de 128 bits, versión/target/hash del helper y chequeo hash del runtime marker en ambos lados.
+- Helper que solo deriva root desde helpers/, rechaza traversal/symlinks, lee un runtime-manifest.json acotado y devuelve JSON. No enumera procesos ni contiene loader/injector.
+- Servicio Tauri avanzado que re-escanea Proton candidates, valida los IDs de packages y resuelve helper/runtime del storage LXMI; la UI no puede escoger rutas arbitrarias ni cambiar GameRuntimePlan.selection.
+- Executor de Proton por argv directo, con environment limpiado/allowlisted, timeout 20 s, límite de salida 1 MiB por stream y terminación de su propio grupo.
+- Prefix test exclusivo bajo XDG; el executor rechaza el modo de compatdata de juego. La UI exige elegir Proton explícitamente y aceptar sus posibles efectos en el test-prefix y la distribución Proton.
+- Script de build/staging del helper Windows. Se instaló el target Rust Windows; no se instalaron paquetes del sistema.
+
+### UPSTREAM VERIFIED
+
+- Se fijó ValveSoftware/Proton tag proton-11.0-2 (commit corto db9e6ff) y se revisó README, entrypoint proton y release. La inspección del Proton local añadió evidencia de que `run` inicia `steam.exe`, mientras `runinprefix` ejecuta el helper directamente bajo Wine; LXMI usa el segundo. El script consume STEAM_COMPAT_DATA_PATH y STEAM_COMPAT_CLIENT_INSTALL_PATH, puede inicializar/actualizar pfx y contiene mantenimiento de dist/fixups. Referencias: ../01_Descubrimiento/bridge_linux_windows.md.
+- Ese código upstream no garantiza API estable para ejecutar juegos fuera de Steam. Esta fase no extrapola sus hallazgos a ZZMI/ZZZ.
+
+### Estado previo al cierre de host (histórico)
+
+- La suite focal de las crates bridge/protocol/helper pasó: 17 tests de bridge/helper y 0 tests definidos en protocol.
+- En la primera verificación pasaron los gates offline. En el cierre final se repitieron y `cargo test --workspace` reportó 166 pasados y 6 ignorados host/network/opt-in.
+- En `apps/lxmi-desktop/` pasaron `npm run typecheck`, `npm run lint`, `npm run format:check` y `npm run build`.
+- En ese punto, `cargo check` del helper target Windows pasó pero todavía no había un ejecutable enlazado.
+- `npm run tauri:dev` compiló y lanzó la aplicación; en ese punto la interacción nativa aún no se había realizado.
+- `bash -n tools/install-bridge-helper.sh` y `git diff --check` pasaron.
+
+### Bloqueos iniciales (resueltos en el cierre siguiente)
+
+- Se intentó cross-compilar con Zig 0.15.2: compiló crates/dependencias, pero el linker no encontró `msvcrt`; no se produjo ni staged el helper `.exe`. No se instaló MinGW ni paquetes del sistema. No se ejecutó Proton, Wine ni el helper.
+- Host handshake, environment real, visibilidad/path roundtrip Windows y prefix generado por Proton: **NO COMPROBADOS**.
+- No se hizo click a click en la UI nativa; no se modificaron ZZZ, Steam, compatdata de juego ni prefix.
+- LXMI 0.6 no se considera cerrado ni habilita el inicio de 0.7 hasta compilar/stagear el helper y obtener éxito en el host bridge test aislado.
+
+### Cierre de validación host (2026-09-28)
+
+- Se enlazó `lxmi-bridge-helper.exe` para `x86_64-pc-windows-gnu` usando `x86_64-w64-mingw32-gcc` GCC 13-win32; `file` confirmó PE32+ x86-64, 1,517,755 bytes. El SHA-256 del build y del helper staged coincide: `2a1939728e18bd3190b8dbb102d943bd5d65fa509617dbe42d48c45d02463fd2`. El fallo previo de Zig/`msvcrt` queda resuelto; no se instalaron paquetes con sudo.
+- **HOST TEST positivo:** Proton Experimental `experimental-11.0-20260924-x86_64`, seleccionado solo para bridge test, ejecutó `runinprefix`; protocolo 1/nonce correctos, helper v0.6.0, exit 0, helper leyó el runtime marker mediante ruta Windows Z: y el SHA-256 del manifiesto coincidió (`c86d41865cc81c7639eecc17f021d80448fd2e12900453cc66f37d00c5332a5e`). La selección de runtime del juego permaneció `unknown`.
+- **HOST TEST negativo:** runtime-relative path inexistente retornó respuesta JSON correlacionada con `success=false`, `runtime_not_visible` y exit 2; sin panic ni timeout.
+- Se recorrió el flujo desde la ventana Tauri nativa: Steam/ZZZ scan, paquetes, selección explícita, aceptación de warning y resultado de bridge con hashes visibles. También se observaron helper ausente (restaurado después), runtime administrado no disponible y, en un HOME/XDG aislado, el estado sin candidato Proton.
+- La inspección nativa del estado helper ausente encontró un párrafo HTML anidado; se corrigió el JSX y se volvió a probar sin warnings React/Vite. Typecheck, ESLint, Prettier y build pasaron tras el arreglo.
+- Proton escribió en el contexto privado `$XDG_DATA_HOME/lxmi/test-prefixes/bridge-v1/` (incluido su CompatData aislado) y tocó el timestamp del `dist.lock` de su propia distribución. No usó `compatdata/4162040`; el executable y targets vigilados de ZZZ permanecieron iguales/ausentes.
+- La tabla y clasificación final, incluyendo todos los quality gates, están en `SDLC/06_Verificacion/verificacion_0_6.md`. LXMI 0.6 queda cerrado; LXMI 0.7 no se inició.

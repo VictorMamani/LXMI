@@ -146,3 +146,26 @@ flowchart LR
 ```
 
 El dry-run de 0.5.2 contra el directorio candidato del ejecutable queda como **comparación histórica** y no es un target de instalación autorizado ni activo. No existe `apply`, launcher, injector, mutación de juego, Steam o prefix. La investigación fijada está en `../01_Descubrimiento/topologia_runtime_xxmi_linux.md`; la frontera de puente se registra en ADR-025.
+
+## LXMI-0.6 — Controlled Windows Runtime Bridge
+
+El bridge es un servicio de plataforma para una operación de diagnóstico, no un launcher de juego ni parte del dominio de mods. Las crates lxmi-bridge y lxmi-bridge-protocol encapsulan el protocolo stdin/stdout v1; tools/lxmi-bridge-helper es el ejecutable Windows inocuo. La interfaz avanzada y los commands Tauri son adaptadores. Los commands re-escanean y validan la selección; no confían en un path de Proton enviado por la UI.
+
+La prueba solo admite un Proton candidate elegido explícitamente y un test-prefix bajo storage LXMI. Ese valor no modifica RuntimePlan.selection. El proceso usa argv directo, timeout de 20 segundos, hasta 1 MiB de captura por stream y entorno limpiado/allowlisted. El helper solo lee runtime-manifest.json dentro del managed root y devuelve la ruta Windows observada. El hash cotejado en Linux y Windows demuestra que ambos leyeron el mismo marker, no compatibilidad del runtime de juego.
+
+~~~mermaid
+flowchart LR
+    UI[Advanced UI: selección explícita] --> Tauri[Tauri bridge command]
+    Tauri --> Validate[Re-scan Proton + verificar helper/runtime]
+    Validate --> Process[argv Proton run helper.exe]
+    Process --> Prefix[Test CompatData de LXMI]
+    Process --> Helper[Helper Windows protocol v1]
+    Helper -->|solo lectura del marker| Runtime[Runtime ZZMI administrado]
+    Helper --> Response[stdout JSON + nonce + hashes]
+    Response --> Validate
+    Validate --> Result[Resultado tipado]
+    Game[ZZZ/Steam prefix] -. no se acceden .-> Process
+    Plan[RuntimePlan.selection] -. permanece unknown .-> Tauri
+~~~
+
+La acción ejecutable requiere confirmación explícita de que Proton puede inicializar el prefix aislado y mantener su propia distribución. El modo de prefix de juego se rechaza antes del proceso. El handshake de host se comprobó con Proton Experimental: helper inocuo, nonce v1, path Windows legible y hash del marker coincidente. Esto no implica que una siguiente fase pueda cargar XXMI o lanzar ZZZ. ADR-026 y SDLC/01_Descubrimiento/bridge_linux_windows.md registran la decisión y sus fuentes.

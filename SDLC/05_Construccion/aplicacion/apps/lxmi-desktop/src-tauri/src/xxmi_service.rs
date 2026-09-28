@@ -1,6 +1,6 @@
 //! Application orchestration; commands are thin async adapters.
 use lxmi_core::SystemInfo;
-use lxmi_proton::ProtonScanner;
+use lxmi_proton::{CompatibilityToolKind, CompatibilityToolStatus, ProtonScanner};
 use lxmi_runtime::{GameInstallationAssessment, RuntimePlanner};
 use lxmi_steam::{SteamDiscoveryResult, SteamDiscoveryScanner};
 use lxmi_xxmi::{
@@ -11,7 +11,242 @@ use lxmi_xxmi::{
     RuntimeAssemblyPlan, RuntimeDiscovery, UpstreamRelease, XxmiError,
 };
 use serde::Serialize;
-use std::path::Path;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
+#[derive(Serialize)]
+pub struct BridgeRuntimeOption {
+    pub display_name: String,
+    pub version: Option<String>,
+    pub source: String,
+    pub proton_script: String,
+}
+
+#[derive(Serialize)]
+pub struct RuntimeBridgePanel {
+    pub options: lxmi_bridge::BridgeOptions,
+    pub runtimes: Vec<BridgeRuntimeOption>,
+    pub game_runtime_selection: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BridgeServiceError {
+    pub code: String,
+    pub detail: String,
+    pub stderr: Option<String>,
+}
+
+impl From<XxmiError> for BridgeServiceError {
+    fn from(error: XxmiError) -> Self {
+        Self {
+            code: format!("{:?}", error.code).to_ascii_lowercase(),
+            detail: error.detail,
+            stderr: None,
+        }
+    }
+}
+
+impl From<lxmi_bridge::BridgeError> for BridgeServiceError {
+    fn from(error: lxmi_bridge::BridgeError) -> Self {
+        Self {
+            code: format!("{:?}", error.code).to_ascii_lowercase(),
+            detail: error.detail,
+            stderr: error.stderr,
+        }
+    }
+}
+
+struct ResolvedBridgeRuntime {
+    option: BridgeRuntimeOption,
+    proton_script: PathBuf,
+    steam_root: PathBuf,
+}
+
+fn resolved_bridge_runtimes(discovery: &SteamDiscoveryResult) -> Vec<ResolvedBridgeRuntime> {
+    let tools = ProtonScanner.scan(&discovery.steam.installations);
+    let mut result = Vec::new();
+    for tool in tools.tools.iter().filter(|tool| {
+        tool.kind == CompatibilityToolKind::Proton && tool.status == CompatibilityToolStatus::Valid
+    }) {
+        let tool_path = match tool.path.canonicalize() {
+            Ok(path) => path,
+            Err(_) => continue,
+        };
+        let proton_path = tool_path.join("proton");
+        let metadata = match fs::symlink_metadata(&proton_path) {
+            Ok(metadata) if metadata.is_file() && !metadata.file_type().is_symlink() => metadata,
+            _ => continue,
+        };
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if metadata.permissions().mode() & 0o111 == 0 {
+                continue;
+            }
+        }
+        #[cfg(not(unix))]
+        let _ = metadata;
+        let proton_script = match proton_path.canonicalize() {
+            Ok(path) if path.starts_with(&tool_path) => path,
+            _ => continue,
+        };
+
+        let mut roots = Vec::new();
+        for installation in &discovery.steam.installations {
+            let belongs_to_installation = installation
+                .libraries
+                .iter()
+                .any(|library| tool_path.starts_with(library.path.join("steamapps/common")))
+                || tool_path.starts_with(installation.root_path.join("compatibilitytools.d"));
+            if belongs_to_installation {
+                if let Ok(root) = installation.root_path.canonicalize() {
+                    if !roots.contains(&root) {
+                        roots.push(root);
+                    }
+                }
+            }
+        }
+        if roots.len() != 1 {
+            continue;
+        }
+        result.push(ResolvedBridgeRuntime {
+            option: BridgeRuntimeOption {
+                display_name: tool.display_name.clone(),
+                version: tool.version.clone(),
+                source: format!("{:?}", tool.source),
+                proton_script: proton_script.display().to_string(),
+            },
+            proton_script,
+            steam_root: roots.remove(0),
+        });
+    }
+    result.sort_by(|left, right| {
+        left.option
+            .display_name
+            .cmp(&right.option.display_name)
+            .then_with(|| left.option.proton_script.cmp(&right.option.proton_script))
+    });
+    result
+}
+
+pub fn inspect_runtime_bridge(
+    zzmi_id: Option<&str>,
+    libraries_id: Option<&str>,
+) -> std::result::Result<RuntimeBridgePanel, BridgeServiceError> {
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
+    let managed_runtime = match (zzmi_id, libraries_id) {
+        (Some(zzmi_id), Some(libraries_id)) if !zzmi_id.is_empty() && !libraries_id.is_empty() => {
+            let platform =
+                platform_plan(&discovery, "zenless-zone-zero").map_err(BridgeServiceError::from)?;
+            existing_zzmi_runtime(
+                &store,
+                &platform,
+                zzmi_id,
+                libraries_id,
+                &protected_paths(&discovery),
+            )
+            .map_err(BridgeServiceError::from)?
+        }
+        _ => None,
+    };
+    let options = lxmi_bridge::inspect_bridge_options(
+        store.root(),
+        managed_runtime
+            .as_ref()
+            .map(|runtime| runtime.app_root.as_path()),
+    );
+    Ok(RuntimeBridgePanel {
+        options,
+        runtimes: resolved_bridge_runtimes(&discovery)
+            .into_iter()
+            .map(|runtime| runtime.option)
+            .collect(),
+        game_runtime_selection: "unknown",
+    })
+}
+
+pub fn run_runtime_bridge_test(
+    zzmi_id: &str,
+    libraries_id: &str,
+    proton_script: &str,
+) -> std::result::Result<lxmi_bridge::BridgeTestResult, BridgeServiceError> {
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
+    let selected_path =
+        Path::new(proton_script)
+            .canonicalize()
+            .map_err(|error| BridgeServiceError {
+                code: "runtime_not_found".into(),
+                detail: format!("El runtime elegido dejó de estar disponible: {error}"),
+                stderr: None,
+            })?;
+    let selected_runtime = resolved_bridge_runtimes(&discovery)
+        .into_iter()
+        .find(|candidate| candidate.proton_script == selected_path)
+        .ok_or_else(|| BridgeServiceError {
+            code: "runtime_not_allowed".into(),
+            detail: "El runtime no es un candidato Proton válido del discovery actual.".into(),
+            stderr: None,
+        })?;
+    let platform =
+        platform_plan(&discovery, "zenless-zone-zero").map_err(BridgeServiceError::from)?;
+    let runtime = existing_zzmi_runtime(
+        &store,
+        &platform,
+        zzmi_id,
+        libraries_id,
+        &protected_paths(&discovery),
+    )
+    .map_err(BridgeServiceError::from)?
+    .ok_or_else(|| BridgeServiceError {
+        code: "managed_runtime_missing".into(),
+        detail: "Ensambla primero un runtime ZZMI administrado y verificado.".into(),
+        stderr: None,
+    })?;
+    let options = lxmi_bridge::inspect_bridge_options(store.root(), Some(&runtime.app_root));
+    match options.helper {
+        lxmi_bridge::HelperState::Available {
+            integrity_matches: true,
+            ..
+        } => {}
+        lxmi_bridge::HelperState::Available { .. } => {
+            return Err(BridgeServiceError {
+                code: "helper_hash_mismatch".into(),
+                detail: "La integridad del helper no coincide con su manifest LXMI.".into(),
+                stderr: None,
+            });
+        }
+        lxmi_bridge::HelperState::Missing => {
+            return Err(BridgeServiceError {
+                code: "helper_missing".into(),
+                detail: "Construye y coloca el helper Windows LXMI en el almacenamiento administrado antes de iniciar la prueba.".into(),
+                stderr: None,
+            });
+        }
+        lxmi_bridge::HelperState::Invalid { detail } => {
+            return Err(BridgeServiceError {
+                code: "helper_invalid".into(),
+                detail,
+                stderr: None,
+            });
+        }
+    }
+    lxmi_bridge::run_bridge_test(&lxmi_bridge::BridgeTestConfig {
+        managed_root: store.root().to_owned(),
+        runtime_root: runtime.app_root,
+        explicit_runtime: lxmi_bridge::ExplicitBridgeRuntime {
+            display_name: selected_runtime.option.display_name,
+            version: selected_runtime.option.version,
+            proton_script: selected_runtime.proton_script,
+        },
+        steam_client_install_path: selected_runtime.steam_root,
+        prefix_mode: lxmi_bridge::PrefixMode::IsolatedTemporaryPrefix,
+    })
+    .map_err(BridgeServiceError::from)
+}
 
 #[derive(Serialize)]
 pub struct IntegrationStatus {

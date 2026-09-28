@@ -1,0 +1,13 @@
+[package]
+name = "lxmi-bridge-helper"
+version = "0.6.0"
+edition = "2021"
+
+[[bin]]
+name = "lxmi-bridge-helper"
+path = "src/main.rs"
+
+[dependencies]
+lxmi-bridge-protocol = { path = "../../crates/lxmi-bridge-protocol" }
+serde_json = "1"
+sha2 = "0.10"

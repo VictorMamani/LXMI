@@ -44,19 +44,31 @@
 - [x] Validación host-only opt-in con paquetes oficiales ZZMI v1.5.0 y XXMI Libraries v1.1.7: runtime privado de 49 archivos ensamblado; mapping del importer por `Z:`; selección Proton desconocida; snapshots de rutas candidatas del juego y `dosdevices` idénticos antes/después.
 - [x] Fijar upstream XXMI Launcher v2.2.1 por tag/commit y registrar límites de `3dmloader.dll`/`3dmloader.exe`, launcher portable y licencias por componente. La evidencia no basta para elegir helper ni afirmar compatibilidad ZZZ + Steam + Linux/Proton.
 
-## Siguiente incremento: LXMI-0.6 — Proton Launch Topology Experiment (sin inyección)
+## LXMI-0.6 — Controlled Windows Runtime Bridge Prototype
 
-- [ ] Resolver con evidencia el proceso Windows responsable de iniciar/cargar el importer; comparar launcher portable, componentes upstream y helper propio sin ejecutar el juego.
-- [ ] Comprobar en un entorno permitido qué proceso/prefix debe compartir el helper y ZZZ. Mantenerlo `Unknown` hasta obtener evidencia.
-- [ ] Probar, sin modificar el prefix, la visibilidad de `App.Root` por el mapping observado y las rutas Windows derivadas; separar resolución de ruta de capacidad de carga.
-- [ ] Identificar licencias y requisitos redistribuibles de cada helper/DLL; no empaquetar componentes cuyo permiso de uso/distribución no esté aclarado.
-- [ ] Definir un protocolo/control boundary compatible con una futura comunicación LXMI Linux ↔ runtime Windows solo después de elegir una estrategia viable.
-- [ ] Establecer si existe una prueba permitida para ZZZ Steam + Linux/Proton + ZZMI sin bypass, evasión o modificación de anti-cheat; detener la ruta si el entorno no es apropiado.
-- [ ] Mantener sin implementar ejecución, inyección, modificación del juego/prefix/Steam, gestión real de mods y `apply` hasta cerrar esos puntos en un incremento posterior.
+**CERRADO (2026-09-28).** El helper Windows quedó enlazado con MinGW, staged y validado por hash. Pasaron el host bridge positivo y negativo con Proton Experimental explícitamente seleccionado, prefix aislado, mapping real comprobado por el helper y la interacción manual en la ventana Tauri. No iniciar LXMI 0.7 en este incremento.
+
+- [x] Añadir crates de dominio/protocolo y helper Windows inocuo.
+- [x] Implementar stdin/stdout JSON v1, nonce, validación del runtime marker y límites de entrada/salida/tiempo.
+- [x] Mantener la selección bridge separada de la selección de runtime del juego.
+- [x] Restringir el helper al storage administrado de LXMI y al prefix aislado; rechazar ejecución usando compatdata de ZZZ.
+- [x] Ejecutar quality gates Rust y frontend; iniciar `npm run tauri:dev` y probar en la ventana Tauri nativa.
+- [x] Compilar helper `x86_64-pc-windows-gnu` con linker MinGW explícito. El intento anterior con Zig 0.15.2 falló por `msvcrt`; quedó resuelto, sin alterar linker Linux ni instalar paquetes con sudo.
+- [x] Generar PE32+ de 1,517,755 bytes y SHA-256 `2a1939728e18bd3190b8dbb102d943bd5d65fa509617dbe42d48c45d02463fd2`.
+- [x] Ejecutar `bash tools/install-bridge-helper.sh`; el helper staged y su sidecar/hash coinciden bajo `$XDG_DATA_HOME/lxmi/helpers/`.
+- [x] Elegir Proton Experimental explícitamente como Bridge test runtime y aceptar la advertencia. La selección Proton del juego se mantuvo `unknown`.
+- [x] Host test positivo: protocolo v1, nonce roundtrip, helper exit 0, path `Z:\...` realmente leído y SHA-256 del manifiesto coincidente.
+- [x] Host test negativo: path gestionado inexistente devuelve JSON `runtime_not_visible`, nonce correlacionado y exit 2; sin panic ni timeout.
+- [x] Validar en UI nativa éxito, helper ausente (restaurado después) y runtime ZZMI no disponible al no seleccionar packages.
+- [x] Registrar antes/después: ZZZ executable/targets vigilados y `compatdata/4162040/pfx` no se modificaron; Proton inicializó solo el prefix LXMI aislado y actualizó `dist.lock` de su propia distribución.
+
+## Siguiente incremento condicionado
+
+**LXMI-0.7 — Upstream Loader Compatibility Experiment** queda únicamente como posible trabajo futuro, condicionado a revisión independiente de seguridad y compatibilidad. No se inició: no se estudió ni lanzó un loader, no se inició ZZZ y no se implementó inyección.
 
 ## Estado de Git
 
-- El checkpoint anterior es `9646631`; LXMI-0.5.3 está implementado y validado técnicamente en `main`. El siguiente checkpoint debe conservarse en `origin` sin publicar cambios hasta autorización.
+- El checkpoint de partida de LXMI-0.6 es `844008b` (`feat: add managed ZZMI runtime topology`). Los cambios 0.6 están sin commit; no se han publicado.
 - Root confirmado: `04_Proyectos/19_LXMI`; remote `origin` correcto. No reorganizar el repositorio.
 
 ## Antes de integrar runtimes o contenido de mods

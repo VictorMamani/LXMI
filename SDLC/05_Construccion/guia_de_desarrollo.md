@@ -61,3 +61,11 @@ En el scan local del 2026-09-28 no apareció el manifest de Wuthering Waves; las
 La prueba host-only opt-in validó los packages administrados ZZMI v1.5.0 y XXMI Libraries v1.1.7, ensambló 49 archivos bajo XDG y mapeó el importer por `Z:`. Selección de Proton y requisito de compartir prefix siguen desconocidos. Rutas candidatas del juego y `pfx/dosdevices` quedaron iguales antes/después. No se ejecutaron Steam, Proton, Wine, helper o ZZZ, y no se escribió en el juego ni en prefix.
 
 Había una ventana/proceso `tauri dev` ya activo. No se cerró ni se reemplazó; tampoco se completó interacción manual de sus comandos en esta revisión. La validación funcional manual de los botones de ensamblado/topología sigue **NO COMPROBADA**. Ver `../06_Verificacion/verificacion_0_5_3.md`.
+
+## LXMI-0.6 — validación del bridge
+
+El helper se construyó con target `x86_64-pc-windows-gnu` y linker `x86_64-w64-mingw32-gcc` (GCC 13-win32). El artefacto PE32+ es de 1,517,755 bytes; build y staged tienen SHA-256 `2a1939728e18bd3190b8dbb102d943bd5d65fa509617dbe42d48c45d02463fd2`. No se instaló toolchain con sudo.
+
+El host bridge positivo y negativo se probaron mediante Proton Experimental seleccionado explícitamente y solo con el prefix LXMI aislado. Pasaron nonce/protocolo, path Windows real, lectura y hash de `runtime-manifest.json`, exit 0; el caso no encontrado respondió `runtime_not_visible`, exit 2. La ventana Tauri nativa recorrió scan, helper/runtime ausentes y resultado exitoso. GameRuntimePlan.selection quedó `unknown`.
+
+Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy `-D warnings`, `cargo test --workspace` (166 pasados, 6 ignorados), typecheck, ESLint, Prettier y build. Proton escribió dentro del prefix/contexto de test LXMI y tocó el timestamp de su `dist.lock`; no se alteró ZZZ ni `compatdata/4162040`. Ver `../06_Verificacion/verificacion_0_6.md` para la evidencia y límites completos.
