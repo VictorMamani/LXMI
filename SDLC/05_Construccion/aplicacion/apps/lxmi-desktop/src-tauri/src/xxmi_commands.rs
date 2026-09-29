@@ -77,6 +77,17 @@ pub async fn inspect_zzmi_launch_topology(
 }
 
 #[tauri::command]
+pub async fn inspect_zzz_launch_readiness(
+    zzmi_id: Option<String>,
+    libraries_id: Option<String>,
+) -> std::result::Result<lxmi_xxmi::ZzmiLaunchReadiness, BridgeServiceError> {
+    blocking_bridge(move || {
+        xxmi_service::inspect_zzz_launch_readiness(zzmi_id.as_deref(), libraries_id.as_deref())
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn inspect_runtime_bridge(
     zzmi_id: Option<String>,
     libraries_id: Option<String>,

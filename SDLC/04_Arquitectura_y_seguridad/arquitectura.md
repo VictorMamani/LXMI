@@ -192,4 +192,6 @@ flowchart LR
     Game[Steam/ZZZ/prefix de juego] -. inaccesibles en este flujo .-> Executor
 ```
 
-El test comprobó el modo Direct Inject solo en laboratorio. El modo Hook default observado en ZZMI instala un hook global y se excluyó. La selección de mecanismo productivo ZZMI sigue desconocida; ver ADR-027 y `../01_Descubrimiento/loader_xxmi.md`.
+El test 0.7 comprobó Direct Inject solo en laboratorio. La investigación 0.8 fijó el Hook default de ZZMI: upstream lo instala antes de iniciar el target mediante `HookLibrary`; el nombre del target se pasa a la verificación `WaitForInjection`, no al export que prepara el Hook. Como upstream lo documenta como global y el aislamiento a un solo proceso no se demuestra, el backend rechaza este modo antes de Proton. La selección de mecanismo productivo ZZMI sigue `NoDecision`; ver ADR-027, `../01_Descubrimiento/loader_xxmi.md` y `../01_Descubrimiento/launch_zzmi_steam_linux.md`.
+
+`ZzmiLaunchReadiness` combina discovery local, autenticidad/paquetes administrados, runtime ensamblado, compatdata/prefix, capacidades por plataforma, candidates Proton y evidencia del Loader Lab. El Proton elegido explícitamente para el laboratorio no se copia a `RuntimeSelection` del juego. `ReadyForControlledExperiment` solo abre una revisión declarativa, requiere consentimiento futuro y no contiene executor; en el estado 0.8 observado el gate es `Blocked` por Hook y conserva unknowns de Steam/Linux/Proton, same-prefix y compatibilidad específica. No se inicia ZZZ.

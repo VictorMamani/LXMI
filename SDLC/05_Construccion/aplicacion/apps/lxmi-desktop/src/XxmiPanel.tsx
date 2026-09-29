@@ -252,7 +252,12 @@ type BridgeTestResult = {
   warnings: string[];
 };
 type LoaderLabMode =
-  "baseline" | "positive" | "missing_target" | "missing_dll" | "wrong_nonce";
+  | "baseline"
+  | "positive"
+  | "hook"
+  | "missing_target"
+  | "missing_dll"
+  | "wrong_nonce";
 type LoaderLabPanel = {
   status: {
     test_root: string;
@@ -324,6 +329,47 @@ type LoaderExperimentResult = {
   capabilities: { name: string; state: string; evidence: string }[];
   warnings: string[];
 };
+type ZzzLaunchReadiness = {
+  game_id: string;
+  game_name: string;
+  app_id: number;
+  distribution: string;
+  installation: string;
+  game_content_completeness: string;
+  executable: string;
+  compatdata: string;
+  prefix: string;
+  zzmi_package: string;
+  zzmi_authenticity: string;
+  xxmi_libraries_package: string;
+  xxmi_libraries_authenticity: string;
+  managed_runtime: string;
+  game_runtime_selection: string;
+  selected_game_runtime: string | null;
+  available_proton_tools: string[];
+  explicit_lab_runtime: string | null;
+  game_install_path: string | null;
+  game_executable_path: string | null;
+  compatdata_path: string | null;
+  prefix_path: string | null;
+  managed_runtime_root: string | null;
+  zzmi_version: string | null;
+  xxmi_libraries_version: string | null;
+  loader_mode: string;
+  capabilities: { capability: string; state: string; evidence: string }[];
+  requirements: { id: string; state: string; evidence: string }[];
+  blockers: string[];
+  unknowns: string[];
+  decision: string;
+  controlled_experiment_gate: {
+    decision: string;
+    eligible_for_review: boolean;
+    explicit_user_consent_required: boolean;
+    consent_received: boolean;
+    launches_game: boolean;
+    rationale: string;
+  };
+};
 type GameId = "wuthering-waves" | "zenless-zone-zero";
 const games: Record<GameId, { name: string; integration: "wwmi" | "zzmi" }> = {
   "wuthering-waves": { name: "Wuthering Waves", integration: "wwmi" },
@@ -387,6 +433,9 @@ export default function XxmiPanel() {
     useState(false);
   const [loaderResult, setLoaderResult] =
     useState<LoaderExperimentResult | null>(null);
+  const [zzzReadiness, setZzzReadiness] = useState<ZzzLaunchReadiness | null>(
+    null,
+  );
 
   function selectDefaultPackages(nextStatus: Status) {
     const preferredZzmi = nextStatus.packages
@@ -688,7 +737,11 @@ export default function XxmiPanel() {
   }
 
   async function runLoaderLab() {
-    if (!loaderRuntimePath || !loaderSideEffectsAcknowledged) return;
+    if (
+      loaderLabMode !== "hook" &&
+      (!loaderRuntimePath || !loaderSideEffectsAcknowledged)
+    )
+      return;
     setBusy(true);
     setError("");
     setNotice("");
@@ -707,6 +760,30 @@ export default function XxmiPanel() {
         result.outcome === "passed"
           ? "Experimento completado contra el único proceso de prueba de LXMI."
           : "El control negativo produjo el rechazo esperado.",
+      );
+    } catch (e: unknown) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function inspectZzzReadiness() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setZzzReadiness(null);
+    try {
+      const result = await invoke<ZzzLaunchReadiness>(
+        "inspect_zzz_launch_readiness",
+        {
+          zzmiId: selected || null,
+          librariesId: libraries || null,
+        },
+      );
+      setZzzReadiness(result);
+      setNotice(
+        "Readiness evaluada desde discovery y paquetes locales. No se inició ZZZ.",
       );
     } catch (e: unknown) {
       setError(errorText(e));
@@ -1461,8 +1538,9 @@ export default function XxmiPanel() {
               DLL inocua de LXMI. El runner crea un único
               lxmi-loader-test-target.exe y pasa al loader solo el PID de ese
               hijo. No acepta rutas ni procesos desde esta pantalla y no
-              interactúa con ZZZ, Steam, HoYoPlay ni anti-cheat. El modo Hook
-              queda fuera porque instala un hook global.
+              interactúa con ZZZ, Steam, HoYoPlay ni anti-cheat. Hook upstream
+              instala un hook global y el backend lo bloquea porque no cumple el
+              límite del proceso único del laboratorio.
             </p>
             <button
               className="secondary-button"
@@ -1564,6 +1642,9 @@ export default function XxmiPanel() {
                       <option value="positive">
                         Direct Inject · DLL test LXMI
                       </option>
+                      <option value="hook">
+                        Hook · bloqueado por alcance global
+                      </option>
                       <option value="missing_target">
                         Negativo · target ausente
                       </option>
@@ -1574,34 +1655,42 @@ export default function XxmiPanel() {
                         Negativo · nonce distinto
                       </option>
                     </select>
+                    {loaderLabMode === "hook" && (
+                      <p className="discovery-note" role="status">
+                        No se iniciará Proton. La DLL podría mapearse en otros
+                        procesos antes de que [Loader]target filtre su
+                        funcionalidad.
+                      </p>
+                    )}
                     <label className="discovery-note">
                       <input
                         type="checkbox"
                         checked={loaderSideEffectsAcknowledged}
-                        disabled={busy}
+                        disabled={busy || loaderLabMode === "hook"}
                         onChange={(event) =>
                           setLoaderSideEffectsAcknowledged(event.target.checked)
                         }
                       />{" "}
-                      Confirmo que Proton puede inicializar/modificar únicamente
-                      el prefix aislado loader-v1 de LXMI, y que el modo Direct
-                      Inject cargará la DLL test solo en el proceso temporal
-                      creado por este runner. No se usa el prefix de ZZZ ni se
-                      examinan otros procesos.
+                      {loaderLabMode === "hook"
+                        ? "El consentimiento no habilita Hook: el backend rechazará el modo por el límite de seguridad."
+                        : "Confirmo que Proton puede inicializar/modificar únicamente el prefix aislado loader-v1 de LXMI, y que Direct Inject cargará la DLL test solo en el proceso temporal creado por este runner. No se usa el prefix de ZZZ ni se examinan otros procesos."}
                     </label>
                     <button
                       className="primary-button"
                       disabled={
                         busy ||
-                        !loaderRuntimePath ||
-                        !loaderSideEffectsAcknowledged ||
+                        (loaderLabMode !== "hook" &&
+                          (!loaderRuntimePath ||
+                            !loaderSideEffectsAcknowledged)) ||
                         !loaderLabPanel.status.ready
                       }
                       onClick={() => void runLoaderLab()}
                     >
                       {busy
                         ? "Ejecutando experimento…"
-                        : "Run Loader Compatibility Test"}
+                        : loaderLabMode === "hook"
+                          ? "Comprobar bloqueo de seguridad"
+                          : "Run Loader Compatibility Test"}
                     </button>
                   </>
                 )}
@@ -1687,6 +1776,149 @@ export default function XxmiPanel() {
                     <pre>{loaderResult.process.stderr}</pre>
                   )}
                 </details>
+              </div>
+            )}
+          </details>
+          <details className="runtime-evidence bridge-test-panel">
+            <summary>Zenless Zone Zero · Launch Readiness</summary>
+            <p>
+              Assessment declarativo. El Proton elegido en Loader Lab no se
+              considera el runtime seleccionado para ZZZ. Esta vista no inicia
+              el juego ni modifica Steam, compatdata o prefix.
+            </p>
+            <button
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => void inspectZzzReadiness()}
+            >
+              {busy ? "Evaluando…" : "Evaluar readiness de ZZZ"}
+            </button>
+            {zzzReadiness && (
+              <div className="runtime-evidence" role="status">
+                <h3>{zzzReadiness.game_name}</h3>
+                <p>
+                  Decisión: <strong>{zzzReadiness.decision}</strong> · AppID{" "}
+                  <code>{zzzReadiness.app_id}</code> · distribución{" "}
+                  {zzzReadiness.distribution}
+                </p>
+                <p>
+                  Instalación {zzzReadiness.installation} · contenido{" "}
+                  {zzzReadiness.game_content_completeness} · ejecutable{" "}
+                  {zzzReadiness.executable}
+                </p>
+                <p>
+                  Compatdata {zzzReadiness.compatdata} · prefix{" "}
+                  {zzzReadiness.prefix}
+                  <br />
+                  Runtime administrado {zzzReadiness.managed_runtime}
+                  {zzzReadiness.zzmi_version &&
+                    ` · ZZMI ${zzzReadiness.zzmi_version}`}
+                  {zzzReadiness.xxmi_libraries_version &&
+                    ` · XXMI Libraries ${zzzReadiness.xxmi_libraries_version}`}
+                </p>
+                <p>
+                  Proton seleccionado para el juego:{" "}
+                  {zzzReadiness.selected_game_runtime ?? "Unknown"}
+                  <br />
+                  Proton explícito de laboratorio:{" "}
+                  {zzzReadiness.explicit_lab_runtime ?? "no registrado"}
+                </p>
+                <p>
+                  Herramientas Proton disponibles:{" "}
+                  {zzzReadiness.available_proton_tools.length
+                    ? zzzReadiness.available_proton_tools.join(", ")
+                    : "ninguna detectada"}
+                </p>
+                <ul>
+                  {zzzReadiness.capabilities.map((item) => (
+                    <li key={item.capability}>
+                      <strong>
+                        {item.capability.replace(/_/g, " ")}: {item.state}
+                      </strong>{" "}
+                      — {item.evidence}
+                    </li>
+                  ))}
+                </ul>
+                {zzzReadiness.blockers.length > 0 && (
+                  <details>
+                    <summary>Blockers</summary>
+                    <ul>
+                      {zzzReadiness.blockers.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+                {zzzReadiness.unknowns.length > 0 && (
+                  <details>
+                    <summary>Evidencia pendiente</summary>
+                    <ul>
+                      {zzzReadiness.unknowns.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+                <details>
+                  <summary>Requisitos y rutas técnicas</summary>
+                  <ul>
+                    {zzzReadiness.requirements.map((item) => (
+                      <li key={item.id}>
+                        <strong>
+                          {item.id}: {item.state}
+                        </strong>{" "}
+                        — {item.evidence}
+                      </li>
+                    ))}
+                  </ul>
+                  <p>
+                    Juego:{" "}
+                    <code className="path-value">
+                      {zzzReadiness.game_install_path ?? "no detectado"}
+                    </code>
+                    <br />
+                    Ejecutable:{" "}
+                    <code className="path-value">
+                      {zzzReadiness.game_executable_path ?? "no detectado"}
+                    </code>
+                    <br />
+                    Compatdata:{" "}
+                    <code className="path-value">
+                      {zzzReadiness.compatdata_path ?? "no detectado"}
+                    </code>
+                    <br />
+                    Prefix:{" "}
+                    <code className="path-value">
+                      {zzzReadiness.prefix_path ?? "no detectado"}
+                    </code>
+                    <br />
+                    Runtime LXMI:{" "}
+                    <code className="path-value">
+                      {zzzReadiness.managed_runtime_root ?? "no detectado"}
+                    </code>
+                  </p>
+                </details>
+                <p>
+                  Gate: {zzzReadiness.controlled_experiment_gate.decision} ·
+                  elegible para revisión:{" "}
+                  {zzzReadiness.controlled_experiment_gate.eligible_for_review
+                    ? "sí"
+                    : "no"}
+                  · consentimiento explícito requerido:{" "}
+                  {zzzReadiness.controlled_experiment_gate
+                    .explicit_user_consent_required
+                    ? "sí"
+                    : "no"}
+                  · consentimiento recibido:{" "}
+                  {zzzReadiness.controlled_experiment_gate.consent_received
+                    ? "sí"
+                    : "no"}
+                  · lanzó juego:{" "}
+                  {zzzReadiness.controlled_experiment_gate.launches_game
+                    ? "sí"
+                    : "no"}
+                </p>
+                <p>{zzzReadiness.controlled_experiment_gate.rationale}</p>
               </div>
             )}
           </details>

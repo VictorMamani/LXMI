@@ -158,6 +158,7 @@ pub enum BridgeErrorCode {
     LoaderArtifactsMissing,
     LoaderProvenanceInvalid,
     LoaderTestFailed,
+    HookScopeNotIsolated,
     UserAcknowledgementRequired,
     Io,
 }
@@ -214,6 +215,7 @@ impl BridgeErrorCode {
             Self::LoaderArtifactsMissing => "loader_artifacts_missing",
             Self::LoaderProvenanceInvalid => "loader_provenance_invalid",
             Self::LoaderTestFailed => "loader_test_failed",
+            Self::HookScopeNotIsolated => "hook_scope_not_isolated",
             Self::UserAcknowledgementRequired => "user_acknowledgement_required",
             Self::Io => "io",
         }

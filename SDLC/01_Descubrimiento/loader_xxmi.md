@@ -69,3 +69,59 @@ flowchart LR
 - [DllInjector API/orchestration, launcher v2.2.1 fijado](https://github.com/SpectrumQT/XXMI-Launcher/blob/d56786b8dacb00c35204bff45ff5b8b83bd8962a/src/xxmi_launcher/core/utils/dll_injector.py)
 - [XXMI Libraries v1.1.7 fijado](https://github.com/SpectrumQT/XXMI-Libs-Package/tree/6bf6a746a198c82fb34dbd336cac7ad8e0f4ddc9)
 - [Verificación y resultados del host LXMI 0.7](../06_Verificacion/verificacion_0_7.md)
+
+## LXMI 0.8 — Hook mode y límites del laboratorio
+
+**Consulta upstream:** 2026-09-28. Código fijado a XXMI Launcher `v2.2.1`, commit `d56786b8dacb00c35204bff45ff5b8b83bd8962a`. ZZMI package inspeccionado localmente como release `v1.5.0`, commit `e59f87047cd405c5db5476d3b1b499574bc43d67`. Su `d3dx.ini` declara `target = ZenlessZoneZero.exe`, `loader = XXMI Launcher.exe` y `module = d3d11.dll`.
+
+### Secuencia observada en upstream
+
+`StartAndInject.use_hook` tiene valor predeterminado `true`. Para esa ruta, `MigotoInjector.run()` configura `DllInjector` con `load_hook=true`, carga `3dmloader.dll` y ejecuta `run_hook_injector()`.
+
+1. El proceso controlador de XXMI Launcher carga `3dmloader.dll` y llama `HookLibrary(dll_path, hook_handle, mutex)`. El comentario del código upstream lo describe como instalación de un hook Windows global.
+2. Después, `open_process()` inicia el `start_exe_path` configurado (o espera inicio manual). En Native Steam Launch para ZZZ, la guía configura `steam.exe -applaunch 4162040`; Steam es quien termina iniciando el juego.
+3. El launcher consulta `WaitForInjection(dll_path, target_process, 5)` para detección temprana, espera la ventana por nombre de proceso con el process tracker y vuelve a consultar `WaitForInjection` para verificación tardía.
+4. El cleanup llama `UnhookLibrary` y descarga el DLL del injector.
+
+```mermaid
+sequenceDiagram
+    participant X as XXMI Launcher
+    participant L as 3dmloader.dll
+    participant S as Start process / Steam
+    participant G as Target process
+    X->>L: HookLibrary(dll_path, hook, mutex)
+    Note over X,L: Hook preparado antes de iniciar el proceso
+    X->>S: open_process(start_exe_path, args)
+    S->>G: iniciar el proceso configurado
+    X->>L: WaitForInjection(dll_path, target_process, timeout)
+    X->>G: esperar ventana por nombre de proceso
+    X->>L: WaitForInjection tardío
+    X->>L: UnhookLibrary()
+```
+
+El código Python no entrega el nombre del target a `HookLibrary`; lo entrega a `WaitForInjection` y al process tracker. Así, `[Loader]target` identifica el proceso para el runtime 3Dmigoto, pero la evidencia consultada no demuestra que limite el ámbito de instalación del hook antes de que el módulo procese su configuración. El `3dmloader.dll` local autenticado importa `SetWindowsHookExW` y `UnhookWindowsHookEx`; la inspección no ejecutó ni desensambló ese mecanismo. El alcance de este hook bajo Wine/Proton —incluidos otros procesos/prefixes visibles— queda **UNKNOWN**.
+
+### Semántica de `[Loader]loader`
+
+El comentario en el `d3dx.ini` de ZZMI describe `loader` como el ejecutable al que se permite cargar el DLL de 3Dmigoto desde ubicaciones externas o anidadas. `target` es el proceso de juego al que se destina el módulo. No son sinónimos: `loader = XXMI Launcher.exe` no ordena a LXMI nativo renombrarse y tampoco es el parámetro del export `HookLibrary`. La identidad alternativa `lxmi-hook-runner.exe` no se probó y no se afirma que sea válida.
+
+### Hook Lab de LXMI
+
+El laboratorio 0.8 conserva paths fijos, nonce, runtime explícito y fixture de 0.7, pero rechaza `Hook` en backend con `HookScopeNotIsolated` antes de validar rutas, iniciar Proton o invocar binarios. Upstream prepara el hook global antes de arrancar el target; ni `[Loader]target` ni el resultado de `WaitForInjection` prueban que la carga inicial quede limitada al target. Ejecutar el positivo violaría la política del laboratorio de afectar solamente procesos de test propiedad de LXMI.
+
+- **COMPROBADO EN CÓDIGO:** Hook se prepara antes del inicio del target; se usa `3dmloader.dll`; upstream espera/verifica el target y retira el hook en cleanup.
+- **UPSTREAM VERIFIED:** ZZMI hereda `use_hook=true` en XXMI Launcher v2.2.1; `loader` es la identidad ejecutable permitida por la configuración de 3Dmigoto.
+- **HOST TEST 0.7:** Direct Inject carga el fixture bajo Proton; no es paridad Hook.
+- **BLOCKED / NO COMPROBADO COMO EJECUCIÓN:** positivo Hook, DLL remota vía Hook, mismatches de target/loader y funcionamiento Hook bajo Proton.
+- **UNKNOWN:** filtro interno anterior a mapear el DLL, visibilidad entre procesos Wine/prefixes y requisito same-prefix.
+
+No se implementa un hook propio, no se buscan procesos arbitrarios, no se usa ZZZ/Steam y no se interactúa con anti-cheat.
+
+### Fuentes fijadas
+
+- [`migoto_package.py` en v2.2.1](https://github.com/SpectrumQT/XXMI-Launcher/blob/d56786b8dacb00c35204bff45ff5b8b83bd8962a/src/xxmi_launcher/core/packages/migoto_package.py)
+- [`dll_injector.py` en v2.2.1](https://github.com/SpectrumQT/XXMI-Launcher/blob/d56786b8dacb00c35204bff45ff5b8b83bd8962a/src/xxmi_launcher/core/utils/dll_injector.py)
+- [`zzmi_package.py` en v2.2.1](https://github.com/SpectrumQT/XXMI-Launcher/blob/d56786b8dacb00c35204bff45ff5b8b83bd8962a/src/xxmi_launcher/core/packages/model_importers/zzmi_package.py)
+- [Release XXMI Launcher v2.2.1](https://github.com/SpectrumQT/XXMI-Launcher/releases/tag/v2.2.1)
+- [ZZMI `d3dx.ini` en release v1.5.0 fijada](https://github.com/leotorrez/ZZMI-Package/blob/e59f87047cd405c5db5476d3b1b499574bc43d67/ZZMI/d3dx.ini)
+- [Wiki upstream: Native Steam Launch y Direct Steam Launch](https://github.com/SpectrumQT/XXMI-Launcher/wiki/More-Start-Options)

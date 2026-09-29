@@ -1,15 +1,22 @@
 //! Application orchestration; commands are thin async adapters.
-use lxmi_core::SystemInfo;
+use lxmi_core::{
+    GameDistribution, GameExecutableStatus, GameInstallationStatus, SystemInfo,
+    ZENLESS_ZONE_ZERO_APP_ID,
+};
 use lxmi_proton::{CompatibilityToolKind, CompatibilityToolStatus, ProtonScanner};
-use lxmi_runtime::{GameInstallationAssessment, RuntimePlanner};
+use lxmi_runtime::{
+    CompatDataAssessment, GameInstallationAssessment, GameInstallationCompleteness,
+    PrefixAssessment, RuntimePlanner, RuntimeSelection,
+};
 use lxmi_steam::{SteamDiscoveryResult, SteamDiscoveryScanner};
 use lxmi_xxmi::{
     assemble_zzmi_runtime, existing_zzmi_runtime, inspect_launch_topology, inspect_runtime,
     integration_for_game, plan_installation_for_integration, plan_zzmi_assembly, DownloadCache,
     ErrorCode, GitHubReleaseProvider, InstallationPlan, LaunchTopologyPlan, ManagedRuntime,
     ManagedStore, OfficialPackageKind, PackageAuthenticity, PackageKind, PackageManifest,
-    ReleaseProvider, Result, RuntimeAssemblyPlan, RuntimeDiscovery, SignatureStatus,
-    UpstreamRelease, XxmiError,
+    ReadinessCapabilityState, ReadinessEvidenceState, ReleaseProvider, Result, RuntimeAssemblyPlan,
+    RuntimeDiscovery, SignatureStatus, UpstreamRelease, XxmiError, ZzmiCapability,
+    ZzmiCapabilityAssessment, ZzmiLaunchReadiness, ZzmiLaunchReadinessInput, ZzmiLoaderMode,
 };
 use serde::Serialize;
 use std::{
@@ -342,6 +349,17 @@ pub fn run_loader_lab_experiment(
     mode: lxmi_bridge::LoaderExperimentMode,
     side_effects_acknowledged: bool,
 ) -> std::result::Result<lxmi_bridge::LoaderExperimentResult, BridgeServiceError> {
+    // Hook mode is intentionally unavailable until its global scope can be
+    // proven to stay within the LXMI-owned target. Reject before discovery,
+    // managed-storage inspection, Proton resolution, or process work.
+    if mode == lxmi_bridge::LoaderExperimentMode::Hook {
+        return Err(BridgeServiceError {
+            code: "hook_scope_not_isolated".into(),
+            detail: "Hook de XXMI bloqueado: upstream configura un hook global y LXMI no puede demostrar que quede limitado al proceso de prueba propio. No se inspeccionó Proton ni se inició ningún proceso.".into(),
+            stderr: None,
+        });
+    }
+
     let discovery = SteamDiscoveryScanner::from_environment().scan();
     let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
     let lab_status = inspect_loader_lab_read_only(store.root())?;
@@ -416,6 +434,24 @@ pub fn run_loader_lab_experiment(
         verified_loader_sha256: loader_sha256,
     })
     .map_err(BridgeServiceError::from)
+}
+
+#[cfg(test)]
+mod hook_guard_tests {
+    use super::*;
+
+    #[test]
+    fn hook_is_rejected_before_proton_or_lab_resolution() {
+        let error = run_loader_lab_experiment(
+            "/lxmi-test/nonexistent-proton",
+            lxmi_bridge::LoaderExperimentMode::Hook,
+            false,
+        )
+        .expect_err("Hook must be blocked before resolving the supplied runtime");
+
+        assert_eq!(error.code, "hook_scope_not_isolated");
+        assert!(error.detail.contains("No se inspeccionó Proton"));
+    }
 }
 
 #[derive(Clone)]
@@ -680,6 +716,397 @@ pub fn inspect_zzmi_launch_topology(
     )?;
     Ok(inspect_launch_topology(&platform, runtime.as_ref()))
 }
+
+struct ReadinessPackageEvidence {
+    package_state: ReadinessEvidenceState,
+    authenticity: ReadinessEvidenceState,
+    version: Option<String>,
+    verified: Option<lxmi_xxmi::VerifiedPackage>,
+}
+
+fn inspect_readiness_package(
+    store: &ManagedStore,
+    package_id: Option<&str>,
+    expected_kind: PackageKind,
+) -> ReadinessPackageEvidence {
+    let Some(package_id) = package_id.filter(|value| !value.is_empty()) else {
+        return ReadinessPackageEvidence {
+            package_state: ReadinessEvidenceState::Missing,
+            authenticity: ReadinessEvidenceState::Missing,
+            version: None,
+            verified: None,
+        };
+    };
+    match store.verify(package_id) {
+        Ok(package) if package.manifest().kind == expected_kind => {
+            let authenticity = match package.manifest().authenticity {
+                PackageAuthenticity::OfficialReleaseVerified => ReadinessEvidenceState::Verified,
+                PackageAuthenticity::NotAuthenticated | PackageAuthenticity::MissingSignature => {
+                    ReadinessEvidenceState::Incomplete
+                }
+                PackageAuthenticity::SignatureInvalid => ReadinessEvidenceState::Invalid,
+            };
+            ReadinessPackageEvidence {
+                package_state: ReadinessEvidenceState::Verified,
+                authenticity,
+                version: package
+                    .manifest()
+                    .version
+                    .as_ref()
+                    .map(|version| version.raw.clone()),
+                verified: Some(package),
+            }
+        }
+        Ok(_) => ReadinessPackageEvidence {
+            package_state: ReadinessEvidenceState::Invalid,
+            authenticity: ReadinessEvidenceState::Invalid,
+            version: None,
+            verified: None,
+        },
+        Err(error) => {
+            let state = match error.code {
+                ErrorCode::NotFound => ReadinessEvidenceState::Missing,
+                ErrorCode::PermissionDenied | ErrorCode::StorageUnavailable | ErrorCode::Io => {
+                    ReadinessEvidenceState::Unreadable
+                }
+                _ => ReadinessEvidenceState::Invalid,
+            };
+            ReadinessPackageEvidence {
+                package_state: state,
+                authenticity: state,
+                version: None,
+                verified: None,
+            }
+        }
+    }
+}
+
+fn evidence_from_compatdata(state: &CompatDataAssessment) -> ReadinessEvidenceState {
+    match state {
+        CompatDataAssessment::Found { .. } => ReadinessEvidenceState::Verified,
+        CompatDataAssessment::NotFound { .. } => ReadinessEvidenceState::Missing,
+        CompatDataAssessment::Invalid { .. } => ReadinessEvidenceState::Invalid,
+        CompatDataAssessment::Unreadable { .. } => ReadinessEvidenceState::Unreadable,
+        CompatDataAssessment::Unknown { .. } | CompatDataAssessment::NotRequired => {
+            ReadinessEvidenceState::Unknown
+        }
+    }
+}
+
+fn compatdata_path(state: &CompatDataAssessment) -> Option<PathBuf> {
+    match state {
+        CompatDataAssessment::NotRequired => None,
+        CompatDataAssessment::Unknown { .. } => None,
+        CompatDataAssessment::NotFound { expected_path } => Some(expected_path.clone()),
+        CompatDataAssessment::Found { path }
+        | CompatDataAssessment::Invalid { path }
+        | CompatDataAssessment::Unreadable { path, .. } => Some(path.clone()),
+    }
+}
+
+fn evidence_from_prefix(state: &PrefixAssessment) -> ReadinessEvidenceState {
+    match state {
+        PrefixAssessment::CandidateFound { .. } => ReadinessEvidenceState::Verified,
+        PrefixAssessment::NotInitialized { .. } => ReadinessEvidenceState::Missing,
+        PrefixAssessment::Invalid { .. } => ReadinessEvidenceState::Invalid,
+        PrefixAssessment::Unreadable { .. } => ReadinessEvidenceState::Unreadable,
+        PrefixAssessment::Unknown { .. } | PrefixAssessment::NotRequired => {
+            ReadinessEvidenceState::Unknown
+        }
+    }
+}
+
+fn prefix_path(state: &PrefixAssessment) -> Option<PathBuf> {
+    match state {
+        PrefixAssessment::NotRequired | PrefixAssessment::Unknown { .. } => None,
+        PrefixAssessment::NotInitialized { expected_path } => Some(expected_path.clone()),
+        PrefixAssessment::CandidateFound { path }
+        | PrefixAssessment::Invalid { path }
+        | PrefixAssessment::Unreadable { path, .. } => Some(path.clone()),
+    }
+}
+
+pub fn inspect_zzz_launch_readiness(
+    zzmi_id: Option<&str>,
+    libraries_id: Option<&str>,
+) -> std::result::Result<ZzmiLaunchReadiness, BridgeServiceError> {
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
+    let tools = ProtonScanner.scan(&discovery.steam.installations);
+    let platform = RuntimePlanner::plan_all(&discovery, &tools)
+        .into_iter()
+        .find(|plan| plan.game.id == "zenless-zone-zero")
+        .ok_or_else(|| BridgeServiceError {
+            code: "game_registry_missing".into(),
+            detail: "Zenless Zone Zero no aparece en el registro de juegos de LXMI.".into(),
+            stderr: None,
+        })?;
+
+    let zzmi = inspect_readiness_package(
+        &store,
+        zzmi_id,
+        PackageKind::GameIntegration(lxmi_xxmi::IntegrationKind::Zzmi),
+    );
+    let libraries = inspect_readiness_package(&store, libraries_id, PackageKind::XxmiLibraries);
+
+    let (
+        installation,
+        game_content_completeness,
+        distribution,
+        app_id,
+        install_path,
+        executable_path,
+    ) = match &platform.installation {
+        GameInstallationAssessment::Detected {
+            steam_app_id,
+            install_path,
+            distribution,
+            executable_path,
+            executable_status,
+            directory_status,
+            completeness,
+            ..
+        } => {
+            let correct_app = *steam_app_id == ZENLESS_ZONE_ZERO_APP_ID;
+            let installation = match (correct_app, directory_status) {
+                (false, _) => ReadinessEvidenceState::Invalid,
+                (true, GameInstallationStatus::Installed) => ReadinessEvidenceState::Verified,
+                (true, GameInstallationStatus::DirectoryMissing) => ReadinessEvidenceState::Missing,
+                (true, GameInstallationStatus::DirectoryInvalid) => ReadinessEvidenceState::Invalid,
+                (true, GameInstallationStatus::PermissionDenied) => {
+                    ReadinessEvidenceState::Unreadable
+                }
+            };
+            let completeness = match completeness {
+                GameInstallationCompleteness::Unknown => ReadinessEvidenceState::Unknown,
+            };
+            let distribution_state = match distribution {
+                GameDistribution::Steam => ReadinessCapabilityState::Verified,
+                GameDistribution::Unknown => ReadinessCapabilityState::Unknown,
+                GameDistribution::HoYoPlay | GameDistribution::Manual => {
+                    ReadinessCapabilityState::Unsupported
+                }
+            };
+            let executable_path = executable_path.clone().filter(|path| {
+                *executable_status == GameExecutableStatus::Found
+                    && path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .is_some_and(|name| platform.game.expected_executable_names.contains(&name))
+            });
+            (
+                installation,
+                completeness,
+                distribution_state,
+                *steam_app_id,
+                Some(install_path.clone()),
+                executable_path,
+            )
+        }
+        GameInstallationAssessment::NotFound { .. } => (
+            ReadinessEvidenceState::Missing,
+            ReadinessEvidenceState::Unknown,
+            ReadinessCapabilityState::Unknown,
+            ZENLESS_ZONE_ZERO_APP_ID,
+            None,
+            None,
+        ),
+        GameInstallationAssessment::Unknown { .. } => (
+            ReadinessEvidenceState::Unknown,
+            ReadinessEvidenceState::Unknown,
+            ReadinessCapabilityState::Unknown,
+            ZENLESS_ZONE_ZERO_APP_ID,
+            None,
+            None,
+        ),
+    };
+
+    let executable_state = match &platform.installation {
+        GameInstallationAssessment::Detected {
+            executable_status, ..
+        } => match executable_status {
+            GameExecutableStatus::Found if executable_path.is_some() => {
+                ReadinessEvidenceState::Verified
+            }
+            GameExecutableStatus::Found | GameExecutableStatus::NotFound => {
+                ReadinessEvidenceState::Missing
+            }
+            GameExecutableStatus::SearchIncomplete | GameExecutableStatus::NotScanned => {
+                ReadinessEvidenceState::Unknown
+            }
+        },
+        GameInstallationAssessment::NotFound { .. } => ReadinessEvidenceState::Missing,
+        GameInstallationAssessment::Unknown { .. } => ReadinessEvidenceState::Unknown,
+    };
+
+    let compatdata_state = evidence_from_compatdata(&platform.compatdata);
+    let prefix_state = evidence_from_prefix(&platform.prefix);
+    let (selected_game_runtime, game_runtime_selection) = match &platform.selection {
+        RuntimeSelection::Selected { candidate } => (
+            Some(format!(
+                "{}{}",
+                candidate.display_name,
+                candidate
+                    .version
+                    .as_ref()
+                    .map(|version| format!(" · {version}"))
+                    .unwrap_or_default()
+            )),
+            ReadinessCapabilityState::Verified,
+        ),
+        RuntimeSelection::Unknown { .. } => (None, ReadinessCapabilityState::Unknown),
+        RuntimeSelection::NotRequired => (None, ReadinessCapabilityState::Unsupported),
+    };
+
+    let mut managed_runtime = ReadinessEvidenceState::Missing;
+    let mut managed_runtime_root = None;
+    if let (Some(zzmi), Some(libraries)) = (&zzmi.verified, &libraries.verified) {
+        if zzmi.manifest().authenticity == PackageAuthenticity::OfficialReleaseVerified
+            && libraries.manifest().authenticity == PackageAuthenticity::OfficialReleaseVerified
+        {
+            match existing_zzmi_runtime(
+                &store,
+                &platform,
+                &zzmi.manifest().id,
+                &libraries.manifest().id,
+                &protected_paths(&discovery),
+            ) {
+                Ok(Some(runtime)) => {
+                    managed_runtime = ReadinessEvidenceState::Verified;
+                    managed_runtime_root = Some(runtime.app_root);
+                }
+                Ok(None) => managed_runtime = ReadinessEvidenceState::Missing,
+                Err(error) if error.code == ErrorCode::PermissionDenied => {
+                    managed_runtime = ReadinessEvidenceState::Unreadable
+                }
+                Err(_) => managed_runtime = ReadinessEvidenceState::Invalid,
+            }
+        } else {
+            managed_runtime = ReadinessEvidenceState::Incomplete;
+        }
+    }
+
+    let capabilities = vec![
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::ExplicitLabProtonRuntime,
+            state: ReadinessCapabilityState::Verified,
+            evidence: "LXMI 0.7 registró un host test con Proton Experimental explícitamente elegido para el laboratorio. Este dato no selecciona Proton para ZZZ.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::DirectInjectInIsolatedLab,
+            state: ReadinessCapabilityState::Verified,
+            evidence: "Host test LXMI 0.7: Direct Inject cargó el DLL de prueba solo en el target LXMI fijo dentro del prefix aislado.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::HookInIsolatedLab,
+            state: ReadinessCapabilityState::Blocked,
+            evidence: "No ejecutado: el upstream instala un hook global y no se puede demostrar el límite de un único target que exige el Loader Lab.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::RemoteDllViaDirectInject,
+            state: ReadinessCapabilityState::Verified,
+            evidence: "El test DLL remoto informó su ruta Windows y marker/nonce válidos en el test target LXMI.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::RemoteDllViaHook,
+            state: ReadinessCapabilityState::Blocked,
+            evidence: "No probado porque el modo Hook no satisface el aislamiento por proceso del experimento.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::ManagedRuntimePathViaProton,
+            state: ReadinessCapabilityState::Verified,
+            evidence: "El bridge 0.6 leyó el manifiesto administrado mediante una ruta Windows en un contexto aislado; no representa el prefix de ZZZ.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::LoaderIdentitySemantics,
+            state: ReadinessCapabilityState::UpstreamDocumented,
+            evidence: "La configuración upstream de ZZMI describe loader= como la identidad ejecutable permitida para carga desde una ubicación externa; no se ha probado una identidad LXMI distinta.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::NativeSteamLaunchUpstream,
+            state: ReadinessCapabilityState::UpstreamDocumented,
+            evidence: "La documentación XXMI fija documenta Native Steam Launch para ZZZ en Windows. No prueba su traducción a Steam Linux/Proton.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::DirectSteamLaunchZzz,
+            state: ReadinessCapabilityState::Unsupported,
+            evidence: "La documentación upstream indica que Direct Steam Launch para ZZZ sigue pendiente.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::ZzzSteamUnderLinuxProton,
+            state: ReadinessCapabilityState::Unverified,
+            evidence: "No se ha ejecutado ZZMI/ZZZ mediante Steam Linux y Proton.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::HookVisibilityInSteamContext,
+            state: ReadinessCapabilityState::Unknown,
+            evidence: "No se sabe si el Hook instalado en un proceso Proton controlado será visible desde el contexto del juego iniciado por Steam.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::SamePrefixRequirement,
+            state: ReadinessCapabilityState::Unknown,
+            evidence: "No hay evidencia suficiente para afirmar si loader y juego deben compartir prefix/contexto.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::GameSpecificLoaderCompatibility,
+            state: ReadinessCapabilityState::NotTested,
+            evidence: "El laboratorio usó únicamente lxmi-loader-test-target.exe; ZZZ no se lanzó ni recibió una DLL.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::AntiCheatBoundary,
+            state: ReadinessCapabilityState::Unknown,
+            evidence: "No se investigó ni interactuó con anti-cheat; el comportamiento del flujo ZZZ permanece fuera de verificación.".into(),
+        },
+    ];
+
+    let compatdata_path = compatdata_path(&platform.compatdata);
+    let prefix = prefix_path(&platform.prefix);
+    Ok(lxmi_xxmi::assess_zzmi_launch_readiness(
+        ZzmiLaunchReadinessInput {
+            game_id: platform.game.id.into(),
+            game_name: platform.game.name.into(),
+            app_id,
+            distribution,
+            installation,
+            game_content_completeness,
+            executable: executable_state,
+            compatdata: compatdata_state,
+            prefix: prefix_state,
+            zzmi_package: zzmi.package_state,
+            zzmi_authenticity: zzmi.authenticity,
+            xxmi_libraries_package: libraries.package_state,
+            xxmi_libraries_authenticity: libraries.authenticity,
+            managed_runtime,
+            game_runtime_selection,
+            selected_game_runtime,
+            available_proton_tools: platform
+                .available_runtime_candidates
+                .iter()
+                .map(|tool| {
+                    format!(
+                        "{}{}",
+                        tool.display_name,
+                        tool.version
+                            .as_ref()
+                            .map(|version| format!(" · {version}"))
+                            .unwrap_or_default()
+                    )
+                })
+                .collect(),
+            explicit_lab_runtime: Some("Proton Experimental · laboratorio LXMI 0.7".into()),
+            game_install_path: install_path,
+            game_executable_path: executable_path,
+            compatdata_path,
+            prefix_path: prefix,
+            managed_runtime_root,
+            zzmi_version: zzmi.version,
+            xxmi_libraries_version: libraries.version,
+            loader_mode: ZzmiLoaderMode::Hook,
+            capabilities,
+        },
+    ))
+}
+
 pub fn import_directory(path: &Path) -> Result<PackageManifest> {
     let discovery = SteamDiscoveryScanner::from_environment().scan();
     Ok(store_for(&discovery)?

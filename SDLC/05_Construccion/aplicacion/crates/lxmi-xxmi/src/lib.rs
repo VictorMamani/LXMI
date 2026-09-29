@@ -5,6 +5,7 @@ mod assembly;
 mod cache;
 mod crypto;
 mod filesystem;
+mod launch_readiness;
 mod mapping;
 mod model;
 mod package;
@@ -23,6 +24,12 @@ pub use crypto::{
     verify_release_signature,
 };
 pub use filesystem::validate_relative_path;
+pub use launch_readiness::{
+    assess_zzmi_launch_readiness, ControlledGameExperimentGate, ReadinessCapabilityState,
+    ReadinessEvidenceState, ZzmiCapability, ZzmiCapabilityAssessment, ZzmiLaunchReadiness,
+    ZzmiLaunchReadinessInput, ZzmiLoaderMode, ZzmiReadinessDecision, ZzmiReadinessRequirement,
+    ZzmiRequirementState,
+};
 pub use model::*;
 pub use package::{inspect_runtime, validate_directory, WWMI_REQUIRED_FILES, ZZMI_REQUIRED_FILES};
 pub use planning::{

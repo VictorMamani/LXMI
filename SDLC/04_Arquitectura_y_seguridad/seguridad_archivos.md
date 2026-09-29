@@ -121,4 +121,12 @@ Amenazas residuales: una release/versión futura de Proton puede cambiar CLI o e
 - Proton puede crear/modificar únicamente el prefix de test `$XDG_DATA_HOME/lxmi/test-prefixes/loader-v1/compatdata` y mantener su propia distribución. La UI requiere aceptación explícita. `compatdata/4162040` no se usa.
 - Salida y logs tienen límites, timeout, marker, identidad, nonce, hash del loader y rutas Windows observadas se validan antes del éxito.
 
+### LXMI 0.8 — Hook global y ZZZ readiness
+
+- El Hook upstream no se ejecuta desde Loader Lab. El backend rechaza el modo `hook` con `HookScopeNotIsolated` antes de acceder a rutas/procesos; un selector React no puede eludir esta validación.
+- La razón es el orden de upstream: `HookLibrary` prepara el hook antes de iniciar el target y no recibe el nombre del target como argumento; ese nombre se usa después en `WaitForInjection` y en el process tracker. El target de `d3dx.ini` no constituye evidencia de aislamiento de la instalación del hook.
+- No se implementa un hook/injector propio, enumeración de procesos, fallback a otro target, ni interacción con ZZZ, Steam, prefix de juego o anti-cheat.
+- El readiness enumera capacidades y evidencias, separa el Proton del laboratorio del Proton del juego y usa un gate declarativo sin executor. Hook bloqueado, Steam/Proton no verificado, mismo prefix desconocido o compatibilidad específica no habilitan el lanzamiento.
+- El binario local `3dmloader.dll` se inspeccionó por sus imports PE para `SetWindowsHookExW` y `UnhookWindowsHookEx`; no se ejecutó, parcheó ni desensambló como parte de 0.8.
+
 El resultado demuestra solo la carga del DLL de test dentro del proceso de laboratorio bajo la combinación probada. No verifica el Hook default de ZZMI, ZZZ Steam, Linux/Proton para el juego ni compatibilidad con anti-cheat. Ver `../06_Verificacion/verificacion_0_7.md`.

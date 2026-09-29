@@ -76,14 +76,28 @@
 - [x] Registrar que no se usó ZZZ, Steam, HoYoPlay, `compatdata/4162040`, prefix del juego ni anti-cheat.
 - [x] Actualizar investigación, ADR, arquitectura, seguridad, README, registro y verificación.
 
-## Siguiente incremento condicionado
+## LXMI-0.8 — Hook Mode Parity & ZZZ Launch Readiness
 
-**LXMI-0.8 — Controlled ZZMI Launch Readiness** no se inicia aquí. Primero requiere estudiar la secuencia exacta upstream de ZZMI y Native Steam Launch, identidad del loader, necesidad de compartir prefix y restricciones de plataforma/licencia. Los resultados de 0.7 no prueban compatibilidad ZZMI/ZZZ/Steam/Linux/Proton; no habilitan lanzamiento ni apply.
+**Resultado: BLOQUEADO para paridad Hook y gate ZZZ (2026-09-28).** La implementación de readiness y el guard de seguridad están presentes. El Hook upstream se prepara antes del target y el export `HookLibrary` no recibe nombre de target; bajo la regla del experimento single-target no se ejecuta. No se realizó positivo/negativo host Hook. La decisión de loader de producción sigue `NoDecision`; `ZzmiLaunchReadiness` conserva selección Proton de ZZZ `Unknown` y nunca ejecuta.
+
+- [x] Fijar la ruta Hook ZZMI upstream a XXMI Launcher v2.2.1 y explicar setup, inicio, verificación temprana/tardía y cleanup.
+- [x] Separar `loader=` (identidad permitida para carga externa del módulo) de `target=` y del nombre de proceso pasado a `WaitForInjection`.
+- [x] Añadir rechazo Hook fail-closed en backend antes de filesystem/process work y testear que no se accede al Proton indicado.
+- [x] Aplicar el mismo guard como primera operación del servicio Tauri; el botón Hook devuelve el rechazo específico sin resolver Proton ni escanear Steam.
+- [x] Crear `ZzmiLaunchReadiness` con capabilities Steam/Native-vs-Direct Launch/Linux Proton/same-prefix separadas, requirements, unknowns y gate sin executor.
+- [x] Exponer Hook bloqueado y readiness en el panel Advanced sin acción de lanzamiento.
+- [ ] Obtener evidencia upstream del filtro interno del Hook antes de mapear/cargar su DLL y determinar si existe modo de test confinado a un único proceso.
+- [ ] Determinar si el Hook puede reproducirse en una sesión/prefix aislado, con aislamiento demostrable y sin cargarlo en procesos ajenos.
+- [x] Comprobar desde Tauri nativo ZZZ Steam `4162040`, executable, compatdata/pfx y Proton candidato; la selección de Proton para el juego permanece `Unknown`.
+- [x] Ejecutar desde la ventana Tauri la evaluación de readiness y el rechazo Hook; gate `blocked`, sin iniciar Proton ni ZZZ.
+- [x] `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy `-D warnings`, `cargo test --workspace` (181 passed, 7 ignored), typecheck, lint, Prettier, Vite build y `git diff --check`.
+
+**No iniciar LXMI 0.9:** el gate no está `ReadyForControlledExperiment`. El siguiente trabajo permitido es investigar/validar el aislamiento Hook; solo podrá reevaluarse 0.9 después de satisfacerlo y resolver los unknowns Steam/Proton y same-prefix. No usar Direct Inject como sustituto implícito del modo default ZZMI.
 
 ## Estado de Git
 
-- LXMI 0.7 se trabajó en branch `main` en el repositorio independiente `04_Proyectos/19_LXMI`, con `origin` esperado `git@github.com:VictorMamani/LXMI.git`.
-- Los cambios de 0.7 permanecen sin commit ni push; verificar `git status` al preparar el checkpoint.
+- LXMI 0.8 se trabaja en branch `main` en el repositorio independiente `04_Proyectos/19_LXMI`, con `origin` `git@github.com:VictorMamani/LXMI.git`.
+- Cambios de 0.8 sin commit ni push; verificar `git status` al preparar checkpoint.
 
 ## Antes de integrar runtimes o contenido de mods
 

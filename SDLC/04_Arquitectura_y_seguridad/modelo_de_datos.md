@@ -22,6 +22,7 @@ En LXMI-0.1 a 0.4, los escaneos y planes se ejecutan bajo demanda y sus resultad
 | `RuntimeManifest` / `ManagedRuntime` | integración/juego, IDs y versiones fuente, target, loader identity, inventario ensamblado, hashes, config derivada, evidencia y estado de compatibilidad | Persisten bajo `XDG_DATA_HOME/lxmi/runtimes/zenless-zone-zero/zzmi/<runtime-id>/`; el manifest se guarda fuera del payload `ZZMI/`; no significa instalado en juego ni lanzable |
 | `DosDevicesReport` / `WindowsPathMapping` | letras drive, symlink y target observados, validez, ruta Linux, resultado y evidencia | Informe efímero de solo lectura; no crea links ni demuestra que Windows runtime pueda abrir/cargar la ruta |
 | `LaunchTopologyPlan` | juego, distribución, executable, compatdata/prefix, runtime administrado, Proton candidates/selección, mappings, estrategia, capabilities, requisitos, unknowns y blockers | Efímero y declarativo. `execution_enabled=false`; selección Proton, helper y mismo-prefix requirement pueden continuar `Unknown` |
+| `ZzmiLaunchReadiness` | instalación/distribución, autenticidad y runtime administrado, selección/candidates Proton, loader mode, capabilities, requisitos, blockers, unknowns y gate | Assessment efímero. Runtime del laboratorio y Proton seleccionado para ZZZ son campos distintos; un gate elegible aún no ejecuta y requiere consentimiento futuro |
 | `IntegrationAssessment` | juego, integración, distribución, soporte de juego, soporte Steam, compatibilidad Linux/Proton, disponibilidad de paquetes, requisitos y evidencia | Efímero. “Planificable” y “compatible/verificado” son estados distintos |
 | `PackageDependency` | paquete requerido, paquete que lo aporta, estado, evidencia | ZZMI requiere XXMI Libraries según metadata/configuración upstream; son paquetes administrados por separado |
 | `InstallationPlan` | operaciones propuestas, fuentes, rutas relativas, hashes, backups requeridos, warnings, requisitos y estado de compatibilidad | Efímero, revisable, sin executor. El mapping de 0.5.2 a la carpeta candidata del juego es histórico; no es target autorizado ni activo |
@@ -31,6 +32,8 @@ En LXMI-0.1 a 0.4, los escaneos y planes se ejecutan bajo demanda y sus resultad
 El plan también diferencia `NotFound`, `Unknown`, `Unreadable` y `Invalid` para las observaciones de compatdata/prefix. `GameInstallationCompleteness::Unknown` evita asumir que manifest y carpeta presente significan una instalación completa. La evidencia enlaza cada estado con la observación que lo produjo.
 
 `RuntimeReadiness` significa únicamente preparación base observada: no confirma que Steam vaya a usar un runtime específico, que el prefix esté sano, que el juego se ejecute correctamente ni que XXMI esté listo. Runtime discovery no implica runtime selection; runtime selection no implica ejecución.
+
+`ZzmiLaunchReadiness` mantiene estados de capacidades como `Verified`, `UpstreamDocumented`, `Unverified`, `NotTested`, `Unsupported`, `Unknown` y `Blocked`; no los reduce a un booleano `compatible`. LXMI 0.8 bloquea Hook en su laboratorio target-only y no habilita lanzamiento de ZZZ.
 
 | Entidad | Campos candidatos | Relaciones / reglas |
 |---|---|---|

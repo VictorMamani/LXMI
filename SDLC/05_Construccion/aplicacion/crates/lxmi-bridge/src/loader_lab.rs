@@ -33,6 +33,9 @@ pub enum LoaderMode {
 pub enum LoaderExperimentMode {
     Baseline,
     Positive,
+    /// Deliberately rejected: upstream Hook is global and cannot honor the
+    /// Loader Lab's single-owned-process boundary.
+    Hook,
     MissingTarget,
     MissingDll,
     WrongNonce,
@@ -43,6 +46,7 @@ impl LoaderExperimentMode {
         match self {
             Self::Baseline => "baseline",
             Self::Positive => "positive",
+            Self::Hook => "hook",
             Self::MissingTarget => "missing-target",
             Self::MissingDll => "missing-dll",
             Self::WrongNonce => "wrong-nonce",
@@ -471,6 +475,12 @@ pub fn run_loader_experiment(
     config: &LoaderExperimentConfig,
 ) -> Result<LoaderExperimentResult, BridgeError> {
     info!(mode = ?config.mode, "Loader experiment started");
+    if config.mode == LoaderExperimentMode::Hook {
+        return Err(BridgeError::new(
+            BridgeErrorCode::HookScopeNotIsolated,
+            "Hook de XXMI bloqueado: 3dmloader instala un Windows hook global y la DLL puede mapearse en otros procesos antes de aplicar [Loader]target. El laboratorio LXMI exige limitar toda carga al proceso de prueba propio.",
+        ));
+    }
     if !config.side_effects_acknowledged {
         return Err(BridgeError::new(
             BridgeErrorCode::UserAcknowledgementRequired,
@@ -846,6 +856,7 @@ fn mode_name(mode: LoaderExperimentMode) -> &'static str {
     match mode {
         LoaderExperimentMode::Baseline => "baseline",
         LoaderExperimentMode::Positive => "direct_inject",
+        LoaderExperimentMode::Hook => "hook_blocked",
         LoaderExperimentMode::MissingTarget => "missing_target",
         LoaderExperimentMode::MissingDll => "missing_dll",
         LoaderExperimentMode::WrongNonce => "wrong_nonce",
@@ -897,7 +908,9 @@ fn expected_failure(
                 && response.target_exit_code == 0
                 && process.exit_code == 12
         }
-        LoaderExperimentMode::Baseline | LoaderExperimentMode::Positive => false,
+        LoaderExperimentMode::Baseline
+        | LoaderExperimentMode::Positive
+        | LoaderExperimentMode::Hook => false,
     }
 }
 
@@ -1299,11 +1312,32 @@ mod tests {
     #[test]
     fn modes_are_closed_and_map_to_fixed_cli_arguments() {
         assert_eq!(LoaderExperimentMode::Positive.argument(), "positive");
+        assert_eq!(LoaderExperimentMode::Hook.argument(), "hook");
         assert_eq!(
             LoaderExperimentMode::MissingTarget.argument(),
             "missing-target"
         );
         assert_eq!(mode_name(LoaderExperimentMode::WrongNonce), "wrong_nonce");
+    }
+
+    #[test]
+    fn upstream_global_hook_is_rejected_before_filesystem_or_process_work() {
+        let error = run_loader_experiment(&LoaderExperimentConfig {
+            managed_root: PathBuf::from("/path/that/must/not/be/read/lxmi"),
+            explicit_runtime: ExplicitBridgeRuntime {
+                display_name: "lab only".into(),
+                version: None,
+                proton_script: PathBuf::from("/path/that/must/not/run/proton"),
+            },
+            steam_client_install_path: PathBuf::from("/path/that/must/not/be/read/steam"),
+            mode: LoaderExperimentMode::Hook,
+            side_effects_acknowledged: false,
+            verified_loader_sha256: String::new(),
+        })
+        .expect_err("global Hook must fail closed before other validation");
+
+        assert_eq!(error.code, BridgeErrorCode::HookScopeNotIsolated);
+        assert!(error.detail.contains("global"));
     }
 
     #[test]

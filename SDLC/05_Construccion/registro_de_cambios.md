@@ -294,3 +294,13 @@ Detalles reproducibles en `../06_Verificacion/verificacion_0_5_3.md`.
 ### Validación final
 
 Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D warnings` y `cargo test --workspace` (174 pasados, 7 ignorados opt-in/host/network). Los tres artefactos Windows de Loader Lab y el helper de 0.6 compilaron; typecheck, ESLint, Prettier, Vite build y `git diff --check` pasaron. El host test Proton pasó en los cinco escenarios. La tabla de comandos, hashes y límites está en `SDLC/06_Verificacion/verificacion_0_7.md`.
+
+## LXMI-0.8 — Hook Mode Parity & ZZZ Launch Readiness (2026-09-28)
+
+- Fijada de nuevo la investigación a XXMI Launcher v2.2.1 (`d56786b8dacb00c35204bff45ff5b8b83bd8962a`) y ZZMI v1.5.0. La ruta default de ZZMI es Hook; upstream lo prepara antes del target, espera/verifica el proceso y después limpia con `UnhookLibrary`.
+- Documentada la semántica de `d3dx.ini`: `target` nombra el proceso destino y `loader` la identidad permitida para cargar el módulo desde una ubicación externa. El nombre de target no se entrega al export upstream `HookLibrary`, por lo que la configuración no prueba aislamiento single-target.
+- Añadido `Hook` al enum cerrado del Loader Lab con rechazo backend `HookScopeNotIsolated` antes de validar paths, Proton o procesos. No se ejecuta el Hook global; existe test del fail-closed sin I/O.
+- Añadido `ZzmiLaunchReadiness` en `lxmi-xxmi` con requisitos, capabilities, blockers/unknowns y gate declarativo. Proton de laboratorio permanece separado de runtime seleccionado para el juego; el gate no ejecuta ZZZ.
+- Añadidas vistas Advanced para explicar el bloqueo Hook y evaluar readiness. Aplicación versionada `0.8.0`.
+- **Resultado:** Hook `BLOCKED` para el laboratorio y ejecución/remote DLL Hook `NO COMPROBADOS`. El readiness no autoriza LXMI 0.9.
+- Actualizada investigación, ADR-027, arquitectura y seguridad; añadido `01_Descubrimiento/launch_zzmi_steam_linux.md` y reporte `06_Verificacion/verificacion_0_8.md`.

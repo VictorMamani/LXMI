@@ -1,6 +1,6 @@
 # LXMI — aplicación
 
-**LXMI 0.7.0 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Discovery, planificación y topología siguen read-only; Loader Lab solo escribe en storage/prefix de test LXMI después de aceptación explícita. No hay launcher de juego ni integración real de loader con ZZZ.
+**LXMI 0.8.0 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Discovery, planificación y topología siguen read-only; Direct Inject sigue limitado al fixture del Loader Lab. El modo Hook upstream se rechaza antes de ejecutar procesos porque no se demuestra su aislamiento a un solo target. No hay launcher de juego ni integración real de loader con ZZZ.
 
 En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para discovery y planificación de solo lectura. El workspace añadió en 0.5 `lxmi-xxmi`. No usa SQLite ni escribe en Steam, juegos, compatibility tools o prefixes; el import explícito sí conserva paquetes bajo el storage privado de LXMI.
 

@@ -18,6 +18,8 @@ LXMI-0.1 a 0.5.1 cuenta con fixtures Rust de KeyValues/ACF, Steam games/compatda
 - [Casos de prueba iniciales](casos_de_prueba_iniciales.md)
 - [Verificación LXMI 0.5.2](verificacion_0_5_2.md)
 - [Verificación LXMI 0.5.3](verificacion_0_5_3.md)
+- [Verificación LXMI 0.7](verificacion_0_7.md)
+- [Verificación LXMI 0.8](verificacion_0_8.md)
 
 ## Salida de fase
 
