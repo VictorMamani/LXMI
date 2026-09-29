@@ -1,6 +1,6 @@
 [package]
 name = "lxmi-desktop"
-version = "0.6.0"
+version = "0.7.0"
 description = "Linux Model Importer & Live Mod Manager"
 authors = ["BYTE-CX"]
 edition = "2021"

@@ -110,3 +110,15 @@ Riesgos residuales: procesos bajo la misma cuenta pueden leer/modificar el stora
 - El test host 0.6 solo ejecutó el helper inocuo con un prefix LXMI aislado y leyó un marker bajo storage administrado. No inició el juego ni prueba carga de DLL, injector o compatibilidad ZZMI. Proton escribió en el prefix de prueba y actualizó el timestamp de `dist.lock` de su propia distribución.
 
 Amenazas residuales: una release/versión futura de Proton puede cambiar CLI o efectos; Proton es un proceso confiable externo y no está sandboxed por esta crate; procesos del mismo usuario pueden alterar storage entre validación y lectura; el sidecar del helper y binario no ofrecen raíz criptográfica remota. Mantener la función avanzada desactivada por falta del helper o si falla cualquier hash/política.
+
+## LXMI-0.7 — límite del Loader Lab
+
+- El backend solo produce un `LoaderExperimentPlan` con target `lxmi-loader-test-target.exe`, DLL `lxmi-loader-test.dll`, marker bajo `tests/loader-v1/results/` y timeout de 30 segundos; estas rutas no se reciben del frontend.
+- El validador rechaza destinos fuera del root administrado LXMI, targets distintos del fixture y modos/candidatos no permitidos. Solo un `ValidatedLoaderExperimentPlan` privado genera el argv fijo `proton runinprefix <runner> <mode-cerrado> <nonce>`.
+- El runner puede crear únicamente el ejecutable fijo de test y llama al export upstream con el PID de su propio `CreateProcessW`. No enumera procesos, no acepta PID externo ni tiene fallback. El test DLL comprueba el proceso anfitrión y el nonce.
+- El `3dmloader.dll` upstream se copia al laboratorio solo tras verificar provenance/firma del package XXMI Libraries y SHA-256. Es uso local de prueba y no se incorpora al repositorio ni se redistribuye.
+- El modo Hook global, el ejecutable upstream `3dmloader.exe`, el launcher, juegos y componentes anti-cheat no se cargan ni inspeccionan. El experimento no interactúa con ZZZ, Steam o HoYoPlay.
+- Proton puede crear/modificar únicamente el prefix de test `$XDG_DATA_HOME/lxmi/test-prefixes/loader-v1/compatdata` y mantener su propia distribución. La UI requiere aceptación explícita. `compatdata/4162040` no se usa.
+- Salida y logs tienen límites, timeout, marker, identidad, nonce, hash del loader y rutas Windows observadas se validan antes del éxito.
+
+El resultado demuestra solo la carga del DLL de test dentro del proceso de laboratorio bajo la combinación probada. No verifica el Hook default de ZZMI, ZZZ Steam, Linux/Proton para el juego ni compatibilidad con anti-cheat. Ver `../06_Verificacion/verificacion_0_7.md`.

@@ -270,3 +270,27 @@ Detalles reproducibles en `../06_Verificacion/verificacion_0_5_3.md`.
 - La inspección nativa del estado helper ausente encontró un párrafo HTML anidado; se corrigió el JSX y se volvió a probar sin warnings React/Vite. Typecheck, ESLint, Prettier y build pasaron tras el arreglo.
 - Proton escribió en el contexto privado `$XDG_DATA_HOME/lxmi/test-prefixes/bridge-v1/` (incluido su CompatData aislado) y tocó el timestamp del `dist.lock` de su propia distribución. No usó `compatdata/4162040`; el executable y targets vigilados de ZZZ permanecieron iguales/ausentes.
 - La tabla y clasificación final, incluyendo todos los quality gates, están en `SDLC/06_Verificacion/verificacion_0_6.md`. LXMI 0.6 queda cerrado; LXMI 0.7 no se inició.
+
+## LXMI-0.7 — Upstream Loader Compatibility Experiment (2026-09-28)
+
+### Implementado
+
+- Investigación fijada a XXMI Launcher v2.2.1 commit `d56786b8dacb00c35204bff45ff5b8b83bd8962a`, release notes v2.1.5 y XXMI Libraries v1.1.7 commit `6bf6a746a198c82fb34dbd336cac7ad8e0f4ddc9`. Se documenta la diferencia: Hook global es el default observado de ZZMI; el test escogió la ruta Direct Inject como experimento aislado. `3dmloader.exe` no se ejecuta.
+- `lxmi-bridge::LoaderExperimentPlan` describe Proton explícito, prefix, target, DLL, loader, marker y timeout. Un `ValidatedLoaderExperimentPlan` privado se construye solo después de la verificación de storage, provenance/hash y rutas fijas; de él se obtiene el argv de `runinprefix`. No se aceptan targets/PIDs/DLL desde UI.
+- Se agregaron runner, proceso target y DLL de prueba propios para Windows x86-64. El runner crea su único target con `CreateProcessW` y pasa únicamente ese PID al export `Inject` upstream. La DLL verifica proceso anfitrión y nonce y crea marker JSON controlado. No se accede a otros procesos.
+- Staging exclusivo bajo `$XDG_DATA_HOME/lxmi/tests/loader-v1/`; el `3dmloader.dll` se valida contra package Libraries v1.1.7 firmado y hash fijado, no se copia al repo ni se redistribuye. Proton opera solo bajo el test prefix `loader-v1` después de confirmación explícita.
+- Advanced UI añade inspección, staging, runtime de prueba explícito, modos cerrados y resultado del plan validado. La versión de desktop pasa a `0.7.0`.
+- ADR-027 registra la decisión limitada al laboratorio; `loader_xxmi.md`, arquitectura, seguridad y `verificacion_0_7.md` contienen fuentes, licencia, hashes, pruebas y unknowns.
+
+### Verificado
+
+- **UPSTREAM VERIFIED:** ruta actual de ZZMI y API de `DllInjector` revisadas con el código fijado. La release v2.1.5 menciona un injector custom en `3dmloader.exe` para Direct Inject; no se extrapola a default ZZMI.
+- **HOST TEST:** MinGW compiló los 3 artefactos propios; el loader upstream compilado/staged se validó por hash.
+- **HOST TEST:** Proton Experimental ejecutó baseline, Direct Inject positivo, target ausente, DLL ausente y nonce incorrecto con resultados/exit codes esperados. El test positivo verificó DLL externa, marker, nonce, identidad y mapping Windows real.
+- **HOST TEST Tauri nativo:** se inspeccionó Loader Lab, seleccionó runtime de test, aceptó el prefix aislado y recorrió baseline, positivo y target ausente desde la ventana nativa.
+- **COMPROBADO:** snapshots/assertions de ZZZ y `compatdata/4162040` no cambiaron. Proton usó el prefix de prueba LXMI y pudo modificar su propia distribución (`dist.lock`).
+- La selección Proton del juego continúa `Unknown`. No hay test de Hook default, ZZZ/ZZMI, Steam/Linux/Proton del juego, `3dmloader.exe` o anti-cheat.
+
+### Validación final
+
+Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D warnings` y `cargo test --workspace` (174 pasados, 7 ignorados opt-in/host/network). Los tres artefactos Windows de Loader Lab y el helper de 0.6 compilaron; typecheck, ESLint, Prettier, Vite build y `git diff --check` pasaron. El host test Proton pasó en los cinco escenarios. La tabla de comandos, hashes y límites está en `SDLC/06_Verificacion/verificacion_0_7.md`.

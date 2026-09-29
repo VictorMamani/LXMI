@@ -1,6 +1,6 @@
 # LXMI — aplicación
 
-**LXMI 0.6.0 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/lxmi-bridge-helper`. Discovery, planificación y topología siguen read-only. La consulta/descarga requiere acción explícita; import y ensamblado solo escriben bajo cache/storage privado XDG de LXMI. El bridge de diagnóstico no se ejecuta automáticamente; usa un helper inocuo y un prefix de prueba LXMI aislado. No hay SQLite, launcher de juego, injector, ni instalación en ZZZ.
+**LXMI 0.7.0 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Discovery, planificación y topología siguen read-only; Loader Lab solo escribe en storage/prefix de test LXMI después de aceptación explícita. No hay launcher de juego ni integración real de loader con ZZZ.
 
 En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para discovery y planificación de solo lectura. El workspace añadió en 0.5 `lxmi-xxmi`. No usa SQLite ni escribe en Steam, juegos, compatibility tools o prefixes; el import explícito sí conserva paquetes bajo el storage privado de LXMI.
 
@@ -27,6 +27,7 @@ No se necesitan credenciales, permisos root, Steam en ejecución, juegos instala
 | crates/lxmi-bridge/ | Validación de helper/runtime, test-prefix aislado, proceso Proton explícito y bounded, handshake y path/hash result |
 | crates/lxmi-bridge-protocol/ | Request/response JSON versionado compartido por LXMI y helper |
 | tools/lxmi-bridge-helper/ | Helper Windows inocuo: inspecciona únicamente un marker JSON dentro del storage administrado de LXMI |
+| tools/lxmi-loader-lab/ | Código MinGW del runner, proceso test y DLL inofensiva; el `3dmloader.dll` upstream no se incluye ni redistribuye |
 
 ## Instalar dependencias y ejecutar
 
@@ -148,3 +149,21 @@ Proton puede crear/actualizar pfx allí y mantener su propia distribución, por 
 El test escribió en el prefix/contexto privado `$XDG_DATA_HOME/lxmi/test-prefixes/bridge-v1/compatdata` y modificó el timestamp de `dist.lock` de Proton Experimental. No alteró `compatdata/4162040`, el ejecutable ZZZ ni los targets de juego vigilados. Ver el detalle completo en `../../06_Verificacion/verificacion_0_6.md`.
 
 Fuentes Valve fijadas y detalles de invocación: ../../01_Descubrimiento/bridge_linux_windows.md. Decisión: ../../04_Arquitectura_y_seguridad/ADR/026_lxmi_windows_bridge_protocol.md. Verificación y limitaciones: ../../06_Verificacion/verificacion_0_6.md.
+
+## LXMI-0.7: Upstream Loader Compatibility Experiment
+
+La sección **Advanced · Loader Lab** materializa un test target y una DLL inocua compilados para Windows x86-64 con MinGW. El backend verifica el package XXMI Libraries autenticado, su `3dmloader.dll`, los hashes staged y un `LoaderExperimentPlan` de rutas fijas bajo `$XDG_DATA_HOME/lxmi/tests/loader-v1/`. El executor solo admite Proton elegido expresamente para test, usa `runinprefix`, argv directo, 30 s de timeout y hasta 1 MiB por stream. La prueba puede escribir únicamente en `$XDG_DATA_HOME/lxmi/test-prefixes/loader-v1/compatdata` tras aceptación explícita.
+
+### Construir los ejecutables de laboratorio
+
+Requiere MinGW-w64 x86-64 (`gcc-mingw-w64-x86-64`, `mingw-w64-x86-64-dev`) ya instalado en Ubuntu. Desde este directorio:
+
+```bash
+bash tools/lxmi-loader-lab/build.sh
+```
+
+El script genera `lxmi-loader-test-runner.exe`, `lxmi-loader-test-target.exe` y `lxmi-loader-test.dll` dentro de `target/x86_64-pc-windows-gnu/release/lxmi-loader-lab/`. En la app se pulsa **Inspeccionar Loader Lab** para verificar provenance y staging. LXMI copia los binarios de test y el `3dmloader.dll` de la release verificada a storage XDG propio; no incluye el binario upstream en Git.
+
+**HOST TEST comprobado:** Proton Experimental explícitamente seleccionado ejecutó baseline sin loader, Direct Inject positivo con marker/nonce y negativos de target ausente, DLL ausente y nonce incorrecto. La ventana Tauri nativa recorrió baseline, positivo y target ausente. Este experimento solo valida el export upstream en el proceso de prueba propio de LXMI; no es el Hook predeterminado de ZZMI y no verifica ZZMI, ZZZ, Steam/Linux/Proton para el juego ni mods. No interactúa con anti-cheat, Steam, juegos ni procesos ajenos al target de prueba.
+
+Fuentes fijadas, licencia, diferencias de modo y capabilities: `../../01_Descubrimiento/loader_xxmi.md`; decisión: `../../04_Arquitectura_y_seguridad/ADR/027_xxmi_loader_strategy_for_lxmi.md`; resultados: `../../06_Verificacion/verificacion_0_7.md`.

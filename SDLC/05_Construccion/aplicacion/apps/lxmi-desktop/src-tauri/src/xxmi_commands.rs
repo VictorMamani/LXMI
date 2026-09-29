@@ -1,4 +1,6 @@
-use crate::xxmi_service::{self, BridgeServiceError, IntegrationStatus, RuntimeBridgePanel};
+use crate::xxmi_service::{
+    self, BridgeServiceError, IntegrationStatus, LoaderLabPanel, RuntimeBridgePanel,
+};
 use lxmi_xxmi::{
     ErrorCode, InstallationPlan, LaunchTopologyPlan, ManagedRuntime, OfficialPackageKind,
     PackageManifest, Result, RuntimeAssemblyPlan, UpstreamRelease, XxmiError,
@@ -93,6 +95,29 @@ pub async fn run_runtime_bridge_test(
 ) -> std::result::Result<lxmi_bridge::BridgeTestResult, BridgeServiceError> {
     blocking_bridge(move || {
         xxmi_service::run_runtime_bridge_test(&zzmi_id, &libraries_id, &proton_script)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn inspect_loader_lab() -> std::result::Result<LoaderLabPanel, BridgeServiceError> {
+    blocking_bridge(xxmi_service::inspect_loader_lab).await
+}
+
+#[tauri::command]
+pub async fn prepare_loader_lab(
+) -> std::result::Result<lxmi_bridge::LoaderLabStatus, BridgeServiceError> {
+    blocking_bridge(xxmi_service::prepare_loader_lab).await
+}
+
+#[tauri::command]
+pub async fn run_loader_lab_experiment(
+    proton_script: String,
+    mode: lxmi_bridge::LoaderExperimentMode,
+    side_effects_acknowledged: bool,
+) -> std::result::Result<lxmi_bridge::LoaderExperimentResult, BridgeServiceError> {
+    blocking_bridge(move || {
+        xxmi_service::run_loader_lab_experiment(&proton_script, mode, side_effects_acknowledged)
     })
     .await
 }

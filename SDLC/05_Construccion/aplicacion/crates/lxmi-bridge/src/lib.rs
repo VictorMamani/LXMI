@@ -3,6 +3,10 @@
 //! This crate never launches a game. Its only accepted executable is an LXMI-managed helper,
 //! and its only accepted prefix is an LXMI-owned isolated test context.
 
+mod loader_lab;
+
+pub use loader_lab::*;
+
 use lxmi_bridge_protocol::{
     BridgeRequest, BridgeResponse, ENVIRONMENT_MARKER, ENVIRONMENT_MARKER_VALUE, HELPER_VERSION,
     MARKER_FILE, PROTOCOL_VERSION, REQUEST_LIMIT_BYTES, RESPONSE_LIMIT_BYTES,
@@ -151,6 +155,10 @@ pub enum BridgeErrorCode {
     PermissionDenied,
     ProcessLaunchFailed,
     OutputLimitExceeded,
+    LoaderArtifactsMissing,
+    LoaderProvenanceInvalid,
+    LoaderTestFailed,
+    UserAcknowledgementRequired,
     Io,
 }
 
@@ -203,6 +211,10 @@ impl BridgeErrorCode {
             Self::PermissionDenied => "permission_denied",
             Self::ProcessLaunchFailed => "process_launch_failed",
             Self::OutputLimitExceeded => "output_limit_exceeded",
+            Self::LoaderArtifactsMissing => "loader_artifacts_missing",
+            Self::LoaderProvenanceInvalid => "loader_provenance_invalid",
+            Self::LoaderTestFailed => "loader_test_failed",
+            Self::UserAcknowledgementRequired => "user_acknowledgement_required",
             Self::Io => "io",
         }
     }

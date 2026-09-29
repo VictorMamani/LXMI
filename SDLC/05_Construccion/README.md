@@ -2,7 +2,7 @@
 
 **Objetivo:** entregar cambios pequeños, entendibles y conectados con criterios acordados.
 
-LXMI-0.1 a 0.6 están implementados en `aplicacion/`. El helper Windows se compiló con MinGW, fue staged y se ejecutó mediante Proton Experimental en el prefix aislado de LXMI; handshake, mapping de path y lectura/hash del marker pasaron, junto con una respuesta negativa estructurada. No se abrió ZZZ ni se usó su compatdata. Proton sí inicializó el prefix de prueba y actualizó su propio `dist.lock`. El prototipo visual continúa aislado en `prototipo_visual/` y no forma parte de la UI funcional.
+LXMI-0.1 a 0.7 están implementados en `aplicacion/`. El bridge 0.6 pasó handshake bajo Proton aislado. En 0.7, el export Direct Inject de `3dmloader.dll` cargó la DLL inocua de LXMI dentro del único test target propio; baseline y casos negativos también respondieron como se esperaba. La ventana Tauri recorrió los casos baseline, positivo y target ausente. No se abrió ZZZ ni se usó su compatdata. El prototipo visual continúa aislado en `prototipo_visual/` y no forma parte de la UI funcional.
 
 ## Documentos sugeridos
 

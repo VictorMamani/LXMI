@@ -62,14 +62,28 @@
 - [x] Validar en UI nativa éxito, helper ausente (restaurado después) y runtime ZZMI no disponible al no seleccionar packages.
 - [x] Registrar antes/después: ZZZ executable/targets vigilados y `compatdata/4162040/pfx` no se modificaron; Proton inicializó solo el prefix LXMI aislado y actualizó `dist.lock` de su propia distribución.
 
+## LXMI-0.7 — Upstream Loader Compatibility Experiment
+
+**CERRADO (2026-09-28).** El experimento usó exclusivamente el test target propiedad de LXMI con un Proton explícito y prefix aislado. El export Direct Inject de `3dmloader.dll` cargó el test DLL remoto y produjo marker/nonce válidos. Se recorrieron baseline, positivo y target ausente en Tauri nativo. No se interactuó con ZZZ ni su compatdata.
+
+- [x] Fijar evidencia de XXMI Launcher v2.2.1 y contrastar las notas v2.1.5 sobre `3dmloader.exe`.
+- [x] Determinar que el modo default observado de ZZMI es Hook mediante `3dmloader.dll`; el test Direct Inject es una ruta alternativa y no equivale al modo default.
+- [x] Verificar release/firma/hash de `3dmloader.dll` local; licencia/capacidad registrada como uso ejecutable local únicamente. No redistribuir.
+- [x] Compilar runner, target y test DLL Windows x86-64 con MinGW; staging únicamente dentro del storage LXMI.
+- [x] Crear `LoaderExperimentPlan` tipado, paths cerrados, nonce y validación de target. No existe API genérica de PID/DLL/ejecutable.
+- [x] Proton host test aislado: baseline, Direct Inject positivo, target ausente, DLL ausente y nonce incorrecto. Marker, PID/identidad y mapping remoto fueron comprobados.
+- [x] Interacción manual desde la ventana Tauri nativa: inspección, selección explícita de Proton, aceptación de la advertencia, baseline, Direct Inject y rechazo target ausente.
+- [x] Registrar que no se usó ZZZ, Steam, HoYoPlay, `compatdata/4162040`, prefix del juego ni anti-cheat.
+- [x] Actualizar investigación, ADR, arquitectura, seguridad, README, registro y verificación.
+
 ## Siguiente incremento condicionado
 
-**LXMI-0.7 — Upstream Loader Compatibility Experiment** queda únicamente como posible trabajo futuro, condicionado a revisión independiente de seguridad y compatibilidad. No se inició: no se estudió ni lanzó un loader, no se inició ZZZ y no se implementó inyección.
+**LXMI-0.8 — Controlled ZZMI Launch Readiness** no se inicia aquí. Primero requiere estudiar la secuencia exacta upstream de ZZMI y Native Steam Launch, identidad del loader, necesidad de compartir prefix y restricciones de plataforma/licencia. Los resultados de 0.7 no prueban compatibilidad ZZMI/ZZZ/Steam/Linux/Proton; no habilitan lanzamiento ni apply.
 
 ## Estado de Git
 
-- El checkpoint de partida de LXMI-0.6 es `844008b` (`feat: add managed ZZMI runtime topology`). Los cambios 0.6 están sin commit; no se han publicado.
-- Root confirmado: `04_Proyectos/19_LXMI`; remote `origin` correcto. No reorganizar el repositorio.
+- LXMI 0.7 se trabajó en branch `main` en el repositorio independiente `04_Proyectos/19_LXMI`, con `origin` esperado `git@github.com:VictorMamani/LXMI.git`.
+- Los cambios de 0.7 permanecen sin commit ni push; verificar `git status` al preparar el checkpoint.
 
 ## Antes de integrar runtimes o contenido de mods
 

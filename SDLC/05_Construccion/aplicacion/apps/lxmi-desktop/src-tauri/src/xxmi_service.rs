@@ -7,8 +7,9 @@ use lxmi_xxmi::{
     assemble_zzmi_runtime, existing_zzmi_runtime, inspect_launch_topology, inspect_runtime,
     integration_for_game, plan_installation_for_integration, plan_zzmi_assembly, DownloadCache,
     ErrorCode, GitHubReleaseProvider, InstallationPlan, LaunchTopologyPlan, ManagedRuntime,
-    ManagedStore, OfficialPackageKind, PackageManifest, ReleaseProvider, Result,
-    RuntimeAssemblyPlan, RuntimeDiscovery, UpstreamRelease, XxmiError,
+    ManagedStore, OfficialPackageKind, PackageAuthenticity, PackageKind, PackageManifest,
+    ReleaseProvider, Result, RuntimeAssemblyPlan, RuntimeDiscovery, SignatureStatus,
+    UpstreamRelease, XxmiError,
 };
 use serde::Serialize;
 use std::{
@@ -29,6 +30,25 @@ pub struct RuntimeBridgePanel {
     pub options: lxmi_bridge::BridgeOptions,
     pub runtimes: Vec<BridgeRuntimeOption>,
     pub game_runtime_selection: &'static str,
+}
+
+#[derive(Serialize)]
+pub struct LoaderLabComponent {
+    pub package_id: String,
+    pub version: Option<String>,
+    pub release_tag: String,
+    pub commit: String,
+    pub loader_sha256: String,
+    pub release_signature: String,
+    pub component_signatures_verified: bool,
+}
+
+#[derive(Serialize)]
+pub struct LoaderLabPanel {
+    pub status: lxmi_bridge::LoaderLabStatus,
+    pub component: Option<LoaderLabComponent>,
+    pub component_issue: Option<String>,
+    pub runtimes: Vec<BridgeRuntimeOption>,
 }
 
 #[derive(Debug, Serialize)]
@@ -248,6 +268,289 @@ pub fn run_runtime_bridge_test(
     .map_err(BridgeServiceError::from)
 }
 
+pub fn inspect_loader_lab() -> std::result::Result<LoaderLabPanel, BridgeServiceError> {
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
+    let component = verified_loader_package(&store, None)?;
+    let (component, component_issue) = match component {
+        Some((_, verified, _, _)) => (
+            Some(LoaderLabComponent {
+                package_id: verified.package_id,
+                version: verified.version,
+                release_tag: verified.tag,
+                commit: verified.commit,
+                loader_sha256: verified.loader_sha256,
+                release_signature: verified.release_signature,
+                component_signatures_verified: verified.component_signatures_verified,
+            }),
+            None,
+        ),
+        None => (None, Some("No hay un paquete oficial autenticado de XXMI Libraries con 3dmloader.dll disponible.".into())),
+    };
+    let status = inspect_loader_lab_read_only(store.root())?;
+    Ok(LoaderLabPanel {
+        status,
+        component,
+        component_issue,
+        runtimes: resolved_bridge_runtimes(&discovery)
+            .into_iter()
+            .map(|runtime| runtime.option)
+            .collect(),
+    })
+}
+
+pub fn prepare_loader_lab() -> std::result::Result<lxmi_bridge::LoaderLabStatus, BridgeServiceError>
+{
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
+    let (package, component, loader_path, loader_sha256) = verified_loader_package(&store, None)?
+        .ok_or_else(|| BridgeServiceError {
+            code: "upstream_loader_unavailable".into(),
+            detail: "Importa primero XXMI Libraries desde la release oficial verificada; LXMI no descarga ni acepta otro origen para este experimento.".into(),
+            stderr: None,
+        })?;
+    let application_root = application_workspace_root().map_err(|error| BridgeServiceError {
+        code: "loader_artifacts_missing".into(),
+        detail: format!("No se pudo resolver la raíz local de construcción: {error}"),
+        stderr: None,
+    })?;
+    let upstream = package
+        .manifest()
+        .upstream
+        .as_ref()
+        .ok_or_else(|| BridgeServiceError {
+            code: "loader_provenance_invalid".into(),
+            detail: "Falta upstream provenance en el paquete XXMI Libraries.".into(),
+            stderr: None,
+        })?;
+    let provenance = component.into_provenance(upstream);
+    lxmi_bridge::stage_loader_lab(
+        store.root(),
+        &lxmi_bridge::LoaderLabSources {
+            application_root,
+            upstream_loader_path: loader_path,
+            expected_upstream_loader_sha256: loader_sha256,
+            provenance,
+            protected_roots: protected_paths(&discovery),
+        },
+    )
+    .map_err(BridgeServiceError::from)
+}
+
+pub fn run_loader_lab_experiment(
+    proton_script: &str,
+    mode: lxmi_bridge::LoaderExperimentMode,
+    side_effects_acknowledged: bool,
+) -> std::result::Result<lxmi_bridge::LoaderExperimentResult, BridgeServiceError> {
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
+    let lab_status = inspect_loader_lab_read_only(store.root())?;
+    let lab_manifest = lab_status.manifest.ok_or_else(|| BridgeServiceError {
+        code: "loader_artifacts_missing".into(),
+        detail: "Prepara Loader Lab antes de ejecutar un experimento.".into(),
+        stderr: None,
+    })?;
+    if !lab_status.ready {
+        return Err(BridgeServiceError {
+            code: "loader_artifacts_invalid".into(),
+            detail: lab_status.missing_or_invalid.join("; "),
+            stderr: None,
+        });
+    }
+    let (package, component, _, loader_sha256) = verified_loader_package(
+        &store,
+        Some(&lab_manifest.upstream.package_id),
+    )?
+    .ok_or_else(|| BridgeServiceError {
+        code: "loader_provenance_invalid".into(),
+        detail:
+            "El paquete XXMI Libraries usado al preparar el laboratorio ya no está autenticado."
+                .into(),
+        stderr: None,
+    })?;
+    let upstream = package
+        .manifest()
+        .upstream
+        .as_ref()
+        .ok_or_else(|| BridgeServiceError {
+            code: "loader_provenance_invalid".into(),
+            detail: "Falta upstream provenance en el paquete XXMI Libraries.".into(),
+            stderr: None,
+        })?;
+    let current_provenance = component.into_provenance(upstream);
+    if current_provenance != lab_manifest.upstream
+        || !loader_sha256.eq_ignore_ascii_case(&lab_manifest.upstream_loader_sha256)
+    {
+        return Err(BridgeServiceError {
+            code: "loader_provenance_invalid".into(),
+            detail: "El origen o el hash de 3dmloader.dll no coincide con el paquete autenticado usado en el staging.".into(),
+            stderr: None,
+        });
+    }
+    let selected_path =
+        Path::new(proton_script)
+            .canonicalize()
+            .map_err(|error| BridgeServiceError {
+                code: "runtime_not_found".into(),
+                detail: format!("El Proton de prueba seleccionado no está disponible: {error}"),
+                stderr: None,
+            })?;
+    let selected_runtime = resolved_bridge_runtimes(&discovery)
+        .into_iter()
+        .find(|candidate| candidate.proton_script == selected_path)
+        .ok_or_else(|| BridgeServiceError {
+            code: "runtime_not_allowed".into(),
+            detail: "El Proton debe ser un candidato válido del discovery actual; no se aceptan ejecutables arbitrarios.".into(),
+            stderr: None,
+        })?;
+    lxmi_bridge::run_loader_experiment(&lxmi_bridge::LoaderExperimentConfig {
+        managed_root: store.root().to_owned(),
+        explicit_runtime: lxmi_bridge::ExplicitBridgeRuntime {
+            display_name: selected_runtime.option.display_name,
+            version: selected_runtime.option.version,
+            proton_script: selected_runtime.proton_script,
+        },
+        steam_client_install_path: selected_runtime.steam_root,
+        mode,
+        side_effects_acknowledged,
+        verified_loader_sha256: loader_sha256,
+    })
+    .map_err(BridgeServiceError::from)
+}
+
+#[derive(Clone)]
+struct VerifiedLoaderComponent {
+    package_id: String,
+    version: Option<String>,
+    tag: String,
+    commit: String,
+    loader_sha256: String,
+    release_signature: String,
+    component_signatures_verified: bool,
+}
+
+impl VerifiedLoaderComponent {
+    fn into_provenance(
+        self,
+        provenance: &lxmi_xxmi::UpstreamProvenance,
+    ) -> lxmi_bridge::LoaderLabProvenance {
+        lxmi_bridge::LoaderLabProvenance {
+            package_id: self.package_id,
+            repository: provenance.repository.clone(),
+            release_id: provenance.release_id,
+            tag: self.tag,
+            commit: self.commit,
+            signature_verified: self.release_signature == "verified",
+            component_signatures_verified: self.component_signatures_verified,
+        }
+    }
+}
+
+fn verified_loader_package(
+    store: &ManagedStore,
+    required_id: Option<&str>,
+) -> std::result::Result<
+    Option<(
+        lxmi_xxmi::VerifiedPackage,
+        VerifiedLoaderComponent,
+        PathBuf,
+        String,
+    )>,
+    BridgeServiceError,
+> {
+    let manifests = store.list().map_err(BridgeServiceError::from)?;
+    let selected = manifests
+        .into_iter()
+        .filter(|manifest| required_id.is_none_or(|id| manifest.id == id))
+        .filter(|manifest| {
+            manifest.kind == PackageKind::XxmiLibraries
+                && manifest.authenticity == PackageAuthenticity::OfficialReleaseVerified
+        })
+        .filter_map(|manifest| {
+            let upstream = manifest.upstream.as_ref()?;
+            (upstream.repository == "SpectrumQT/XXMI-Libs-Package"
+                && upstream.signature_status == SignatureStatus::Verified
+                && upstream.component_signatures_verified
+                && manifest.files.iter().any(|file| {
+                    file.relative_path == "3dmloader.dll" && valid_sha256_text(&file.sha256)
+                }))
+            .then_some((manifest.imported_unix_seconds, manifest.id))
+        })
+        .max_by(|left, right| left.cmp(right));
+    let Some((_, id)) = selected else {
+        return Ok(None);
+    };
+    let package = store.verify(&id).map_err(BridgeServiceError::from)?;
+    let manifest = package.manifest();
+    let upstream = manifest
+        .upstream
+        .as_ref()
+        .ok_or_else(|| BridgeServiceError {
+            code: "loader_provenance_invalid".into(),
+            detail: "Falta upstream provenance en el paquete XXMI Libraries.".into(),
+            stderr: None,
+        })?;
+    let file = manifest
+        .files
+        .iter()
+        .find(|file| file.relative_path == "3dmloader.dll")
+        .ok_or_else(|| BridgeServiceError {
+            code: "loader_component_missing".into(),
+            detail: "El inventario autenticado no contiene 3dmloader.dll.".into(),
+            stderr: None,
+        })?;
+    let path = package.payload_path().join("3dmloader.dll");
+    let component = VerifiedLoaderComponent {
+        package_id: manifest.id.clone(),
+        version: manifest.version.as_ref().map(|version| version.raw.clone()),
+        tag: upstream.tag.clone(),
+        commit: upstream.commit.clone(),
+        loader_sha256: file.sha256.clone(),
+        release_signature: format!("{:?}", upstream.signature_status).to_ascii_lowercase(),
+        component_signatures_verified: upstream.component_signatures_verified,
+    };
+    let loader_sha256 = file.sha256.clone();
+    Ok(Some((package, component, path, loader_sha256)))
+}
+
+fn valid_sha256_text(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn inspect_loader_lab_read_only(
+    root: &Path,
+) -> std::result::Result<lxmi_bridge::LoaderLabStatus, BridgeServiceError> {
+    match fs::symlink_metadata(root) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
+            lxmi_bridge::inspect_loader_lab(root).map_err(BridgeServiceError::from)
+        }
+        Ok(_) => Err(BridgeServiceError {
+            code: "unsafe_path".into(),
+            detail: "El storage LXMI debe ser un directorio real, no un symlink.".into(),
+            stderr: None,
+        }),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            Ok(lxmi_bridge::LoaderLabStatus {
+                test_root: lxmi_bridge::loader_lab_root(root),
+                ready: false,
+                manifest: None,
+                missing_or_invalid: vec!["No existe un staging preparado.".into()],
+            })
+        }
+        Err(error) => Err(BridgeServiceError {
+            code: "io".into(),
+            detail: error.to_string(),
+            stderr: None,
+        }),
+    }
+}
+
+fn application_workspace_root() -> std::io::Result<PathBuf> {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .canonicalize()
+}
+
 #[derive(Serialize)]
 pub struct IntegrationStatus {
     pub storage_root: String,
@@ -439,4 +742,134 @@ pub fn plan(
         package_id,
         libraries_id,
     )
+}
+
+#[cfg(test)]
+mod loader_lab_host_tests {
+    use super::*;
+    use std::time::SystemTime;
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct PathSnapshot {
+        path: PathBuf,
+        exists: bool,
+        is_file: bool,
+        is_directory: bool,
+        length: u64,
+        modified: Option<SystemTime>,
+    }
+
+    fn snapshot_zzz_paths() -> Vec<PathSnapshot> {
+        let discovery = SteamDiscoveryScanner::from_environment().scan();
+        let mut paths = Vec::new();
+        for game in &discovery.games.games {
+            if game.installation.game.id != "zenless-zone-zero" {
+                continue;
+            }
+            if let Some(executable) = &game.installation.executable_path {
+                paths.push(executable.clone());
+            }
+            paths.push(game.compatdata.compatdata_path.clone());
+            paths.push(game.compatdata.compatdata_path.join("pfx"));
+        }
+        paths.sort();
+        paths.dedup();
+        paths
+            .into_iter()
+            .map(|path| {
+                let metadata = fs::symlink_metadata(&path).ok();
+                PathSnapshot {
+                    path,
+                    exists: metadata.is_some(),
+                    is_file: metadata.as_ref().is_some_and(|value| value.is_file()),
+                    is_directory: metadata.as_ref().is_some_and(|value| value.is_dir()),
+                    length: metadata.as_ref().map_or(0, fs::Metadata::len),
+                    modified: metadata.and_then(|value| value.modified().ok()),
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    #[ignore = "host test: launches the selected Proton and writes only LXMI loader-v1 test storage/prefix"]
+    fn upstream_direct_inject_loader_works_only_against_lxmi_test_target() {
+        let before = snapshot_zzz_paths();
+        let prepared =
+            prepare_loader_lab().expect("official package and compiled LXMI tools should stage");
+        assert!(
+            prepared.ready,
+            "staging should validate: {:?}",
+            prepared.missing_or_invalid
+        );
+        let panel = inspect_loader_lab().expect("Loader Lab inspection should succeed");
+        let runtime = panel
+            .runtimes
+            .iter()
+            .find(|candidate| {
+                candidate
+                    .display_name
+                    .to_ascii_lowercase()
+                    .contains("experimental")
+            })
+            .or_else(|| panel.runtimes.first())
+            .expect("an explicitly selected installed Proton candidate is required");
+        eprintln!(
+            "Explicit bridge-test runtime: {} {} ({})",
+            runtime.display_name,
+            runtime.version.as_deref().unwrap_or("unknown version"),
+            runtime.proton_script
+        );
+
+        for (mode, expected) in [
+            (
+                lxmi_bridge::LoaderExperimentMode::Baseline,
+                lxmi_bridge::LoaderExperimentOutcome::Passed,
+            ),
+            (
+                lxmi_bridge::LoaderExperimentMode::Positive,
+                lxmi_bridge::LoaderExperimentOutcome::Passed,
+            ),
+            (
+                lxmi_bridge::LoaderExperimentMode::MissingTarget,
+                lxmi_bridge::LoaderExperimentOutcome::ExpectedFailure,
+            ),
+            (
+                lxmi_bridge::LoaderExperimentMode::MissingDll,
+                lxmi_bridge::LoaderExperimentOutcome::ExpectedFailure,
+            ),
+            (
+                lxmi_bridge::LoaderExperimentMode::WrongNonce,
+                lxmi_bridge::LoaderExperimentOutcome::ExpectedFailure,
+            ),
+        ] {
+            let result = run_loader_lab_experiment(&runtime.proton_script, mode, true)
+                .unwrap_or_else(|error| panic!("{mode:?} failed structurally: {}", error.detail));
+            assert_eq!(
+                result.outcome, expected,
+                "unexpected {mode:?} result: {result:?}"
+            );
+            if mode == lxmi_bridge::LoaderExperimentMode::Positive {
+                assert!(result.target_started && result.target_ready);
+                assert!(result.dll_loaded && result.marker_verified && result.nonce_verified);
+                assert_eq!(result.loader_mode, lxmi_bridge::LoaderMode::DirectInject);
+                assert!(result.target_path_windows.is_some());
+                assert!(result.test_dll_path_windows.is_some());
+            }
+            if mode == lxmi_bridge::LoaderExperimentMode::WrongNonce {
+                assert!(result.dll_loaded);
+                assert!(!result.marker_verified && !result.nonce_verified);
+            }
+            eprintln!(
+                "{mode:?}: {:?}, exit {}",
+                result.outcome, result.process.exit_code
+            );
+        }
+
+        let after = snapshot_zzz_paths();
+        assert_eq!(
+            before, after,
+            "watched ZZZ executable/compatdata metadata changed during isolated test"
+        );
+        eprintln!("ZZZ metadata unchanged; test does not launch or enumerate game processes.");
+    }
 }

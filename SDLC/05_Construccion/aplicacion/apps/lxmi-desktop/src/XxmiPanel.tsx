@@ -251,6 +251,79 @@ type BridgeTestResult = {
   };
   warnings: string[];
 };
+type LoaderLabMode =
+  "baseline" | "positive" | "missing_target" | "missing_dll" | "wrong_nonce";
+type LoaderLabPanel = {
+  status: {
+    test_root: string;
+    ready: boolean;
+    manifest: {
+      upstream: {
+        package_id: string;
+        repository: string;
+        tag: string;
+        commit: string;
+      };
+      upstream_loader_sha256: string;
+      runner_sha256: string;
+      target_sha256: string;
+      test_dll_sha256: string;
+    } | null;
+    missing_or_invalid: string[];
+  };
+  component: {
+    package_id: string;
+    version: string | null;
+    release_tag: string;
+    commit: string;
+    loader_sha256: string;
+    release_signature: string;
+    component_signatures_verified: boolean;
+  } | null;
+  component_issue: string | null;
+  runtimes: BridgeRuntimeOption[];
+};
+type LoaderExperimentResult = {
+  plan: {
+    mode: LoaderLabMode;
+    loader_mode: string;
+    explicit_runtime: { display_name: string; version: string | null };
+    prefix_path: string;
+    target_executable: string;
+    test_dll: string;
+    upstream_loader: string;
+    expected_marker: string;
+    timeout_seconds: number;
+  };
+  mode: LoaderLabMode;
+  outcome: "passed" | "expected_failure";
+  loader_mode: string;
+  explicit_runtime: { display_name: string; version: string | null };
+  compatdata_path: string;
+  prefix_path: string;
+  target_path_linux: string;
+  target_path_windows: string | null;
+  test_dll_path_linux: string;
+  test_dll_path_windows: string | null;
+  upstream_loader_path_linux: string;
+  expected_loader_sha256: string;
+  actual_loader_sha256: string;
+  target_started: boolean;
+  target_ready: boolean;
+  loader_started: boolean;
+  upstream_inject_code: number | null;
+  dll_loaded: boolean;
+  marker_verified: boolean;
+  nonce_verified: boolean;
+  marker: {
+    process: string;
+    process_path_windows: string;
+    dll_path_windows: string;
+  } | null;
+  process: { exit_code: number; elapsed_millis: number; stderr: string };
+  capabilities: { name: string; state: string; evidence: string }[];
+  warnings: string[];
+};
 type GameId = "wuthering-waves" | "zenless-zone-zero";
 const games: Record<GameId, { name: string; integration: "wwmi" | "zzmi" }> = {
   "wuthering-waves": { name: "Wuthering Waves", integration: "wwmi" },
@@ -305,6 +378,15 @@ export default function XxmiPanel() {
   );
   const [bridgeSideEffectsAcknowledged, setBridgeSideEffectsAcknowledged] =
     useState(false);
+  const [loaderLabPanel, setLoaderLabPanel] = useState<LoaderLabPanel | null>(
+    null,
+  );
+  const [loaderRuntimePath, setLoaderRuntimePath] = useState("");
+  const [loaderLabMode, setLoaderLabMode] = useState<LoaderLabMode>("baseline");
+  const [loaderSideEffectsAcknowledged, setLoaderSideEffectsAcknowledged] =
+    useState(false);
+  const [loaderResult, setLoaderResult] =
+    useState<LoaderExperimentResult | null>(null);
 
   function selectDefaultPackages(nextStatus: Status) {
     const preferredZzmi = nextStatus.packages
@@ -556,6 +638,75 @@ export default function XxmiPanel() {
       setBridgeResult(result);
       setNotice(
         "Bridge test completado. Solo se usó el prefix aislado de LXMI; ZZZ no fue iniciado ni inspeccionado como proceso.",
+      );
+    } catch (e: unknown) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function inspectLoaderLab() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setLoaderResult(null);
+    setLoaderSideEffectsAcknowledged(false);
+    try {
+      const result = await invoke<LoaderLabPanel>("inspect_loader_lab");
+      setLoaderLabPanel(result);
+      setLoaderRuntimePath((current) =>
+        result.runtimes.some((runtime) => runtime.proton_script === current)
+          ? current
+          : "",
+      );
+      setNotice(
+        "Loader Lab inspeccionado. Solo se admite el test target fijo de LXMI.",
+      );
+    } catch (e: unknown) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function prepareLoaderLab() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setLoaderResult(null);
+    try {
+      await invoke("prepare_loader_lab");
+      const result = await invoke<LoaderLabPanel>("inspect_loader_lab");
+      setLoaderLabPanel(result);
+      setNotice("Loader Lab preparado dentro del storage controlado de LXMI.");
+    } catch (e: unknown) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runLoaderLab() {
+    if (!loaderRuntimePath || !loaderSideEffectsAcknowledged) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setLoaderResult(null);
+    try {
+      const result = await invoke<LoaderExperimentResult>(
+        "run_loader_lab_experiment",
+        {
+          protonScript: loaderRuntimePath,
+          mode: loaderLabMode,
+          sideEffectsAcknowledged: loaderSideEffectsAcknowledged,
+        },
+      );
+      setLoaderResult(result);
+      setNotice(
+        result.outcome === "passed"
+          ? "Experimento completado contra el único proceso de prueba de LXMI."
+          : "El control negativo produjo el rechazo esperado.",
       );
     } catch (e: unknown) {
       setError(errorText(e));
@@ -1300,6 +1451,242 @@ export default function XxmiPanel() {
                     <li key={warning}>{warning}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+          </details>
+          <details className="runtime-evidence bridge-test-panel">
+            <summary>Advanced · Loader Lab (solo proceso LXMI)</summary>
+            <p>
+              Prueba aislada con el export Direct Inject de 3dmloader.dll y una
+              DLL inocua de LXMI. El runner crea un único
+              lxmi-loader-test-target.exe y pasa al loader solo el PID de ese
+              hijo. No acepta rutas ni procesos desde esta pantalla y no
+              interactúa con ZZZ, Steam, HoYoPlay ni anti-cheat. El modo Hook
+              queda fuera porque instala un hook global.
+            </p>
+            <button
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => void inspectLoaderLab()}
+            >
+              {busy ? "Inspeccionando…" : "Inspeccionar Loader Lab"}
+            </button>
+            {loaderLabPanel && (
+              <>
+                <p>
+                  Component license:{" "}
+                  {loaderLabPanel.component
+                    ? "release y firmas de componente verificadas; uso local del binario upstream"
+                    : "no disponible"}
+                  {loaderLabPanel.component && (
+                    <>
+                      {" · "}
+                      {loaderLabPanel.component.release_tag} · commit{" "}
+                      <code>{loaderLabPanel.component.commit}</code> · SHA-256{" "}
+                      <code>{loaderLabPanel.component.loader_sha256}</code>
+                    </>
+                  )}
+                </p>
+                {loaderLabPanel.component_issue && (
+                  <p className="discovery-note">
+                    {loaderLabPanel.component_issue}
+                  </p>
+                )}
+                <p>
+                  Staging:{" "}
+                  {loaderLabPanel.status.ready ? "preparado" : "pendiente"}
+                  {" · "}
+                  <code className="path-value">
+                    {loaderLabPanel.status.test_root}
+                  </code>
+                </p>
+                {!loaderLabPanel.status.ready && (
+                  <>
+                    {loaderLabPanel.status.missing_or_invalid.length > 0 && (
+                      <ul>
+                        {loaderLabPanel.status.missing_or_invalid.map(
+                          (issue) => (
+                            <li key={issue}>{issue}</li>
+                          ),
+                        )}
+                      </ul>
+                    )}
+                    <button
+                      className="secondary-button"
+                      disabled={busy || !loaderLabPanel.component}
+                      onClick={() => void prepareLoaderLab()}
+                    >
+                      {busy ? "Preparando…" : "Prepare Loader Lab"}
+                    </button>
+                    <p className="discovery-note">
+                      Copia los ejecutables de test locales y el 3dmloader.dll
+                      del package XXMI Libraries autenticado al storage LXMI. No
+                      copia ningún archivo al juego.
+                    </p>
+                  </>
+                )}
+                {loaderLabPanel.status.ready && (
+                  <>
+                    <label htmlFor="loader-lab-runtime">
+                      Bridge test Proton explícito
+                    </label>
+                    <select
+                      id="loader-lab-runtime"
+                      value={loaderRuntimePath}
+                      disabled={busy || !loaderLabPanel.runtimes.length}
+                      onChange={(event) =>
+                        setLoaderRuntimePath(event.target.value)
+                      }
+                    >
+                      <option value="">Elegir runtime de prueba…</option>
+                      {loaderLabPanel.runtimes.map((runtime) => (
+                        <option
+                          key={runtime.proton_script}
+                          value={runtime.proton_script}
+                        >
+                          {runtime.display_name} ·{" "}
+                          {runtime.version ?? "versión desconocida"}
+                        </option>
+                      ))}
+                    </select>
+                    <label htmlFor="loader-lab-mode">Experimento</label>
+                    <select
+                      id="loader-lab-mode"
+                      value={loaderLabMode}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setLoaderLabMode(event.target.value as LoaderLabMode)
+                      }
+                    >
+                      <option value="baseline">
+                        Baseline · target sin DLL
+                      </option>
+                      <option value="positive">
+                        Direct Inject · DLL test LXMI
+                      </option>
+                      <option value="missing_target">
+                        Negativo · target ausente
+                      </option>
+                      <option value="missing_dll">
+                        Negativo · DLL ausente
+                      </option>
+                      <option value="wrong_nonce">
+                        Negativo · nonce distinto
+                      </option>
+                    </select>
+                    <label className="discovery-note">
+                      <input
+                        type="checkbox"
+                        checked={loaderSideEffectsAcknowledged}
+                        disabled={busy}
+                        onChange={(event) =>
+                          setLoaderSideEffectsAcknowledged(event.target.checked)
+                        }
+                      />{" "}
+                      Confirmo que Proton puede inicializar/modificar únicamente
+                      el prefix aislado loader-v1 de LXMI, y que el modo Direct
+                      Inject cargará la DLL test solo en el proceso temporal
+                      creado por este runner. No se usa el prefix de ZZZ ni se
+                      examinan otros procesos.
+                    </label>
+                    <button
+                      className="primary-button"
+                      disabled={
+                        busy ||
+                        !loaderRuntimePath ||
+                        !loaderSideEffectsAcknowledged ||
+                        !loaderLabPanel.status.ready
+                      }
+                      onClick={() => void runLoaderLab()}
+                    >
+                      {busy
+                        ? "Ejecutando experimento…"
+                        : "Run Loader Compatibility Test"}
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+            {loaderResult && (
+              <div className="runtime-evidence" role="status">
+                <strong>
+                  {loaderResult.outcome === "passed"
+                    ? "Experimento aprobado"
+                    : "Rechazo negativo esperado"}{" "}
+                  · {loaderResult.explicit_runtime.display_name}
+                </strong>
+                <p>
+                  Target:{" "}
+                  {loaderResult.target_started ? "iniciado" : "no iniciado"}
+                  {" · "}ready: {loaderResult.target_ready ? "sí" : "no"}
+                  {" · "}loader:{" "}
+                  {loaderResult.loader_started ? "iniciado" : "no"}
+                  {" · "}DLL: {loaderResult.dll_loaded ? "cargada" : "no"}
+                  {" · "}marker:{" "}
+                  {loaderResult.marker_verified ? "verificado" : "no"}
+                  {" · "}nonce:{" "}
+                  {loaderResult.nonce_verified ? "coincide" : "no coincide"}
+                </p>
+                <p>
+                  Modo {loaderResult.loader_mode} · exit{" "}
+                  {loaderResult.process.exit_code}
+                  {" · "}
+                  {loaderResult.process.elapsed_millis} ms · Proton solo usó el
+                  prefix LXMI loader-v1.
+                </p>
+                <p>
+                  Target Windows:{" "}
+                  <code className="path-value">
+                    {loaderResult.target_path_windows ?? "sin mapping"}
+                  </code>
+                  <br />
+                  DLL Windows:{" "}
+                  <code className="path-value">
+                    {loaderResult.test_dll_path_windows ?? "sin mapping"}
+                  </code>
+                </p>
+                <p>
+                  Plan validado: sólo target, DLL y marker fijos de LXMI ·
+                  timeout {loaderResult.plan.timeout_seconds}s.
+                  <br />
+                  Target Linux:{" "}
+                  <code className="path-value">
+                    {loaderResult.plan.target_executable}
+                  </code>
+                  <br />
+                  DLL Linux:{" "}
+                  <code className="path-value">
+                    {loaderResult.plan.test_dll}
+                  </code>
+                </p>
+                {loaderResult.marker && (
+                  <p>
+                    Proceso marker: {loaderResult.marker.process} · DLL visible
+                    en{" "}
+                    <code className="path-value">
+                      {loaderResult.marker.dll_path_windows}
+                    </code>
+                  </p>
+                )}
+                <details>
+                  <summary>Capacidades y diagnósticos</summary>
+                  <ul>
+                    {loaderResult.capabilities.map((item) => (
+                      <li key={item.name}>
+                        <strong>
+                          {item.name}: {item.state}
+                        </strong>{" "}
+                        — {item.evidence}
+                      </li>
+                    ))}
+                    {loaderResult.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                  {loaderResult.process.stderr && (
+                    <pre>{loaderResult.process.stderr}</pre>
+                  )}
+                </details>
               </div>
             )}
           </details>

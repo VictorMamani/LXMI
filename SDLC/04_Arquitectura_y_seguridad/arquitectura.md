@@ -169,3 +169,27 @@ flowchart LR
 ~~~
 
 La acción ejecutable requiere confirmación explícita de que Proton puede inicializar el prefix aislado y mantener su propia distribución. El modo de prefix de juego se rechaza antes del proceso. El handshake de host se comprobó con Proton Experimental: helper inocuo, nonce v1, path Windows legible y hash del marker coincidente. Esto no implica que una siguiente fase pueda cargar XXMI o lanzar ZZZ. ADR-026 y SDLC/01_Descubrimiento/bridge_linux_windows.md registran la decisión y sus fuentes.
+
+## LXMI-0.7 — Loader Lab restringido
+
+`lxmi-bridge` modela `LoaderExperimentPlan` con target, test DLL, componente upstream, marker, prefix y timeout derivados del storage de LXMI. El backend valida que el plan use los nombres/rutas fijos y solo entonces crea el `ValidatedLoaderExperimentPlan` privado que produce argv para Proton. React solo elige un modo cerrado y el Proton de prueba explícito; no envía PID, executable, DLL o target.
+
+El runner Windows de test crea un solo `lxmi-loader-test-target.exe`, toma el PID de esa creación y lo pasa al export Direct Inject de `3dmloader.dll` oficial. La test DLL verifica que su proceso anfitrión sea exactamente ese target y el nonce. Target y DLL viven en subdirectorios distintos de `$XDG_DATA_HOME/lxmi/tests/loader-v1/`. El marker se valida contra proceso, nonce, rutas Windows observadas y respuesta del runner.
+
+```mermaid
+flowchart LR
+    UI[Loader Lab · modo cerrado + Proton explícito] --> Backend[Command Tauri]
+    Backend --> Plan[LoaderExperimentPlan · paths LXMI fijos]
+    Plan --> Validate[Validador de root, hash, target y timeout]
+    Validate --> Executor[Executor argv · runinprefix]
+    Executor --> Proton[Proton test-prefix loader-v1]
+    Proton --> Runner[Runner LXMI]
+    Runner -->|CreateProcessW + PID propio| Target[Test target LXMI]
+    Runner -->|export Inject · DLL fija| Target
+    Target --> TestDLL[Test DLL verifica proceso + nonce]
+    TestDLL --> Marker[Marker bajo results/]
+    Marker --> Backend
+    Game[Steam/ZZZ/prefix de juego] -. inaccesibles en este flujo .-> Executor
+```
+
+El test comprobó el modo Direct Inject solo en laboratorio. El modo Hook default observado en ZZMI instala un hook global y se excluyó. La selección de mecanismo productivo ZZMI sigue desconocida; ver ADR-027 y `../01_Descubrimiento/loader_xxmi.md`.
