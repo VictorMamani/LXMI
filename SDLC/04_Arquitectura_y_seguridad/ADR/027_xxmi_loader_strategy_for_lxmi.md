@@ -1,12 +1,16 @@
 # ADR-027: estrategia de loader XXMI para LXMI
 
-- **Estado:** aceptada para Direct Inject en el laboratorio; decisión de producción `NoDecision`.
-- **Fecha:** 2026-09-28; actualización LXMI 0.8.
-- **Decisión:** Direct Inject permanece permitido únicamente para el test target fijo de LXMI. El Hook default de ZZMI queda bloqueado en el Loader Lab mientras no se pruebe que su alcance puede limitarse con seguridad al proceso de test. No se selecciona una estrategia de producción para ZZMI o ZZZ.
+- **Estado:** `NoDecision` para ZZMI/ZZZ/Linux; Direct Inject solo está verificado en el laboratorio LXMI.
+- **Fecha:** 2026-09-28; reevaluada 2026-09-29 en LXMI 0.8.1.
+- **Decisión:** No promover automáticamente Direct Inject porque el fixture pasó. Upstream ofrece Hook como default de ZZMI y Direct Inject como modo de Custom Launch. No existe evidencia de un requisito técnico Hook-only de ZZMI, pero su ausencia no demuestra compatibilidad de Inject. El Hook Lab sigue fail-closed y no ejecuta Hook mientras el scope del `3dmloader.dll` no pueda restringirse a un solo proceso. No se selecciona una estrategia de producción para ZZMI/ZZZ.
 
 ## Contexto y evidencia
 
 XXMI Launcher v2.2.1 está fijado a commit `d56786b8dacb00c35204bff45ff5b8b83bd8962a`. En su integración ZZMI, `use_hook` hereda el valor predeterminado `true`; la ruta observada configura `DllInjector` con `3dmloader.dll` y usa su API de Hook. La rama alternativa `use_hook = false` llama el export `Inject` para el proceso objetivo. Las notas de v2.1.5 registran que se sustituyó `pyinjector` por un injector propio en `3dmloader.exe` para el modo Direct Inject basado en `WriteProcessMemory`; no se extrapola ese cambio a la ruta default ZZMI.
+
+La traza 0.8.1 encontró en `model_importer.py` que Custom Launch asigna `use_hook = (custom_launch_inject_mode == 'Hook')`. En consecuencia, Custom Launch + `Inject` selecciona el Direct Inject genérico del mismo `MigotoInjector`; en cambio, el start estándar propaga el `true` heredado por ZZMI. `Bypass` también usa la rama `use_hook=false`, pero `is_xxmi_dll_used()` deja fuera `d3d11.dll` a menos que se añada explícitamente entre Extra Libraries. El Direct Inject genérico inicia el comando configurado y después busca el target por nombre/PID hasta timeout antes de llamar al export `Inject` de `3dmloader.dll`.
+
+El alcance de Hook se reexpresa de forma más precisa: el código Wine consultado almacena hooks globales en la tabla del desktop actual, administrada por el wineserver; no prueba el comportamiento de Proton ni del hook del `3dmloader.dll` concreto. `WINEPREFIX` distinto permite sesiones Wine independientes según la documentación general de Wine. El alcance exacto en Proton y los requisitos de same-prefix/wineserver para ZZZ permanecen `Unknown`.
 
 LXMI probó únicamente el export `Inject` del `3dmloader.dll` oficial XXMI Libraries v1.1.7 (`6bf6a746a198c82fb34dbd336cac7ad8e0f4ddc9`). Release y componente se verifican en el store; licencia revisada para uso local de prueba, no redistribución. El host test se limitó al hijo creado por `CreateProcessW` en el mismo runner de LXMI. El target, test DLL, runner, nonce, runtime, marker y timeout son fijos y validados en backend.
 
@@ -14,8 +18,8 @@ LXMI probó únicamente el export `Inject` del `3dmloader.dll` oficial XXMI Libr
 
 | Estrategia | Evidencia | Decisión |
 |---|---|---|
-| Default ZZMI Hook mediante `3dmloader.dll` | Upstream lo prepara antes de iniciar el target. `HookLibrary` no recibe nombre del target; `WaitForInjection` sí lo recibe para observar el resultado. El comentario upstream lo identifica como hook global. La ruta no fue ejecutada en LXMI 0.8 por el límite single-target. | **BLOCKED** por la política del laboratorio; comportamiento bajo Proton **NO COMPROBADO**. |
-| Direct Inject mediante export `Inject` de `3dmloader.dll` | Host test positivo/negativo contra un proceso de prueba propio; el componente viene de Libraries v1.1.7 autenticado. | Usada solo en Loader Lab, nunca contra juego. |
+| Default ZZMI Hook mediante `3dmloader.dll` | `use_hook=true` heredado; Hook se prepara antes del target. Código Wine describe hooks globales por desktop, sin host test Proton. | **BLOCKED** por la política del laboratorio target-only; no prueba que ZZMI requiera Hook. |
+| Direct Inject mediante export `Inject` de `3dmloader.dll` | Host test positivo/negativo contra un proceso de prueba propio. XXMI lo ofrece desde Custom Launch + `Inject`; la rama estándar ZZMI sigue Hook. | Candidate para estudiar; **NoDecision** para ZZMI/ZZZ/Linux/Proton. |
 | `3dmloader.exe` | Release v2.1.5 documenta un injector propio para una modalidad Direct Inject; LXMI no lo ejecutó. | No seleccionado. |
 | XXMI Launcher portable bajo Wine | Upstream ofrece edición portable; mantiene un launcher/UI Windows que LXMI busca sustituir. No valida el contexto ZZZ Steam/Proton. | No seleccionado. |
 | Injector/helper propio | Añadiría superficie de proceso e implementación de técnicas de carga. | No implementado. |
@@ -31,15 +35,23 @@ LXMI probó únicamente el export `Inject` del `3dmloader.dll` oficial XXMI Libr
 
 ## Consecuencias
 
-El resultado 0.7 solo demuestra que Direct Inject carga el fixture bajo la build Proton probada. La revisión 0.8 describe el orden del Hook upstream, pero no demuestra su compatibilidad con Proton ni que el hook afecte exclusivamente al target. Tampoco determina si ZZZ Steam es compatible o si loader y juego deben compartir prefix.
+El resultado 0.7 solo demuestra que Direct Inject carga el fixture bajo la build Proton probada. La revisión 0.8.1 fija que upstream también ofrece la ruta Inject desde Custom Launch y que ZZMI no declara Hook como requisito exclusivo; no demuestra que la combinación ZZMI/ZZZ funcione con Inject bajo Proton. La evidencia Wine acota un Hook global al desktop de su sesión/server, pero no demuestra el comportamiento de Proton/3dmloader ni un aislamiento target-only.
 
-LXMI 0.8 añade un `ZzmiLaunchReadiness` declarativo y conserva la selección Proton del juego como desconocida. Dado que Hook está bloqueado/no probado y siguen pendientes el contexto Steam/Proton, same-prefix y compatibilidad específica, el gate no autoriza un experimento ZZZ. LXMI 0.9 no puede comenzar; primero se requiere una vía de investigación/aislamiento aprobada que no permita carga global en procesos ajenos.
+LXMI 0.8.1 añade `LoaderStrategyDecision`, evidencia de aislamiento, criterios separados para candidato Direct Inject y componentes de gate granulares. La selección Proton del juego permanece `Unknown`; la decisión queda `NoDecision` y readiness `NeedsEvidence`, no `ReadyForControlledExperiment`. LXMI 0.9 no puede comenzar. El siguiente trabajo propuesto es LXMI 0.8.2, para recoger evidencia faltante de proceso/runtime Steam-Proton sin lanzar ZZZ ni ejecutar Hook; el Hook Lab no pierde su guard.
+
+### Seguimiento 0.8.2
+
+La inspección read-only encontró vacío el `CompatToolMapping` local para AppID `4162040`; las tools instaladas no determinan qué runtime usaría Steam. `compatdata/4162040/pfx` se conserva como candidato filesystem, no prefix efectivo. `LoaderStrategyDecision` sigue `NoDecision`, readiness sigue `NeedsEvidence` y las relaciones loader/prefix/wineserver siguen `Unknown`. No se ejecutó Hook, Direct Inject, Steam, Proton, Wine o ZZZ. Ver [evidencia de contexto 0.8.2](../../01_Descubrimiento/evidencia_contexto_steam_proton_0_8_2.md) y [verificación](../../06_Verificacion/verificacion_0_8_2.md).
 
 ## Referencias
 
 - [XXMI Launcher v2.2.1 fijado](https://github.com/SpectrumQT/XXMI-Launcher/tree/d56786b8dacb00c35204bff45ff5b8b83bd8962a)
 - [Notas XXMI Launcher v2.1.5](https://github.com/SpectrumQT/XXMI-Launcher/releases/tag/v2.1.5)
 - [XXMI Libraries v1.1.7 fijado](https://github.com/SpectrumQT/XXMI-Libs-Package/tree/6bf6a746a198c82fb34dbd336cac7ad8e0f4ddc9)
+- [Release XXMI Launcher v2.2.0: WWMI cambia a Direct Inject](https://github.com/SpectrumQT/XXMI-Launcher/releases/tag/v2.2.0)
+- [Implementación Wine de hooks por desktop](https://github.com/wine-mirror/wine/blob/master/server/hook.c)
+- [Documentación Wine de `WINEPREFIX` y sesiones](https://github.com/wine-mirror/wine/blob/master/server/wineserver.man.in)
 - [Investigación del loader](../../01_Descubrimiento/loader_xxmi.md)
+- [Estrategia ZZMI Linux 0.8.1](../../01_Descubrimiento/estrategia_loader_zzmi_linux.md)
 - [Readiness ZZMI / Steam / Linux](../../01_Descubrimiento/launch_zzmi_steam_linux.md)
 - [Verificación de LXMI 0.7](../../06_Verificacion/verificacion_0_7.md)

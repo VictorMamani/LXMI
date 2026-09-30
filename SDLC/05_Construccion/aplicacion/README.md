@@ -1,6 +1,6 @@
 # LXMI — aplicación
 
-**LXMI 0.8.0 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Discovery, planificación y topología siguen read-only; Direct Inject sigue limitado al fixture del Loader Lab. El modo Hook upstream se rechaza antes de ejecutar procesos porque no se demuestra su aislamiento a un solo target. No hay launcher de juego ni integración real de loader con ZZZ.
+**LXMI 0.8.2 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. La UI de readiness separa el mapping de compatibilidad leído en Steam, las herramientas instaladas y el contexto efectivo desconocido. El Steam local no registra mapping por AppID 4162040 en `config.vdf`; ZZZ conserva runtime efectivo `Unknown`, estrategia `NoDecision`, readiness `NeedsEvidence` y gate cerrado. Esta versión no lanza ZZZ, Steam, Proton, Wine ni loaders, ni modifica Steam, el juego, compatdata o su prefix.
 
 En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para discovery y planificación de solo lectura. El workspace añadió en 0.5 `lxmi-xxmi`. No usa SQLite ni escribe en Steam, juegos, compatibility tools o prefixes; el import explícito sí conserva paquetes bajo el storage privado de LXMI.
 
@@ -20,7 +20,7 @@ No se necesitan credenciales, permisos root, Steam en ejecución, juegos instala
 | apps/lxmi-desktop/ | Interfaz React y paquete Tauri |
 | apps/lxmi-desktop/src-tauri/ | Commands adaptadores y configuración de escritorio |
 | crates/lxmi-core/ | Información del sistema, registro de juegos y modelos de instalación/compatdata |
-| crates/lxmi-steam/ | Steam roots/bibliotecas, parser KeyValues, manifests, game scanner y compatdata discovery |
+| crates/lxmi-steam/ | Steam roots/bibliotecas, parser KeyValues, manifests, game scanner, compatdata y lectura limitada de `CompatToolMapping` |
 | crates/lxmi-proton/ | Discovery de compatibility tools Steam/custom; parser Valve KeyValues reutilizado; metadata, clasificación y versión |
 | crates/lxmi-runtime/ | Plan declarativo por juego; agrega observaciones de instalación, Proton candidates, compatdata/prefix, requirements, evidence, issues y readiness |
 | crates/lxmi-xxmi/ | Paquetes y provenance, import seguro, assembler de ZZMI + XXMI Libraries a XDG, configuración derivada, discovery de `dosdevices` y plan de topología sin executor |
@@ -167,3 +167,19 @@ El script genera `lxmi-loader-test-runner.exe`, `lxmi-loader-test-target.exe` y 
 **HOST TEST comprobado:** Proton Experimental explícitamente seleccionado ejecutó baseline sin loader, Direct Inject positivo con marker/nonce y negativos de target ausente, DLL ausente y nonce incorrecto. La ventana Tauri nativa recorrió baseline, positivo y target ausente. Este experimento solo valida el export upstream en el proceso de prueba propio de LXMI; no es el Hook predeterminado de ZZMI y no verifica ZZMI, ZZZ, Steam/Linux/Proton para el juego ni mods. No interactúa con anti-cheat, Steam, juegos ni procesos ajenos al target de prueba.
 
 Fuentes fijadas, licencia, diferencias de modo y capabilities: `../../01_Descubrimiento/loader_xxmi.md`; decisión: `../../04_Arquitectura_y_seguridad/ADR/027_xxmi_loader_strategy_for_lxmi.md`; resultados: `../../06_Verificacion/verificacion_0_7.md`.
+
+## LXMI-0.8.1 — estrategia loader y readiness de ZZZ
+
+La investigación fijada a XXMI Launcher v2.2.1 confirmó que ZZMI hereda `use_hook=true` para el flujo estándar; Custom Launch expone Hook, Inject y Bypass. Inject utiliza la ruta genérica Direct Inject de `3dmloader.dll`, pero esto no demuestra compatibilidad con ZZMI/ZZZ en Linux/Proton. La evidencia upstream no establece que ZZMI requiera exclusivamente Hook, y esa ausencia de requisito tampoco prueba que Direct Inject funcione con el juego.
+
+El dominio `LoaderStrategyDecision` conserva `outcome = NoDecision`, sin modo preferido, y modela Hook como no aislado a proceso bajo la evidencia Wine consultada. Direct Inject queda como candidato por el resultado previo del Loader Lab, sin convertir ese test en compatibilidad de juego. `GameRuntimePlan.selected` permanece desconocido. La readiness resultante es `NeedsEvidence`; el gate no es elegible para revisión ni ejecuta procesos. La vista Advanced resume estas distinciones y deja criterios, capabilities y rutas técnicas en detalles expandibles.
+
+En 0.8.1 no se ejecutó Hook, Direct Inject, Steam, Proton, Wine o ZZZ; tampoco se modificó Steam, el juego, compatdata ni prefix. Fuentes y límites: `../../01_Descubrimiento/estrategia_loader_zzmi_linux.md`, [`ADR-027`](../../04_Arquitectura_y_seguridad/ADR/027_xxmi_loader_strategy_for_lxmi.md) y [`verificación 0.8`](../../06_Verificacion/verificacion_0_8.md).
+
+## LXMI-0.8.2 — contexto Steam / Proton
+
+`lxmi-steam` parsea en modo read-only `InstallConfigStore/Software/Valve/Steam/CompatToolMapping` desde el `config/config.vdf` del Steam root asociado a la biblioteca del juego. El lector limita el tamaño, valida archivo/directorio regulares y rechaza symlinks. Un mapping por AppID, el mapping global `0` y la lista de compatibility tools instaladas se presentan por separado.
+
+El servicio agrega esos datos a `SteamProtonProcessContextEvidence` junto con AppID, biblioteca, manifest, compatdata/pfx candidatos y findings con fuentes. Una configuración presente no se eleva a runtime efectivo; el runtime, prefix y wineserver efectivos siguen `Unknown` sin observar una ejecución. Readiness y el gate permanecen `NeedsEvidence`/no elegible, `LoaderStrategyDecision` sigue `NoDecision`, y el guard Hook no cambia.
+
+En el host consultado el mapping global y por AppID no estaban presentes en la sección legible de `config.vdf`; dos `localconfig.vdf` revisados no contenían `CompatToolMapping`. Se observaron el manifest/AppID 4162040, ejecutable y directorios `compatdata/4162040/pfx`. No se ejecutó ningún proceso externo ni se modificó Steam, el juego, compatdata o prefix. Ver [investigación local/upstream](../../01_Descubrimiento/evidencia_contexto_steam_proton_0_8_2.md) y [verificación 0.8.2](../../06_Verificacion/verificacion_0_8_2.md).

@@ -4,7 +4,7 @@
 
 ## Estado
 
-- **Etapa:** construcción; LXMI-0.1 a 0.7 están implementados. El experimento 0.7 comprobó una ruta Direct Inject upstream únicamente con un proceso de prueba de LXMI bajo Proton aislado. La compatibilidad de ZZMI/ZZZ sigue sin comprobar.
+- **Etapa:** construcción; LXMI 0.8.2 añade evidencia local de `CompatToolMapping` y contexto Steam/Proton sin iniciar procesos. El mapping por juego no fue encontrado en el Steam local; runtime efectivo, relaciones de prefix/wineserver y readiness de ZZZ siguen desconocidos/`NeedsEvidence`.
 - **Tipo de proyecto:** herramienta técnica de escritorio y posible proyecto de portafolio; no hay validación de demanda, modelo de ingresos ni rentabilidad confirmada.
 - **Base de trabajo:** idea aportada por el usuario. Las estructuras de Proton consultadas se contrastaron con fuentes de Valve; esto no valida compatibilidad del juego, mods, ni políticas aplicables.
 - **Código:** aplicación Tauri 2 con React/TypeScript y workspace Rust. Los escaneos de Steam/juegos/tools son de solo lectura; el import explícito solo escribe en almacenamiento XDG privado de LXMI.
@@ -29,6 +29,10 @@ LXMI-0.5 integra paquetes XXMI/WWMI bajo XDG; 0.5.1 agrega Zenless Zone Zero y Z
 LXMI-0.6 agrega un helper Windows inocuo y un bridge de diagnóstico por stdin/stdout JSON, con Proton explícita y prefix aislado. MinGW enlazó el `.exe`; Proton Experimental ejecutó el helper, que devolvió el nonce, leyó el runtime marker mediante una ruta Windows y coincidió el hash. Un caso negativo devolvió JSON estructurado. La ventana Tauri nativa mostró los resultados. Esta prueba no carga XXMI ni demuestra compatibilidad de ZZZ/Steam/Linux/Proton; la selección de runtime del juego sigue desconocida. Ver [verificación del bridge 0.6](SDLC/06_Verificacion/verificacion_0_6.md).
 
 LXMI-0.7 añade un Loader Lab avanzado aislado: target y DLL propios para Windows, más el `3dmloader.dll` oficial verificado. En Proton Experimental explícito, la ruta Direct Inject cargó la DLL de prueba desde una ubicación separada y verificó marker/nonce; también pasaron los casos de baseline, target ausente, DLL ausente y nonce incorrecto. La interacción se recorrió en una ventana Tauri nativa. La ruta default Hook de ZZMI, `3dmloader.exe`, ZZZ, Steam y la compatibilidad Linux/Proton del juego no se probaron. Ver [investigación del loader](SDLC/01_Descubrimiento/loader_xxmi.md), [ADR-027](SDLC/04_Arquitectura_y_seguridad/ADR/027_xxmi_loader_strategy_for_lxmi.md) y [verificación 0.7](SDLC/06_Verificacion/verificacion_0_7.md).
+
+LXMI-0.8 evalúa readiness de manera declarativa y conserva un guard fail-closed para Hook porque su aislamiento a un proceso no está demostrado. LXMI-0.8.1 fija la lectura de XXMI Launcher v2.2.1: ZZMI hereda Hook como modo estándar; Custom Launch expone Hook, Inject y Bypass, y Direct Inject utiliza una ruta genérica de `3dmloader.dll`. La prueba 0.7 demuestra solo el mecanismo contra el fixture LXMI, no que ZZMI funcione con ZZZ en Steam Linux/Proton. No se estableció que ZZMI requiera exclusivamente Hook, pero eso tampoco demuestra que Direct Inject sea compatible. Por ello LXMI mantiene `LoaderStrategyDecision = NoDecision`, `GameRuntimePlan.selected = Unknown`, readiness `NeedsEvidence` y gate cerrado. Ver [investigación de estrategia](SDLC/01_Descubrimiento/estrategia_loader_zzmi_linux.md), [flujo Steam/Linux](SDLC/01_Descubrimiento/launch_zzmi_steam_linux.md), [ADR-027](SDLC/04_Arquitectura_y_seguridad/ADR/027_xxmi_loader_strategy_for_lxmi.md) y [verificación 0.8.1](SDLC/06_Verificacion/verificacion_0_8.md).
+
+LXMI-0.8.2 lee de forma acotada y read-only `config/config.vdf`, informa por separado mapping por AppID, default global, runtimes instalados y paths `compatdata/pfx` detectados. En el host actual el bloque `CompatToolMapping` está vacío; esto no determina el runtime efectivo. La UI expone fuentes y unknowns, mientras `LoaderStrategyDecision = NoDecision`, Proton efectivo `Unknown`, readiness `NeedsEvidence` y gate cerrado. No se iniciaron procesos ni se modificaron Steam, ZZZ, compatdata o prefix. Ver [evidencia de contexto Steam/Proton](SDLC/01_Descubrimiento/evidencia_contexto_steam_proton_0_8_2.md) y [verificación 0.8.2](SDLC/06_Verificacion/verificacion_0_8_2.md).
 
 ## Documentos SDLC
 
@@ -56,13 +60,13 @@ La política `Expected` de Wuthering Waves expresa una expectativa de planificac
 
 LXMI-0.5 pasó los quality gates del workspace con 114 tests Rust (45 nuevos) y las validaciones frontend. El validador se probó con fixtures sintéticos y directorios extraídos de releases oficiales WWMI v1.0.0 y XXMI Libraries v1.1.7 en `/tmp`. El import/plan de ejemplo no ejecutó binarios ni modificó el juego. La ventana Tauri v0.5 inició; la UI visual se inspeccionó, pero el flujo IPC de importación no se recorrió clic a clic en la ventana nativa. En un nuevo scan read-only (2026-09-28), el host no mostró Wuthering Waves en los manifests de la biblioteca detectada; las carpetas Proton vistas carecían de metadata/entrypoint suficientes para validar una herramienta, y el plan quedó `Blocked`. El estado puede cambiar con Steam. Ver [verificación 0.5](SDLC/06_Verificacion/verificacion_0_5.md).
 
-## Siguiente resultado
+## Estado actual de investigación
 
-LXMI-0.7 está cerrado como experimento de laboratorio. LXMI-0.8 —evaluación controlada de readiness de lanzamiento ZZMI— todavía no se inicia. El resultado de 0.7 no autoriza lanzamiento de ZZZ ni `apply`, y no demuestra compatibilidad del juego.
+LXMI 0.8.2 queda completado como evidencia de filesystem/configuración, no como prueba de ejecución. Permanecen `UNKNOWN` el runtime efectivo, el `WINEPREFIX` efectivo y las relaciones del loader con prefix/wineserver. No se habilitó ni implementó una ruta de lanzamiento.
 
 ## Estado local de Git
 
-El repositorio efectivo es esta carpeta LXMI, rama `main`, remote `origin` en `git@github.com:VictorMamani/LXMI.git`. El checkpoint previo de LXMI-0.6 es `e3f45bc`; los cambios de LXMI-0.7 están sin commit ni push.
+El repositorio efectivo es esta carpeta LXMI, rama `main`, remote `origin` en `git@github.com:VictorMamani/LXMI.git`. Se preservaron los cambios no comprometidos de 0.8.1 y se añadieron los de 0.8.2; no se hizo commit ni push.
 
 ## Criterio de honestidad
 

@@ -53,7 +53,7 @@ La decisión ADR-027 sigue `NoDecision` para producción. No se presenta un frac
 | Espera/timeout | Acotado por el runner 0.7 | Upstream espera el target mediante `WaitForInjection`; el scope efectivo en Wine/Proton no se validó |
 | Selección de modo en LXMI | Capability lab verificada, sin selección del juego | Backend y Tauri lo rechazan antes de discovery/Proton |
 
-Esta tabla compara evidencia concreta; el resultado Direct Inject no sustituye la paridad Hook requerida por el modo default de ZZMI.
+Esta tabla refleja el estado evaluado en LXMI 0.8. La investigación de 0.8.1 encontró que upstream expone también una ruta Direct Inject para Custom Launch; esa ruta no elimina la necesidad de demostrar compatibilidad específica con ZZMI/ZZZ en Linux/Proton.
 
 ## Readiness ZZZ
 
@@ -86,23 +86,70 @@ Estados derivados por el servicio en este incremento:
 
 La primera interacción antes de corregir el orden del adaptador devolvió `runtime_not_found` porque se resolvía el Proton antes del guard. Se cambió el servicio para rechazar Hook como primera operación y se repitió el flujo en la ventana recompilada. No hubo lanzamiento Proton durante ninguna de estas comprobaciones.
 
-## Validaciones de código
+## LXMI 0.8.1 — resolución de estrategia y reassessment
 
-Registrar los resultados observados después de completar los comandos de cierre:
+**Fecha de investigación:** 2026-09-29. Esta sección reevalúa el bloqueo de estrategia; no inicia Hook, Direct Inject, Proton ni ZZZ. La parte 0.8 anterior conserva su resultado histórico de readiness `Blocked`; el resultado vigente después de aplicar 0.8.1 se registra en esta sección.
 
-| Validación | Estado |
+### Trace upstream
+
+**UPSTREAM VERIFIED:** XXMI Launcher `v2.2.1`, commit `d56786b8dacb00c35204bff45ff5b8b83bd8962a`; ZZMI package `v1.5.0`, commit `e59f87047cd405c5db5476d3b1b499574bc43d67`.
+
+- `ModelImporterPackage.__init__` inicializa `use_hook=true`; `ZZMIPackage` no sobrescribe el valor. `start_game()` propaga ese default en `StartAndInject`.
+- Sin Custom Launch, upstream conserva el modo del paquete: ZZMI va a Hook.
+- Con Custom Launch activo, `custom_launch_inject_mode == 'Hook'` selecciona Hook; `Inject` selecciona `use_hook=false` y el flujo Direct Inject genérico. `Bypass` también usa la rama `false`, pero no incluye `d3d11.dll` salvo selección explícita en Extra Libraries.
+- Direct Inject lanza el comando configurado y luego busca el proceso por basename/PID con timeout; `3dmloader.dll` ejecuta su export `Inject` para la lista de DLLs (incluido `d3d11.dll` cuando corresponde). No se exige que el target esté vivo antes de empezar el comando, pero sí debe aparecer para que la inyección prospere.
+- El mismo `MigotoInjector`/`3dmloader.dll` implementa la ruta genérica; las ramas de código reales llaman `run_hook_injector` para Hook y `run_direct_injector` para Inject. Dos comentarios adyacentes en upstream invierten los nombres de mecanismo; la conclusión usa las llamadas/cuerpos.
+- `target`, `module` y `loader` de ZZMI siguen siendo configuración común del importer. `loader=XXMI Launcher.exe` no selecciona Hook; un proceso loader LXMI Windows con otra identidad no ha sido validado.
+
+### WWMI precedent
+
+**UPSTREAM VERIFIED:** las notas oficiales de XXMI Launcher v2.2.0 (release `6501b0c`, 2026-06-08) dicen que WWMI cambió el default a Direct Inject porque Hook dejó de funcionar. La rama upstream actual consultada muestra `WWMIPackage.self.use_hook=false`; la recuperación de su archivo al pin v2.2.1 no pudo verificarse desde el enlace fijado. Esto es precedente para WWMI, no evidencia de ZZMI. En el pin ZZMI v2.2.1 `use_hook` no aparece en `zzmi_package.py` y el valor sigue heredado `true`.
+
+### Hook scope y prefix
+
+El código Wine consultado (`wine-mirror/wine`, `server/hook.c`, `dlls/win32u/hook.c`, `server/wineserver.man.in`, consultado 2026-09-29; mirror `master`, commit no recuperado) almacena hooks globales en la tabla del desktop dentro del server actual. La documentación de `wineserver` indica que `WINEPREFIX` distinto permite sesiones Wine independientes. Esta evidencia general no valida la build Proton local, el mecanismo de `3dmloader.dll`, ni el requisito mismo prefix/wineserver de ZZZ.
+
+| Afirmación | Estado |
+|---|---|
+| Hook en Wine general | `WineDesktopWithinServer`, **UPSTREAM DOCUMENTED**; no es proceso-bound. |
+| Hook aislado bajo Proton | **UNKNOWN / NO COMPROBADO**. No se ejecutó; guard intacto. |
+| Mismo prefix/wineserver requerido por ZZZ | **UNKNOWN**. No se inspeccionó/ejecutó el prefix para este trabajo. |
+| Direct Inject 0.7 con fixture LXMI | **HOST TEST previo**, no repetido en este incremento. |
+| Direct Inject compatible con ZZMI/ZZZ/Linux/Proton | **UNKNOWN / NO COMPROBADO**. |
+
+### Decisión y readiness
+
+- Respuesta de arquitectura upstream: **C — el mecanismo depende del modo de launch**. Hook es default ZZMI; Direct Inject existe en Custom Launch. Para compatibilidad ZZMI/ZZZ/Steam Linux/Proton la respuesta sigue **D — evidencia insuficiente**.
+- `HookRequirementState = NotEstablished`; no se confunde con `HookNotRequired`.
+- `DirectInjectCandidate = true` cuando upstream ofrece el modo y el fixture 0.7/verificación de DLL remota constan como evidencia. Criterios game-specific, loader identity en Linux, Steam/Proton, proceso/prefix y anti-cheat siguen Unknown/NotEstablished.
+- `LoaderStrategyDecision.outcome = NoDecision`, `preferred_mode = None`.
+- `GameRuntimePlan.selected` permanece `Unknown`; el runtime de laboratorio no se copia al juego.
+- Readiness recalculado = `NeedsEvidence`; `ControlledGameExperimentGate.eligible_for_review = false`, `launches_game = false`.
+- El guard backend `hook_scope_not_isolated` permanece en la primera rama de la operación Hook. No se ejecutó Hook ni Direct Inject en 0.8.1; no se inició Proton, Steam o ZZZ.
+
+### Implementación y pruebas 0.8.1
+
+Los tests agregados cubren selección no inferida, candidato vs. estrategia preferida, Hook `NotEstablished`, scope Wine no process-bound, documentación Steam vs. Linux, readiness/gate granulares y Proton de juego desconocido. Los datos son **FIXTURE**; la verificación Direct Inject bajo Proton corresponde al **HOST TEST 0.7**, no a una prueba repetida en 0.8.1.
+
+| Validación | Resultado |
 |---|---|
 | `cargo fmt --all -- --check` | **PASS** |
 | `cargo check --workspace` | **PASS** |
 | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | **PASS** |
-| `cargo test --workspace` | **PASS**; 181 passed, 0 failed, 7 ignored (host/network/real-game opt-in). |
+| `cargo test --workspace` | **PASS:** 186 passed, 0 failed, 7 ignored (opt-in/host/network) |
 | `npm run typecheck` | **PASS** |
 | `npm run lint` | **PASS** |
 | `npm run format:check` | **PASS** |
 | `npm run build` | **PASS** |
-| `npm run tauri:dev` + revisión ventana nativa | **PASS**; scan, Loader Lab guard y readiness revisados en la ventana. |
-| `git diff --check` | **PASS**; sin whitespace errors. |
+| `npm run tauri:dev` + revisión nativa read-only | **COMPROBADO:** ventana Tauri; scan Steam; ZZMI 1.5.0 y XXMI Libraries 1.1.7 seleccionados desde storage; readiness `NeedsEvidence`; Proton de juego `Unknown`; no se accionó Loader Lab |
+| `git diff --check` | **PASS** |
+
+La inspección nativa de paquetes encontró tres inventarios administrados: ZZMI v1.5.0, ZZMI v1.4.5 y XXMI Libraries v1.1.7. La evaluación con los paquetes por defecto seleccionados mostró instalación/executable y prefix candidato presentes, runtime ensamblado y autenticidad verificados, estrategia `NoDecision`, Hook `Blocked`, Direct Inject `Verified` únicamente para el fixture LXMI, compatibilidad ZZMI/ZZZ `No probado`, y gate `needs_evidence` no elegible. El botón de readiness solo ejecutó discovery/lectura de metadatos; no se inició Steam, Proton, Wine, Hook, Direct Inject ni ZZZ.
+
+La ventana se cerró al terminar; el servidor de desarrollo en `127.0.0.1:1420` dejó de escuchar. No hubo modificaciones de Steam, archivos del juego, `compatdata/4162040` ni prefix.
+
+El detalle y los enlaces upstream están en [`estrategia_loader_zzmi_linux.md`](../01_Descubrimiento/estrategia_loader_zzmi_linux.md). El panel de readiness no ofrece acciones de ejecución.
 
 ## Decisión de avance
 
-No iniciar LXMI 0.9. Antes se necesita una estrategia autorizada para verificar Hook con aislamiento de proceso demostrado, además de evidencias faltantes de Steam Linux/Proton, same-prefix y compatibilidad de ZZZ. No usar Direct Inject como sustituto silencioso del Hook default.
+La evidencia upstream permite responder **C** sobre las rutas disponibles por modo de launch: Hook es el default de ZZMI y existe Direct Inject en Custom Launch. Para ZZMI + ZZZ + Steam Linux/Proton, la decisión es **D: evidencia insuficiente**. El estado LXMI es `NoDecision` y `NeedsEvidence`; el gate permanece cerrado. No iniciar LXMI 0.9 ni ejecutar Hook, Direct Inject, Proton, Steam o ZZZ hasta que el trabajo de evidencia siguiente resuelva los requisitos correspondientes. No inferir la selección de Proton del juego ni compatibilidad a partir del Loader Lab.

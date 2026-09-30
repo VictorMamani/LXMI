@@ -304,3 +304,43 @@ Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D 
 - Añadidas vistas Advanced para explicar el bloqueo Hook y evaluar readiness. Aplicación versionada `0.8.0`.
 - **Resultado:** Hook `BLOCKED` para el laboratorio y ejecución/remote DLL Hook `NO COMPROBADOS`. El readiness no autoriza LXMI 0.9.
 - Actualizada investigación, ADR-027, arquitectura y seguridad; añadido `01_Descubrimiento/launch_zzmi_steam_linux.md` y reporte `06_Verificacion/verificacion_0_8.md`.
+
+## LXMI-0.8.1 — Loader Strategy Resolution for ZZMI on Linux (2026-09-29)
+
+### Implementado
+
+- Fijada la investigación a XXMI Launcher `v2.2.1`, commit `d56786b8dacb00c35204bff45ff5b8b83bd8962a`, y trazados `ModelImporterPackage.use_hook`, `ZZMIPackage`, `StartGame`, `MigotoManager.StartAndInject` y `custom_launch_inject_mode`.
+- Registrado que ZZMI hereda Hook como default; Custom Launch permite rutas Hook, Inject y Bypass. Inject usa la rama genérica `3dmloader.dll`; no se concluye compatibilidad de esa ruta con ZZMI/ZZZ Linux/Proton. `loader=` sigue siendo configuración de identidad de carga externa, no selector del modo.
+- Comparado el cambio de default de WWMI como precedente arquitectónico solamente. Hook queda `NotEstablished` como requisito exclusivo; esto no se interpreta como `HookNotRequired`.
+- Modelados `LoaderStrategyDecision`, candidatos vs. modo preferido, criterios, evidencia de aislamiento y componentes independientes del gate. El guard de Hook Lab sigue rechazando Hook antes de filesystem/process work.
+- Recalculada readiness sin inferir selección Proton del juego: estrategia `NoDecision`, Proton seleccionado `Unknown`, readiness `NeedsEvidence`, gate no elegible para revisión.
+- Advanced → ZZZ Readiness presenta el resumen de Hook, Direct Inject de fixture y compatibilidad de juego por separado; los criterios/rutas técnicas quedan en detalles.
+- Actualizados investigación, ADR-027, arquitectura, modelo de datos, seguridad, backlog y guías de verificación/aplicación. Versión de la app incrementada a `0.8.1`.
+- Quality gates finales: Rust workspace format/check/clippy/test **PASS** (186 tests passed; 7 host/network/opt-in ignorados), frontend typecheck/lint/format/build **PASS**, `git diff --check` **PASS**. La ventana Tauri nativa confirmó scan de ZZZ, packages ZZMI/XXMI Libraries managed, runtime íntegro y readiness `NeedsEvidence`; Proton seleccionado para el juego `Unknown`. No se ejecutaron modos de loader ni runtimes.
+
+### Evidencia y límites
+
+- **UPSTREAM VERIFIED:** Hook default ZZMI y Direct Inject en Custom Launch según el flujo fijado de XXMI Launcher v2.2.1. El precedente Direct Inject de WWMI no se extrapola a ZZMI.
+- **UPSTREAM DOCUMENTED:** en el código Wine consultado el Hook global vive en el scope del desktop administrado por wineserver; distintos `WINEPREFIX` permiten sesiones independientes. El comportamiento específico de Proton/`3dmloader.dll` no se comprobó.
+- **HOST TEST previo 0.7:** Direct Inject y DLL remota pasaron únicamente contra el target fixture de LXMI. No se repitió en 0.8.1.
+- **NO COMPROBADO / BLOCKED:** Hook bajo Proton, Direct Inject con ZZMI/ZZZ, visibilidad de procesos del contexto Steam Linux, same-prefix/same-wineserver y compatibilidad Linux/Proton del juego.
+- En 0.8.1 no se ejecutó Hook, Direct Inject, Steam, Proton, Wine o ZZZ y no se modificaron Steam, juego, compatdata ni prefix.
+- La verificación nativa y los comandos exactos están en `SDLC/06_Verificacion/verificacion_0_8.md`.
+
+## LXMI-0.8.2 — Steam / Proton Process Context Evidence (2026-09-30)
+
+### Implementado
+
+- `lxmi-steam` reutiliza Valve KeyValues para inspeccionar en modo read-only `config/config.vdf`, con límite de 2 MiB y clasificación de config ausente, inválido, ilegible, inseguro o demasiado grande.
+- Mapping por AppID, mapping global `0` y compatibility tools descubiertas permanecen separados. Coincidencia de ID instalado es evidencia de configuración/disponibilidad, no selección efectiva.
+- Se añadió `SteamProtonProcessContextEvidence` con fuentes/findings de manifest, biblioteca, config, compatdata y pfx; runtime/prefix/contexto efectivos y relaciones loader/prefix/wineserver permanecen `Unknown`.
+- La readiness agrega requisitos y componentes del gate independientes; `NeedsEvidence`, `NoDecision`, gate no elegible y guard Hook se conservan.
+- Advanced → ZZZ Readiness expone el mapping y fuentes bajo detalles técnicos. Sin UI manual nativa en esta verificación.
+- Se fijó la app en `0.8.2`; no se implementó lanzamiento, ni se ejecutó proceso externo, ni se modificó Steam, ZZZ, compatdata, prefix o runtime administrado.
+
+### Evidencia y validación
+
+- **LOCAL VERIFIED:** el bloque `CompatToolMapping` leído en `/home/university/.local/share/Steam/config/config.vdf` está vacío; los `localconfig.vdf` consultados no contienen esa clave. Por tanto, no se encontró override explícito por AppID en las fuentes comprobadas; el runtime efectivo continúa `Unknown`.
+- **LOCAL VERIFIED:** manifest AppID `4162040`, ejecutable de ZZZ, directorios `compatdata/4162040/pfx` y Proton Experimental con metadata estructural existen en el host. Proton instalado no se promueve a selección.
+- **FIXTURE:** parser/readiness cubiertos por mapping explícito/global, mapping global sin override, config malformed/missing, varios candidates y compatdata/pfx presentes/ausentes.
+- Pasaron los quality gates Rust y frontend; total workspace `194 passed`, `7 ignored`. Resultados exactos y límites en `SDLC/06_Verificacion/verificacion_0_8_2.md`.

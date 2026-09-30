@@ -352,10 +352,32 @@ type ZzzLaunchReadiness = {
   game_executable_path: string | null;
   compatdata_path: string | null;
   prefix_path: string | null;
+  steam_process_context: SteamProtonProcessContextEvidence | null;
   managed_runtime_root: string | null;
   zzmi_version: string | null;
   xxmi_libraries_version: string | null;
-  loader_mode: string;
+  upstream_default_loader_mode: string;
+  upstream_loader_strategy: string;
+  hook_requirement: string;
+  loader_strategy: {
+    game_id: string;
+    platform: string;
+    upstream_strategy: string;
+    outcome: string;
+    preferred_mode: string | null;
+    hook_requirement: string;
+    direct_inject_candidate: boolean;
+    direct_inject_criteria: { id: string; state: string; evidence: string }[];
+    isolation: {
+      mode: string;
+      scope: string;
+      state: string;
+      evidence: string;
+      limitation: string;
+    }[];
+    evidence: string[];
+    known_limitations: string[];
+  };
   capabilities: { capability: string; state: string; evidence: string }[];
   requirements: { id: string; state: string; evidence: string }[];
   blockers: string[];
@@ -368,7 +390,56 @@ type ZzzLaunchReadiness = {
     consent_received: boolean;
     launches_game: boolean;
     rationale: string;
+    components: { component: string; state: string; evidence: string }[];
   };
+};
+type SteamProtonProcessContextEvidence = {
+  app_id: number;
+  steam_root: string | null;
+  library_root: string | null;
+  app_manifest_path: string | null;
+  compatdata_state: string;
+  compatdata_path: string | null;
+  prefix_state: string;
+  prefix_path: string | null;
+  config_path: string | null;
+  config_state: string;
+  config_issue: string | null;
+  per_game_mapping_state: string;
+  per_game_mapping: {
+    app_id: number;
+    internal_name: string | null;
+    config: string | null;
+    priority: string | null;
+  } | null;
+  global_default_mapping: {
+    app_id: number;
+    internal_name: string | null;
+    config: string | null;
+    priority: string | null;
+  } | null;
+  matched_installed_tools: ContextToolEvidence[];
+  installed_compatibility_tools: ContextToolEvidence[];
+  effective_runtime_selection: string;
+  effective_prefix: string;
+  process_context: string;
+  loader_same_prefix_requirement: string;
+  loader_same_wineserver_requirement: string;
+  wineserver_relationship: string;
+  findings: {
+    claim: string;
+    state: string;
+    source: string;
+    detail: string;
+  }[];
+};
+type ContextToolEvidence = {
+  internal_id: string | null;
+  display_name: string;
+  kind: string;
+  origin: string;
+  version: string | null;
+  path: string;
 };
 type GameId = "wuthering-waves" | "zenless-zone-zero";
 const games: Record<GameId, { name: string; integration: "wwmi" | "zzmi" }> = {
@@ -387,6 +458,51 @@ const states: Record<string, string> = {
   unknown: "No determinado",
   not_required: "No necesario",
 };
+const readinessDecisionLabels: Record<string, string> = {
+  not_ready: "Aún no listo",
+  needs_evidence: "Falta evidencia",
+  ready_for_controlled_experiment: "Listo para revisar un experimento",
+  blocked: "Bloqueado",
+};
+const loaderOutcomeLabels: Record<string, string> = {
+  hook: "Hook",
+  direct_inject: "Direct Inject",
+  no_decision: "Sin decisión",
+  blocked: "Bloqueado",
+};
+function stateLabel(value: string): string {
+  const labels: Record<string, string> = {
+    verified: "Verificado",
+    upstream_documented: "Documentado upstream",
+    unverified: "Sin verificar",
+    not_tested: "No probado",
+    unsupported: "No compatible",
+    unknown: "Desconocido",
+    blocked: "Bloqueado",
+    read: "Leído",
+    missing: "No encontrado",
+    invalid: "Inválido",
+    unreadable: "No se pudo leer",
+    unsafe_path: "Ruta no segura",
+    too_large: "Supera el límite de lectura",
+    not_inspected: "No inspeccionado",
+    configured: "Configurado",
+    no_per_game_override: "Sin mapping específico para este juego",
+    detected: "Detectado",
+    absent: "Ausente",
+    known: "Conocido",
+    not_required: "No requerido",
+    satisfied: "Presente",
+    unsatisfied: "Pendiente",
+    not_established: "No establecido",
+    hook: "Hook",
+    direct_inject: "Direct Inject",
+    hook_only: "Solo Hook",
+    direct_inject_only: "Solo Direct Inject",
+    either_depending_on_launch_mode: "Depende del modo de lanzamiento",
+  };
+  return labels[value] ?? value.replaceAll("_", " ");
+}
 function errorText(error: unknown): string {
   if (
     typeof error === "object" &&
@@ -1797,9 +1913,71 @@ export default function XxmiPanel() {
               <div className="runtime-evidence" role="status">
                 <h3>{zzzReadiness.game_name}</h3>
                 <p>
-                  Decisión: <strong>{zzzReadiness.decision}</strong> · AppID{" "}
-                  <code>{zzzReadiness.app_id}</code> · distribución{" "}
-                  {zzzReadiness.distribution}
+                  Readiness:{" "}
+                  <strong>
+                    {readinessDecisionLabels[zzzReadiness.decision] ??
+                      stateLabel(zzzReadiness.decision)}
+                  </strong>{" "}
+                  · AppID <code>{zzzReadiness.app_id}</code> · distribución{" "}
+                  {stateLabel(zzzReadiness.distribution)}
+                </p>
+                <dl className="runtime-summary readiness-summary">
+                  <div>
+                    <dt>Estrategia LXMI</dt>
+                    <dd>
+                      {loaderOutcomeLabels[
+                        zzzReadiness.loader_strategy.outcome
+                      ] ?? stateLabel(zzzReadiness.loader_strategy.outcome)}
+                      {zzzReadiness.loader_strategy.preferred_mode
+                        ? ` · ${zzzReadiness.loader_strategy.preferred_mode}`
+                        : " · sin modo preferido"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Hook · Loader Lab</dt>
+                    <dd>
+                      {stateLabel(
+                        zzzReadiness.capabilities.find(
+                          (item) => item.capability === "hook_in_isolated_lab",
+                        )?.state ?? "unknown",
+                      )}
+                      {" · aislamiento por proceso no demostrado"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Direct Inject · Loader Lab</dt>
+                    <dd>
+                      {stateLabel(
+                        zzzReadiness.capabilities.find(
+                          (item) =>
+                            item.capability === "direct_inject_in_isolated_lab",
+                        )?.state ?? "unknown",
+                      )}
+                      {" · solo fixture LXMI"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>ZZMI con ZZZ</dt>
+                    <dd>
+                      {stateLabel(
+                        zzzReadiness.capabilities.find(
+                          (item) =>
+                            item.capability ===
+                            "game_specific_loader_compatibility",
+                        )?.state ?? "unknown",
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+                <p>
+                  ZZMI usa Hook por defecto en el flujo estándar. Direct Inject
+                  aparece en Custom Launch upstream, pero su prueba de
+                  laboratorio no demuestra compatibilidad con ZZMI/ZZZ. Proton
+                  seleccionado para el juego:{" "}
+                  <strong>
+                    {zzzReadiness.selected_game_runtime ?? "Desconocido"}
+                  </strong>
+                  . No se inició el juego.
                 </p>
                 <p>
                   Instalación {zzzReadiness.installation} · contenido{" "}
@@ -1829,6 +2007,217 @@ export default function XxmiPanel() {
                     ? zzzReadiness.available_proton_tools.join(", ")
                     : "ninguna detectada"}
                 </p>
+                {zzzReadiness.steam_process_context && (
+                  <>
+                    <p>
+                      Contexto Steam / Proton · mapping por juego:{" "}
+                      <strong>
+                        {zzzReadiness.steam_process_context.per_game_mapping
+                          ?.internal_name ||
+                          stateLabel(
+                            zzzReadiness.steam_process_context
+                              .per_game_mapping_state,
+                          )}
+                      </strong>{" "}
+                      · contexto efectivo: Desconocido
+                    </p>
+                    <details>
+                      <summary>Evidencia del contexto Steam / Proton</summary>
+                      <p>
+                        Steam root:{" "}
+                        <code className="path-value">
+                          {zzzReadiness.steam_process_context.steam_root ??
+                            "no asociado"}
+                        </code>
+                        <br />
+                        Biblioteca:{" "}
+                        <code className="path-value">
+                          {zzzReadiness.steam_process_context.library_root ??
+                            "no detectada"}
+                        </code>
+                        <br />
+                        Manifest:{" "}
+                        <code className="path-value">
+                          {zzzReadiness.steam_process_context
+                            .app_manifest_path ?? "no detectado"}
+                        </code>
+                        <br />
+                        config.vdf:{" "}
+                        {stateLabel(
+                          zzzReadiness.steam_process_context.config_state,
+                        )}
+                        {zzzReadiness.steam_process_context.config_path && (
+                          <>
+                            {" · "}
+                            <code className="path-value">
+                              {zzzReadiness.steam_process_context.config_path}
+                            </code>
+                          </>
+                        )}
+                        {zzzReadiness.steam_process_context.config_issue && (
+                          <>
+                            <br />
+                            {zzzReadiness.steam_process_context.config_issue}
+                          </>
+                        )}
+                        <br />
+                        Configuración por AppID:{" "}
+                        {zzzReadiness.steam_process_context.per_game_mapping
+                          ? `tool id ${zzzReadiness.steam_process_context.per_game_mapping.internal_name || "no informado"}`
+                          : stateLabel(
+                              zzzReadiness.steam_process_context
+                                .per_game_mapping_state,
+                            )}
+                        <br />
+                        Default global:{" "}
+                        {zzzReadiness.steam_process_context
+                          .global_default_mapping?.internal_name ??
+                          "no registrado"}
+                        {" · no se promueve a selección del juego."}
+                        <br />
+                        Runtime efectivo:{" "}
+                        {stateLabel(
+                          zzzReadiness.steam_process_context
+                            .effective_runtime_selection,
+                        )}
+                        <br />
+                        Prefix efectivo:{" "}
+                        {stateLabel(
+                          zzzReadiness.steam_process_context.effective_prefix,
+                        )}
+                        <br />
+                        Loader comparte prefix:{" "}
+                        {stateLabel(
+                          zzzReadiness.steam_process_context
+                            .loader_same_prefix_requirement,
+                        )}
+                        <br />
+                        Loader comparte wineserver:{" "}
+                        {stateLabel(
+                          zzzReadiness.steam_process_context
+                            .loader_same_wineserver_requirement,
+                        )}
+                        <br />
+                        Relación con wineserver:{" "}
+                        {stateLabel(
+                          zzzReadiness.steam_process_context
+                            .wineserver_relationship,
+                        )}
+                      </p>
+                      <h4>Compatibility tools instaladas</h4>
+                      {zzzReadiness.steam_process_context
+                        .installed_compatibility_tools.length > 0 ? (
+                        <ul>
+                          {zzzReadiness.steam_process_context.installed_compatibility_tools.map(
+                            (tool) => (
+                              <li key={`${tool.internal_id}:${tool.path}`}>
+                                <strong>{tool.display_name}</strong> ·{" "}
+                                {stateLabel(tool.kind)} ·{" "}
+                                {stateLabel(tool.origin)}
+                                {tool.version ? ` · ${tool.version}` : ""}
+                                {tool.internal_id
+                                  ? ` · ${tool.internal_id}`
+                                  : ""}
+                                <br />
+                                <code className="path-value">{tool.path}</code>
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      ) : (
+                        <p>No se detectaron compatibility tools.</p>
+                      )}
+                      {zzzReadiness.steam_process_context
+                        .matched_installed_tools.length > 0 && (
+                        <p>
+                          Herramienta configurada con coincidencia local:{" "}
+                          {zzzReadiness.steam_process_context.matched_installed_tools
+                            .map((tool) => tool.display_name)
+                            .join(", ")}
+                          . Esto no observa una ejecución activa.
+                        </p>
+                      )}
+                      <ul>
+                        {zzzReadiness.steam_process_context.findings.map(
+                          (finding, index) => (
+                            <li key={`${finding.claim}:${index}`}>
+                              <strong>
+                                {finding.claim}: {stateLabel(finding.state)}
+                              </strong>{" "}
+                              — {finding.detail} <code>{finding.source}</code>
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    </details>
+                  </>
+                )}
+                <details>
+                  <summary>Estrategia de loader para ZZMI</summary>
+                  <p>
+                    Default upstream:{" "}
+                    <strong>
+                      {stateLabel(zzzReadiness.upstream_default_loader_mode)}
+                    </strong>
+                    <br />
+                    Configuración upstream:{" "}
+                    {stateLabel(zzzReadiness.upstream_loader_strategy)}
+                    <br />
+                    Requisito técnico de Hook para ZZMI:{" "}
+                    {stateLabel(zzzReadiness.hook_requirement)}
+                    <br />
+                    Decisión LXMI Linux/ZZZ:{" "}
+                    <strong>
+                      {loaderOutcomeLabels[
+                        zzzReadiness.loader_strategy.outcome
+                      ] ?? stateLabel(zzzReadiness.loader_strategy.outcome)}
+                    </strong>
+                    <br />
+                    Preferencia seleccionada:{" "}
+                    {zzzReadiness.loader_strategy.preferred_mode ?? "ninguna"}
+                    <br />
+                    Direct Inject es candidato de investigación:{" "}
+                    {zzzReadiness.loader_strategy.direct_inject_candidate
+                      ? "sí, sin compatibilidad ZZMI/ZZZ verificada"
+                      : "no"}
+                  </p>
+                  <h4>Criterios Direct Inject</h4>
+                  <ul>
+                    {zzzReadiness.loader_strategy.direct_inject_criteria.map(
+                      (item) => (
+                        <li key={item.id}>
+                          <strong>
+                            {item.id.replaceAll("_", " ")}: {item.state}
+                          </strong>{" "}
+                          — {item.evidence}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                  <h4>Alcance de aislamiento</h4>
+                  <ul>
+                    {zzzReadiness.loader_strategy.isolation.map((item) => (
+                      <li key={item.mode}>
+                        <strong>
+                          {item.mode}: {item.scope.replaceAll("_", " ")} ·{" "}
+                          {item.state}
+                        </strong>{" "}
+                        — {item.evidence} {item.limitation}
+                      </li>
+                    ))}
+                  </ul>
+                  <h4>Conclusión y límites</h4>
+                  <ul>
+                    {zzzReadiness.loader_strategy.evidence.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                    {zzzReadiness.loader_strategy.known_limitations.map(
+                      (item) => (
+                        <li key={item}>{item}</li>
+                      ),
+                    )}
+                  </ul>
+                </details>
                 <ul>
                   {zzzReadiness.capabilities.map((item) => (
                     <li key={item.capability}>
@@ -1919,6 +2308,21 @@ export default function XxmiPanel() {
                     : "no"}
                 </p>
                 <p>{zzzReadiness.controlled_experiment_gate.rationale}</p>
+                <details>
+                  <summary>Componentes del gate</summary>
+                  <ul>
+                    {zzzReadiness.controlled_experiment_gate.components.map(
+                      (item) => (
+                        <li key={item.component}>
+                          <strong>
+                            {item.component.replaceAll("_", " ")}: {item.state}
+                          </strong>{" "}
+                          — {item.evidence}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </details>
               </div>
             )}
           </details>

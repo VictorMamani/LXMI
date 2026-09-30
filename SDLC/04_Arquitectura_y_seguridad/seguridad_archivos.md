@@ -130,3 +130,22 @@ Amenazas residuales: una release/versión futura de Proton puede cambiar CLI o e
 - El binario local `3dmloader.dll` se inspeccionó por sus imports PE para `SetWindowsHookExW` y `UnhookWindowsHookEx`; no se ejecutó, parcheó ni desensambló como parte de 0.8.
 
 El resultado demuestra solo la carga del DLL de test dentro del proceso de laboratorio bajo la combinación probada. No verifica el Hook default de ZZMI, ZZZ Steam, Linux/Proton para el juego ni compatibilidad con anti-cheat. Ver `../06_Verificacion/verificacion_0_7.md`.
+
+### LXMI 0.8.2 — lectura de Steam config
+
+- `config/config.vdf` se resuelve desde una Steam root devuelta por discovery y asociada a la biblioteca que contiene el manifest del AppID. No hay path ingresado por frontend.
+- La lectura está limitada a 2 MiB y acepta únicamente un `config/` directory y `config.vdf` regular; un symlink en cualquiera de esos componentes se clasifica como `UnsafePath` sin seguirlo.
+- Se reutiliza el parser Valve KeyValues existente, con detección de secciones/campos duplicados y error tipado para estructura inesperada. Un archivo ausente, ilegible o inválido produce evidencia `Unknown`, no “sin override”.
+- La sección por AppID y el mapping global `0` se conservan como datos distintos. Un mapping global nunca rellena `selected_game_runtime`.
+- El scanner no escribe Steam; no consulta procesos y no ejecuta Proton/Wine/wineserver/ZZZ. La presencia de `compatdata/4162040/pfx` sigue siendo evidencia de filesystem, no evidencia de runtime activo.
+
+### LXMI 0.8.1 — evaluación de estrategia y aislamiento
+
+- La auditoría upstream fijada confirma que `use_hook=true` es default de ZZMI, y que Custom Launch con modo `Inject` llega a la rama genérica Direct Inject. El default de ZZMI no se altera en LXMI y ninguna opción UI habilita ejecución del juego.
+- `DirectInjectCandidate` es únicamente una hipótesis de siguiente prueba: combina ruta upstream documentada, capacidad y DLL remota comprobadas en fixture. No equivale a soporte de ZZMI, ZZZ, Steam Linux o Proton.
+- Wine almacena hooks globales en la tabla del desktop dentro de una sesión/server según el source consultado. El estado se representa como `WineDesktopWithinServer`; no se eleva a `ProcessBound`, y no prueba que Proton o `3dmloader.dll` tengan idéntica implementación.
+- Distintos `WINEPREFIX` permiten sesiones Wine independientes en la documentación general, pero same-prefix/same-wineserver para el loader y ZZZ sigue `Unknown`. No se ejecutó Hook para medir ese comportamiento.
+- `HookRequirementState::NotEstablished` no puede usarse como evidencia de que Hook no sea necesario. `LoaderStrategyDecision.outcome=NoDecision`; readiness `NeedsEvidence`; gate no elegible.
+- El servicio conserva `hook_scope_not_isolated` como la primera condición del command Hook. No cambia el modelo de amenazas ni relaja la política de ejecución.
+
+La comparación upstream y fuentes están en `../01_Descubrimiento/estrategia_loader_zzmi_linux.md`; la verificación está en `../06_Verificacion/verificacion_0_8.md#lxmi-081`.

@@ -1,0 +1,13 @@
+"InstallConfigStore"
+{
+    "Software"
+    {
+        "Valve"
+        {
+            "Steam"
+            {
+                "CompatToolMapping"
+                {
+                    "4162040"
+                    {
+                        "name" "proton_experimental"

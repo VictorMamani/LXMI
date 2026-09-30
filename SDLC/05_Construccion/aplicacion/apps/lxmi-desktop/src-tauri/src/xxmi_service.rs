@@ -3,20 +3,30 @@ use lxmi_core::{
     GameDistribution, GameExecutableStatus, GameInstallationStatus, SystemInfo,
     ZENLESS_ZONE_ZERO_APP_ID,
 };
-use lxmi_proton::{CompatibilityToolKind, CompatibilityToolStatus, ProtonScanner};
+use lxmi_proton::{
+    CompatibilityTool, CompatibilityToolKind, CompatibilityToolSource, CompatibilityToolStatus,
+    ProtonScanner,
+};
 use lxmi_runtime::{
     CompatDataAssessment, GameInstallationAssessment, GameInstallationCompleteness,
     PrefixAssessment, RuntimePlanner, RuntimeSelection,
 };
-use lxmi_steam::{SteamDiscoveryResult, SteamDiscoveryScanner};
+use lxmi_steam::{
+    inspect_steam_compat_tool_config, SteamCompatToolConfigStatus, SteamCompatToolMapping,
+    SteamDiscoveryResult, SteamDiscoveryScanner,
+};
 use lxmi_xxmi::{
     assemble_zzmi_runtime, existing_zzmi_runtime, inspect_launch_topology, inspect_runtime,
-    integration_for_game, plan_installation_for_integration, plan_zzmi_assembly, DownloadCache,
-    ErrorCode, GitHubReleaseProvider, InstallationPlan, LaunchTopologyPlan, ManagedRuntime,
-    ManagedStore, OfficialPackageKind, PackageAuthenticity, PackageKind, PackageManifest,
-    ReadinessCapabilityState, ReadinessEvidenceState, ReleaseProvider, Result, RuntimeAssemblyPlan,
-    RuntimeDiscovery, SignatureStatus, UpstreamRelease, XxmiError, ZzmiCapability,
-    ZzmiCapabilityAssessment, ZzmiLaunchReadiness, ZzmiLaunchReadinessInput, ZzmiLoaderMode,
+    integration_for_game, plan_installation_for_integration, plan_zzmi_assembly,
+    ConfiguredToolMappingEvidence, ContextFindingState, ContextToolKind, ContextToolOrigin,
+    DownloadCache, ErrorCode, GitHubReleaseProvider, HookRequirementState, InstallationPlan,
+    InstalledCompatibilityToolEvidence, LaunchTopologyPlan, ManagedRuntime, ManagedStore,
+    OfficialPackageKind, PackageAuthenticity, PackageKind, PackageManifest,
+    PerGameToolMappingState, ReadinessCapabilityState, ReadinessEvidenceState, ReleaseProvider,
+    Result, RuntimeAssemblyPlan, RuntimeContextKnowledge, RuntimeDiscovery, SignatureStatus,
+    SteamCompatConfigEvidenceState, SteamProcessContextFinding, SteamProtonProcessContextEvidence,
+    UpstreamLoaderStrategy, UpstreamRelease, XxmiError, ZzmiCapability, ZzmiCapabilityAssessment,
+    ZzmiLaunchReadiness, ZzmiLaunchReadinessInput, ZzmiLoaderMode,
 };
 use serde::Serialize;
 use std::{
@@ -826,6 +836,242 @@ fn prefix_path(state: &PrefixAssessment) -> Option<PathBuf> {
     }
 }
 
+fn compatibility_tool_evidence(tool: &CompatibilityTool) -> InstalledCompatibilityToolEvidence {
+    InstalledCompatibilityToolEvidence {
+        internal_id: tool.internal_id.clone(),
+        display_name: tool.display_name.clone(),
+        kind: match tool.kind {
+            CompatibilityToolKind::Proton => ContextToolKind::Proton,
+            CompatibilityToolKind::SteamLinuxRuntime => ContextToolKind::SteamLinuxRuntime,
+            CompatibilityToolKind::Other => ContextToolKind::Other,
+            CompatibilityToolKind::Unknown => ContextToolKind::Unknown,
+        },
+        origin: match tool.source {
+            CompatibilityToolSource::SteamLibrary => ContextToolOrigin::SteamLibrary,
+            CompatibilityToolSource::Custom => ContextToolOrigin::Custom,
+        },
+        version: tool.version.clone(),
+        path: tool.path.clone(),
+    }
+}
+
+fn configured_mapping_evidence(mapping: &SteamCompatToolMapping) -> ConfiguredToolMappingEvidence {
+    ConfiguredToolMappingEvidence {
+        app_id: mapping.app_id,
+        internal_name: mapping.internal_name.clone(),
+        config: mapping.config.clone(),
+        priority: mapping.priority.clone(),
+    }
+}
+
+fn config_evidence_state(status: SteamCompatToolConfigStatus) -> SteamCompatConfigEvidenceState {
+    match status {
+        SteamCompatToolConfigStatus::Read => SteamCompatConfigEvidenceState::Read,
+        SteamCompatToolConfigStatus::Missing => SteamCompatConfigEvidenceState::Missing,
+        SteamCompatToolConfigStatus::Invalid => SteamCompatConfigEvidenceState::Invalid,
+        SteamCompatToolConfigStatus::Unreadable => SteamCompatConfigEvidenceState::Unreadable,
+        SteamCompatToolConfigStatus::UnsafePath => SteamCompatConfigEvidenceState::UnsafePath,
+        SteamCompatToolConfigStatus::TooLarge => SteamCompatConfigEvidenceState::TooLarge,
+    }
+}
+
+fn context_finding(
+    claim: &str,
+    state: ContextFindingState,
+    source: String,
+    detail: &str,
+) -> SteamProcessContextFinding {
+    SteamProcessContextFinding {
+        claim: claim.into(),
+        state,
+        source,
+        detail: detail.into(),
+    }
+}
+
+fn steam_process_context_evidence(
+    discovery: &SteamDiscoveryResult,
+    compatibility_tools: &[CompatibilityTool],
+    platform: &lxmi_runtime::GameRuntimePlan,
+    app_id: u32,
+) -> SteamProtonProcessContextEvidence {
+    let compatdata_state = evidence_from_compatdata(&platform.compatdata);
+    let compatdata_path = compatdata_path(&platform.compatdata);
+    let prefix_state = evidence_from_prefix(&platform.prefix);
+    let prefix_path = prefix_path(&platform.prefix);
+    let library_root = match &platform.installation {
+        GameInstallationAssessment::Detected { steam_library, .. } => Some(steam_library.clone()),
+        _ => None,
+    };
+    let matching_roots = discovery
+        .steam
+        .installations
+        .iter()
+        .filter(|installation| {
+            library_root.as_ref().is_some_and(|library| {
+                installation
+                    .libraries
+                    .iter()
+                    .any(|candidate| candidate.path == *library)
+            })
+        })
+        .collect::<Vec<_>>();
+    let steam_root = (matching_roots.len() == 1).then(|| matching_roots[0].root_path.clone());
+    let app_manifest_path = library_root.as_ref().map(|library| {
+        library
+            .join("steamapps")
+            .join(format!("appmanifest_{app_id}.acf"))
+    });
+    let inspection = steam_root
+        .as_deref()
+        .map(|root| inspect_steam_compat_tool_config(root, app_id));
+    let config_path = inspection.as_ref().map(|value| value.config_path.clone());
+    let config_state = inspection
+        .as_ref()
+        .map(|value| config_evidence_state(value.status))
+        .unwrap_or(SteamCompatConfigEvidenceState::NotInspected);
+    let config_issue = inspection.as_ref().and_then(|value| value.detail.clone());
+    let mappings = inspection
+        .as_ref()
+        .and_then(|value| value.mappings.as_ref());
+    let per_game_mapping = mappings
+        .and_then(|value| value.per_app.as_ref())
+        .map(configured_mapping_evidence);
+    let global_default_mapping = mappings
+        .and_then(|value| value.global_default.as_ref())
+        .map(configured_mapping_evidence);
+    let per_game_mapping_state = if per_game_mapping.is_some() {
+        PerGameToolMappingState::Configured
+    } else if config_state == SteamCompatConfigEvidenceState::Read {
+        PerGameToolMappingState::NoPerGameOverride
+    } else {
+        PerGameToolMappingState::Unknown
+    };
+    let installed_compatibility_tools = compatibility_tools
+        .iter()
+        .map(compatibility_tool_evidence)
+        .collect::<Vec<_>>();
+    let mapped_internal_name = per_game_mapping
+        .as_ref()
+        .and_then(|mapping| mapping.internal_name.as_deref())
+        .filter(|name| !name.is_empty());
+    let matched_installed_tools = mapped_internal_name
+        .map(|internal_name| {
+            compatibility_tools
+                .iter()
+                .filter(|tool| tool.internal_id.as_deref() == Some(internal_name))
+                .map(compatibility_tool_evidence)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let mut findings = Vec::new();
+    let manifest_state = match &platform.installation {
+        GameInstallationAssessment::Detected { .. } => ContextFindingState::Detected,
+        GameInstallationAssessment::NotFound { .. } => ContextFindingState::Absent,
+        GameInstallationAssessment::Unknown { .. } => ContextFindingState::Unknown,
+    };
+    findings.push(context_finding(
+        "Steam app manifest",
+        manifest_state,
+        app_manifest_path
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "Steam game discovery".into()),
+        "La existencia del manifest vincula AppID y biblioteca; no identifica por sí sola el runtime efectivo.",
+    ));
+    findings.push(context_finding(
+        "compatdata directory",
+        match compatdata_state {
+            ReadinessEvidenceState::Verified => ContextFindingState::Detected,
+            ReadinessEvidenceState::Missing => ContextFindingState::Absent,
+            _ => ContextFindingState::Unknown,
+        },
+        compatdata_path
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "Steam compatdata discovery".into()),
+        "Filesystem discovery only; presence does not prove which compatibility tool executed the game.",
+    ));
+    findings.push(context_finding(
+        "pfx directory",
+        match prefix_state {
+            ReadinessEvidenceState::Verified => ContextFindingState::Detected,
+            ReadinessEvidenceState::Missing => ContextFindingState::Absent,
+            _ => ContextFindingState::Unknown,
+        },
+        prefix_path
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "Steam prefix discovery".into()),
+        "This is a prefix candidate. No running Proton process was inspected.",
+    ));
+    findings.push(context_finding(
+        "Per-game compatibility-tool mapping",
+        match per_game_mapping_state {
+            PerGameToolMappingState::Configured => ContextFindingState::Configured,
+            PerGameToolMappingState::NoPerGameOverride => ContextFindingState::Absent,
+            PerGameToolMappingState::Unknown => ContextFindingState::Unknown,
+        },
+        config_path
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "Steam config/config.vdf".into()),
+        match per_game_mapping_state {
+            PerGameToolMappingState::Configured => "An AppID mapping was read; it is configuration evidence, not observation of an effective process runtime.",
+            PerGameToolMappingState::NoPerGameOverride => "No AppID-specific mapping was present in the readable CompatToolMapping section. The global mapping is reported separately and is not promoted to a game selection.",
+            PerGameToolMappingState::Unknown => "The config source could not be read or parsed, or no unique Steam root was associated with the game library.",
+        },
+    ));
+    findings.push(context_finding(
+        "Effective Steam/Proton execution context",
+        ContextFindingState::Unknown,
+        "No Steam/Proton/game process was started or observed in LXMI 0.8.2".into(),
+        "A configuration mapping and installed candidates do not establish the runtime used by a particular execution.",
+    ));
+    findings.push(context_finding(
+        "Loader prefix and wineserver relationship",
+        ContextFindingState::Unknown,
+        "No process-context or upstream requirement evidence established".into(),
+        "Whether a future loader must share WINEPREFIX or wineserver with ZZZ remains unknown.",
+    ));
+
+    if matching_roots.len() > 1 {
+        findings.push(context_finding(
+            "Steam root association",
+            ContextFindingState::Unknown,
+            "Steam discovery".into(),
+            "More than one discovered Steam root contains the game library; config.vdf was not selected arbitrarily.",
+        ));
+    }
+
+    SteamProtonProcessContextEvidence {
+        app_id,
+        steam_root,
+        library_root,
+        app_manifest_path,
+        compatdata_state,
+        compatdata_path,
+        prefix_state,
+        prefix_path,
+        config_path,
+        config_state,
+        config_issue,
+        per_game_mapping_state,
+        per_game_mapping,
+        global_default_mapping,
+        matched_installed_tools,
+        installed_compatibility_tools,
+        effective_runtime_selection: RuntimeContextKnowledge::Unknown,
+        effective_prefix: RuntimeContextKnowledge::Unknown,
+        process_context: RuntimeContextKnowledge::Unknown,
+        loader_same_prefix_requirement: RuntimeContextKnowledge::Unknown,
+        loader_same_wineserver_requirement: RuntimeContextKnowledge::Unknown,
+        wineserver_relationship: RuntimeContextKnowledge::Unknown,
+        findings,
+    }
+}
+
 pub fn inspect_zzz_launch_readiness(
     zzmi_id: Option<&str>,
     libraries_id: Option<&str>,
@@ -1023,6 +1269,37 @@ pub fn inspect_zzz_launch_readiness(
             evidence: "La configuración upstream de ZZMI describe loader= como la identidad ejecutable permitida para carga desde una ubicación externa; no se ha probado una identidad LXMI distinta.".into(),
         },
         ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::UpstreamDirectInjectCustomLaunch,
+            state: ReadinessCapabilityState::UpstreamDocumented,
+            evidence: "XXMI Launcher v2.2.1: Custom Launch con modo Inject selecciona use_hook=false y entra al flujo genérico Direct Inject. El lanzamiento estándar sigue heredando el default del paquete.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::UpstreamGenericDirectInject,
+            state: ReadinessCapabilityState::UpstreamDocumented,
+            evidence: "La ruta Inject está implementada en el MigotoInjector genérico y usa el export Inject de 3dmloader.dll; esto no verifica ZZMI sobre ZZZ/Linux/Proton.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::LoaderComponentLocalUse,
+            state: ReadinessCapabilityState::Verified,
+            evidence: "3dmloader.dll fue autenticado desde XXMI Libraries v1.1.7 y revisado para ejecución local en laboratorio. No se autoriza redistribución.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::DirectInjectProcessLifecycleInProton,
+            state: ReadinessCapabilityState::Unknown,
+            evidence: "El test controlado crea su propio target; no prueba inicio/detección/espera del juego iniciado por Steam bajo Proton.".into(),
+        },
+        ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::ZzzTargetProcessMapping,
+            state: if installation == ReadinessEvidenceState::Verified
+                && executable_state == ReadinessEvidenceState::Verified
+            {
+                ReadinessCapabilityState::Verified
+            } else {
+                ReadinessCapabilityState::Unknown
+            },
+            evidence: "La integración ZZZ fija ZenlessZoneZero.exe como target y el discovery local confirma el ejecutable; la resolución desde el proceso Windows de Steam/Proton no está probada.".into(),
+        },
+        ZzmiCapabilityAssessment {
             capability: ZzmiCapability::NativeSteamLaunchUpstream,
             state: ReadinessCapabilityState::UpstreamDocumented,
             evidence: "La documentación XXMI fija documenta Native Steam Launch para ZZZ en Windows. No prueba su traducción a Steam Linux/Proton.".into(),
@@ -1053,6 +1330,11 @@ pub fn inspect_zzz_launch_readiness(
             evidence: "El laboratorio usó únicamente lxmi-loader-test-target.exe; ZZZ no se lanzó ni recibió una DLL.".into(),
         },
         ZzmiCapabilityAssessment {
+            capability: ZzmiCapability::ZzzProcessIdentificationInProton,
+            state: ReadinessCapabilityState::Unknown,
+            evidence: "Upstream obtiene el nombre del proceso desde el ejecutable configurado y lo busca; esa detección en Steam/Proton para ZZZ no se ha probado.".into(),
+        },
+        ZzmiCapabilityAssessment {
             capability: ZzmiCapability::AntiCheatBoundary,
             state: ReadinessCapabilityState::Unknown,
             evidence: "No se investigó ni interactuó con anti-cheat; el comportamiento del flujo ZZZ permanece fuera de verificación.".into(),
@@ -1061,6 +1343,8 @@ pub fn inspect_zzz_launch_readiness(
 
     let compatdata_path = compatdata_path(&platform.compatdata);
     let prefix = prefix_path(&platform.prefix);
+    let steam_process_context =
+        steam_process_context_evidence(&discovery, &tools.tools, &platform, app_id);
     Ok(lxmi_xxmi::assess_zzmi_launch_readiness(
         ZzmiLaunchReadinessInput {
             game_id: platform.game.id.into(),
@@ -1098,10 +1382,13 @@ pub fn inspect_zzz_launch_readiness(
             game_executable_path: executable_path,
             compatdata_path,
             prefix_path: prefix,
+            steam_process_context: Some(steam_process_context),
             managed_runtime_root,
             zzmi_version: zzmi.version,
             xxmi_libraries_version: libraries.version,
-            loader_mode: ZzmiLoaderMode::Hook,
+            upstream_default_loader_mode: ZzmiLoaderMode::Hook,
+            upstream_loader_strategy: UpstreamLoaderStrategy::EitherDependingOnLaunchMode,
+            hook_requirement: HookRequirementState::NotEstablished,
             capabilities,
         },
     ))

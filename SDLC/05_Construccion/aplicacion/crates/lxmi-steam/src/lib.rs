@@ -1,3 +1,4 @@
+mod compat_tool_config;
 mod compatdata;
 mod discovery;
 mod game_scanner;
@@ -5,6 +6,11 @@ mod manifest;
 mod scanner;
 mod vdf;
 
+pub use compat_tool_config::{
+    inspect_steam_compat_tool_config, parse_steam_compat_tool_mappings,
+    SteamCompatToolConfigInspection, SteamCompatToolConfigParseError, SteamCompatToolConfigStatus,
+    SteamCompatToolMapping, SteamCompatToolMappings,
+};
 pub use discovery::{
     SteamDiscoveryResult, SteamDiscoveryScanner, SteamGameDiscoveryResult,
     SteamGameDiscoveryStatus, SteamGameInstallation,

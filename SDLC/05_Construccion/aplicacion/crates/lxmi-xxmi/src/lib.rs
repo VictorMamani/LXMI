@@ -25,10 +25,16 @@ pub use crypto::{
 };
 pub use filesystem::validate_relative_path;
 pub use launch_readiness::{
-    assess_zzmi_launch_readiness, ControlledGameExperimentGate, ReadinessCapabilityState,
-    ReadinessEvidenceState, ZzmiCapability, ZzmiCapabilityAssessment, ZzmiLaunchReadiness,
-    ZzmiLaunchReadinessInput, ZzmiLoaderMode, ZzmiReadinessDecision, ZzmiReadinessRequirement,
-    ZzmiRequirementState,
+    assess_loader_strategy, assess_zzmi_launch_readiness, ConfiguredToolMappingEvidence,
+    ContextFindingState, ContextToolKind, ContextToolOrigin, ControlledGameExperimentGate,
+    HookRequirementState, InstalledCompatibilityToolEvidence, LoaderCriterionState,
+    LoaderIsolationEvidence, LoaderIsolationScope, LoaderStrategyCriterion, LoaderStrategyDecision,
+    LoaderStrategyOutcome, PerGameToolMappingState, ReadinessCapabilityState,
+    ReadinessEvidenceState, RuntimeContextKnowledge, SteamCompatConfigEvidenceState,
+    SteamProcessContextFinding, SteamProtonProcessContextEvidence, UpstreamLoaderStrategy,
+    ZzmiCapability, ZzmiCapabilityAssessment, ZzmiGateComponent, ZzmiGateComponentAssessment,
+    ZzmiLaunchReadiness, ZzmiLaunchReadinessInput, ZzmiLoaderMode, ZzmiReadinessDecision,
+    ZzmiReadinessRequirement, ZzmiRequirementState,
 };
 pub use model::*;
 pub use package::{inspect_runtime, validate_directory, WWMI_REQUIRED_FILES, ZZMI_REQUIRED_FILES};

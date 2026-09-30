@@ -78,26 +78,47 @@
 
 ## LXMI-0.8 — Hook Mode Parity & ZZZ Launch Readiness
 
-**Resultado: BLOQUEADO para paridad Hook y gate ZZZ (2026-09-28).** La implementación de readiness y el guard de seguridad están presentes. El Hook upstream se prepara antes del target y el export `HookLibrary` no recibe nombre de target; bajo la regla del experimento single-target no se ejecuta. No se realizó positivo/negativo host Hook. La decisión de loader de producción sigue `NoDecision`; `ZzmiLaunchReadiness` conserva selección Proton de ZZZ `Unknown` y nunca ejecuta.
+**Cerrado con bloqueo de seguridad (2026-09-28).** El Hook upstream se prepara antes del target y el export `HookLibrary` no recibe nombre de target; el guard fail-closed del Loader Lab impidió ejecutarlo sin evidencia de aislamiento target-only. La estrategia de producción quedó `NoDecision`; el runtime seleccionado por Steam para ZZZ se conservó como `Unknown`.
 
 - [x] Fijar la ruta Hook ZZMI upstream a XXMI Launcher v2.2.1 y explicar setup, inicio, verificación temprana/tardía y cleanup.
 - [x] Separar `loader=` (identidad permitida para carga externa del módulo) de `target=` y del nombre de proceso pasado a `WaitForInjection`.
-- [x] Añadir rechazo Hook fail-closed en backend antes de filesystem/process work y testear que no se accede al Proton indicado.
-- [x] Aplicar el mismo guard como primera operación del servicio Tauri; el botón Hook devuelve el rechazo específico sin resolver Proton ni escanear Steam.
-- [x] Crear `ZzmiLaunchReadiness` con capabilities Steam/Native-vs-Direct Launch/Linux Proton/same-prefix separadas, requirements, unknowns y gate sin executor.
-- [x] Exponer Hook bloqueado y readiness en el panel Advanced sin acción de lanzamiento.
-- [ ] Obtener evidencia upstream del filtro interno del Hook antes de mapear/cargar su DLL y determinar si existe modo de test confinado a un único proceso.
-- [ ] Determinar si el Hook puede reproducirse en una sesión/prefix aislado, con aislamiento demostrable y sin cargarlo en procesos ajenos.
-- [x] Comprobar desde Tauri nativo ZZZ Steam `4162040`, executable, compatdata/pfx y Proton candidato; la selección de Proton para el juego permanece `Unknown`.
-- [x] Ejecutar desde la ventana Tauri la evaluación de readiness y el rechazo Hook; gate `blocked`, sin iniciar Proton ni ZZZ.
-- [x] `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy `-D warnings`, `cargo test --workspace` (181 passed, 7 ignored), typecheck, lint, Prettier, Vite build y `git diff --check`.
+- [x] Añadir rechazo Hook fail-closed en backend y servicio Tauri antes de filesystem/process work.
+- [x] Crear `ZzmiLaunchReadiness` con capacidades, requirements, unknowns y gate declarativo sin executor.
+- [x] Mostrar Hook bloqueado y readiness en Advanced, sin acción de lanzamiento.
+- [x] Confirmar desde Tauri nativo ZZZ Steam `4162040`, executable, compatdata/pfx y Proton candidato; selección de Proton del juego `Unknown`.
 
-**No iniciar LXMI 0.9:** el gate no está `ReadyForControlledExperiment`. El siguiente trabajo permitido es investigar/validar el aislamiento Hook; solo podrá reevaluarse 0.9 después de satisfacerlo y resolver los unknowns Steam/Proton y same-prefix. No usar Direct Inject como sustituto implícito del modo default ZZMI.
+## LXMI-0.8.1 — Loader Strategy Resolution for ZZMI on Linux
+
+**Resultado de investigación/modelado (2026-09-29): `NoDecision`; readiness `NeedsEvidence`.** Hook sigue bloqueado en el laboratorio. Direct Inject permanece como candidato de investigación basado en ruta genérica upstream y el host test fixture de 0.7; no se declara compatible con ZZMI/ZZZ/Linux/Proton. No se ejecutaron Hook, Direct Inject, Proton, Steam ni ZZZ.
+
+- [x] Fijar XXMI Launcher `v2.2.1` (`d56786b8dacb00c35204bff45ff5b8b83bd8962a`) y trazar `use_hook`/`custom_launch_inject_mode`.
+- [x] Distinguir default Hook de ZZMI y la ruta Inject genérica de Custom Launch; documentar `Bypass` sin inferir soporte de ZZZ.
+- [x] Comparar ZZMI con el precedente de WWMI y marcar claramente que ese precedente no prueba ZZMI.
+- [x] Registrar `HookRequirement = NotEstablished`, sin tratarlo como `HookNotRequired`.
+- [x] Revisar el scope global de Hook en Wine y mantener desconocidos el aislamiento bajo Proton y los requisitos same-prefix/same-wineserver.
+- [x] Añadir `LoaderStrategyDecision`, evidencia, scope de aislamiento, criterios de candidatura y componentes granulares del gate.
+- [x] Mantener el Proton del juego `Unknown`, el Hook guard activo y el gate cerrado.
+- [x] Resumir la decisión en Advanced → ZZZ Readiness; conservar los diagnósticos en secciones expandibles.
+- [x] Ejecutar las quality gates 0.8.1 y completar la revisión nativa read-only de scan, paquetes seleccionados y ZZZ readiness; el panel mostró `NeedsEvidence`, estrategia `NoDecision`, Hook bloqueado, Direct Inject verificado solo en fixture y Proton del juego `Unknown`.
+
+## LXMI-0.8.2 — Steam / Proton Process Context Evidence
+
+**Completado (2026-09-30):** se añadió inspección read-only y acotada de `config/config.vdf`, modelo separado para mapping por AppID/default global/tools instaladas frente a runtime efectivo, y exposición en la vista ZZZ Readiness. En el host, el bloque `CompatToolMapping` está vacío; `compatdata/4162040` y `pfx` existen como candidatos, pero no prueban ejecución efectiva. Proton efectivo, prefix efectivo y relaciones con wineserver/loader permanecen `Unknown`; readiness `NeedsEvidence`, gate no elegible y loader `NoDecision`.
+
+- [x] Inspeccionar fuentes locales de configuración Steam y documentar su semántica con etiquetas de evidencia; no inferir runtime de tools instaladas.
+- [x] Reutilizar Valve KeyValues y añadir fixtures para mapping por AppID, global, ausente e inválido.
+- [x] Modelar fuentes/findings de configuración, manifest, biblioteca, compatdata, prefix candidato y contexto efectivo desconocido.
+- [x] Integrar evidence en readiness/gate sin executor ni cambios en `LoaderStrategyDecision`.
+- [x] Mostrar mapping AppID/global, herramientas con origen/path y relaciones desconocidas en Tauri.
+- [x] Quality gates Rust y frontend pasan; `git diff --check` se registra en `06_Verificacion/verificacion_0_8_2.md`.
+- [x] Confirmar localmente manifest `4162040`, ejecutable, `compatdata/4162040/pfx`, Proton Experimental candidato y ausencia de mapping AppID/global en el bloque inspeccionado; no ejecutar Steam/Proton/Wine/ZZZ.
+
+Se preservan los cambios sin commit de 0.8.1 y se añadieron cambios de 0.8.2 en la misma rama. No se hizo commit ni push. Las incógnitas de contexto de proceso siguen abiertas; este resultado no autoriza un experimento de lanzamiento.
 
 ## Estado de Git
 
-- LXMI 0.8 se trabaja en branch `main` en el repositorio independiente `04_Proyectos/19_LXMI`, con `origin` `git@github.com:VictorMamani/LXMI.git`.
-- Cambios de 0.8 sin commit ni push; verificar `git status` al preparar checkpoint.
+- LXMI se trabaja en branch `main` en el repositorio independiente `04_Proyectos/19_LXMI`, con `origin` `git@github.com:VictorMamani/LXMI.git`.
+- Los cambios de 0.8.1 y 0.8.2 continúan sin commit ni push; preservar ambos al preparar un checkpoint.
 
 ## Antes de integrar runtimes o contenido de mods
 
