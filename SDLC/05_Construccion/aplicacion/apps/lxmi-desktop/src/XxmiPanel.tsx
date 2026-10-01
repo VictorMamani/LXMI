@@ -674,6 +674,7 @@ export default function XxmiPanel() {
     useState(false);
   const [loaderResult, setLoaderResult] =
     useState<LoaderExperimentResult | null>(null);
+  const [fixtureReentry, setFixtureReentry] = useState("not_tested");
   const [zzzReadiness, setZzzReadiness] = useState<ZzzLaunchReadiness | null>(
     null,
   );
@@ -1832,7 +1833,7 @@ export default function XxmiPanel() {
               </div>
             )}
           </details>
-          <ContextLabPanel />
+          <ContextLabPanel onReentryResult={setFixtureReentry} />
           <details className="runtime-evidence bridge-test-panel">
             <summary>Advanced · Loader Lab (solo proceso LXMI)</summary>
             <p>
@@ -2533,6 +2534,13 @@ export default function XxmiPanel() {
           </section>
           <details className="runtime-evidence bridge-test-panel">
             <summary>Zenless Zone Zero · Launch Readiness</summary>
+            <p>
+              Contexto histórico observado en 0.8.3: Proton Experimental,
+              compatdata/prefix 4162040. Reentrada same-prefix del fixture:{" "}
+              {fixtureReentry}. Reentrada en prefix del juego: no probada.
+              Compatibilidad loader: UNKNOWN. Gate del juego cerrado.
+            </p>
+
             <p>
               Assessment declarativo. El Proton elegido en Loader Lab no se
               considera el runtime seleccionado para ZZZ. Esta vista no inicia

@@ -56,8 +56,9 @@ static int create_ready_marker(const wchar_t *path, const wchar_t *nonce) {
 #include "context_target.h"
 
 int wmain(int argc, wchar_t **argv) {
+    if (argc == 3 && !wcscmp(argv[1], L"context-reentry")) return context_target(argv[2], TRUE);
     if (argc == 3 && !wcscmp(argv[1], L"context-boundary"))
-        return context_target(argv[2]);
+        return context_target(argv[2], FALSE);
     wchar_t nonce[64] = {0};
     wchar_t phase[32] = {0};
     wchar_t ready_path[PATH_CAP];

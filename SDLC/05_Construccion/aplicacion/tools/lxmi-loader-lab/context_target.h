@@ -23,7 +23,7 @@ static int context_layout(wchar_t *root, const wchar_t *nonce) {
     p = wcsrchr(check, L'\\'); *p = 0; p = wcsrchr(check, L'\\');
     if (!p || wcscmp(p + 1, nonce)) return 0;
     *p = 0; p = wcsrchr(check, L'\\');
-    if (!p || wcscmp(p + 1, L"direct-inject-boundary")) return 0;
+    if (!p || (wcscmp(p + 1, L"direct-inject-boundary") && wcscmp(p + 1, L"context-reentry-v1"))) return 0;
     *p = 0; p = wcsrchr(check, L'\\');
     if (!p || wcscmp(p + 1, L"tests")) return 0;
     *p = 0; p = wcsrchr(check, L'\\');
@@ -45,7 +45,7 @@ static void context_escape(const wchar_t *value, char *output, size_t cap) {
     output[n]=0;
 }
 #ifndef CONTEXT_RUNNER
-static int context_target(const wchar_t *nonce) {
+static int context_target(const wchar_t *nonce, BOOL reentry) {
     wchar_t root[PATH_CAP], ready[PATH_CAP], stop[PATH_CAP], marker[PATH_CAP], identity_path[PATH_CAP];
     wchar_t executable[PATH_CAP];
     DWORD length=GetModuleFileNameW(NULL, executable, PATH_CAP);
@@ -63,6 +63,12 @@ static int context_target(const wchar_t *nonce) {
     if(f!=INVALID_HANDLE_VALUE) CloseHandle(f);
     FILETIME creation,exit,kernel,user;
     if(!readable || !GetProcessTimes(GetCurrentProcess(),&creation,&exit,&kernel,&user)) return 21;
+    HANDLE event=NULL;
+    if(reentry) {
+        wchar_t event_name[128];swprintf(event_name,128,L"Local\\LXMIReentryV1-%ls",nonce);
+        event=CreateEventW(NULL,TRUE,FALSE,event_name);
+        if(!event || GetLastError()==ERROR_ALREADY_EXISTS) {if(event)CloseHandle(event);return 24;}
+    }
     char image[PATH_CAP * 8];context_escape(executable,image,sizeof(image));
     char json[PATH_CAP * 8 + 512];
     int size=snprintf(json,sizeof(json),"{\"protocol\":2,\"pid\":%lu,\"nonce\":\"%s\",\"process_image\":\"%s\",\"creation_time\":\"%llu\",\"ready\":true}\n",GetCurrentProcessId(),nonce_utf8,image,context_time(creation));
@@ -77,7 +83,11 @@ static int context_target(const wchar_t *nonce) {
     DWORD start=GetTickCount();
     while(GetTickCount()-start<30000 && !exists(stop)) Sleep(25);
     printf("{\"protocol\":2,\"pid\":%lu,\"nonce\":\"%s\",\"process_image\":\"%s\",\"creation_time\":\"%llu\",\"ready\":true,\"path_readable\":true,\"handshake_sent\":false,\"wine_prefix\":",GetCurrentProcessId(),nonce_utf8,image,context_time(creation));
-    context_env("WINEPREFIX");printf(",\"compatdata\":");context_env("STEAM_COMPAT_DATA_PATH");puts("}");
+    BOOL received=event && WaitForSingleObject(event,0)==WAIT_OBJECT_0;
+    if(event)CloseHandle(event);
+    context_env("WINEPREFIX");printf(",\"compatdata\":");context_env("STEAM_COMPAT_DATA_PATH");
+    if(reentry)printf(",\"event_received\":%s",received?"true":"false");
+    puts("}");
     return 0;
 }
 #endif

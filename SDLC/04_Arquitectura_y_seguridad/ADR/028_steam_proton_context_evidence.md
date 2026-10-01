@@ -65,3 +65,11 @@ La identidad de tool, compatdata, prefix, mapping, wineserver y PID sigue indepe
 El pipe dejó de ser requisito de identidad: self report de fixture propio con nonce/ruta por sesión/Windows PID/FILETIME se correlaciona con el child Linux del launcher y se consulta ese único PID desde el runner con query limitada. Same-prefix verifica imagen y creación y permite Inject; en cross-prefix OpenProcess falla Win32 87 sin handle y se bloquea antes de cargar upstream. Esto reduce incertidumbre de la topología fixture; no prueba imposibilidad universal ni endpoint wineserver.
 
 Se preserva PID 220 simultáneo de contexts separados como evidencia histórica y regresión de colisión. Windows PID y Linux launcher PID siguen distintos. La consulta no enumera ni descubre procesos, y no sustituye observación de Steam por selección del planner. Requisitos generales quedan NotEstablished, GameContextJoinPlan declarativo, ADR-027 NoDecision y gate del juego cerrado. [Cierre verificado](../../06_Verificacion/verificacion_0_8_5.md).
+
+## Evidencia 0.8.6 — reentrada fixture independiente
+
+Same-prefix: A publica ready, helper B se inicia mediante nueva invocación Proton runinprefix y verifica evento más PID/image/creation/nonce. Control different-prefix no verifica evento ni identidad; el PID homónimo consultado corresponde al propio helper. Filesystem compartido permanece señal separada.
+
+Se añade PrefixFileIdentity (canonical/dev/inode/UID) y WineServerEndpointEvidence: ruta DERIVED según Wine fijado, socket metadata LOCAL OBSERVED. No se eleva socket a PID de server ni conexión exacta del peer. Alias a mismo inode tienen interpretación derivada, no host test.
+
+GameContextJoinPlan incorpora VerifiedForFixture únicamente; game prefix entry NotTested, riesgo/reversibilidad UNKNOWN, backup/consentimiento requerido. No ejecutor de join, selección de Proton del juego intacta. Se mantiene ADR-027 NoDecision y Hook/gate cerrados. No se crea otro ADR-029: el existente ya documenta el probe, aquí se extiende evidencia. [Verificación](../../06_Verificacion/verificacion_0_8_6.md).

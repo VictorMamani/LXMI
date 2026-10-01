@@ -4,7 +4,9 @@
 //! and its only accepted prefix is an LXMI-owned isolated test context.
 
 mod context_lab;
+mod context_reentry;
 mod direct_context;
+pub use context_reentry::*;
 pub use direct_context::*;
 mod loader_lab;
 pub use context_lab::*;

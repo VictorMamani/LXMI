@@ -29,6 +29,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             xxmi_commands::run_runtime_bridge_test,
             xxmi_commands::run_context_lab_test,
             xxmi_commands::run_direct_context_test,
+            xxmi_commands::run_context_reentry_test,
             xxmi_commands::inspect_loader_lab,
             xxmi_commands::prepare_loader_lab,
             xxmi_commands::run_loader_lab_experiment,

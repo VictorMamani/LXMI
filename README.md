@@ -4,7 +4,7 @@
 
 ## Estado
 
-- **Etapa:** construcción; LXMI 0.8.5 cierra el laboratorio de frontera Direct Inject con binding de identidad por PID, imagen exacta de sesión y creación. Same-prefix verificado; cross-prefix `PidNotVisible` / `BLOCKED_NOT_ATTEMPTED` sin llamar Inject. No prueba compatibilidad ZZMI/ZZZ. `GameRuntimePlan.selected` sigue `Unknown`, loader strategy `NoDecision` y gate cerrado.
+- **Etapa:** construcción; LXMI 0.8.6 verificó reentrada de un helper independiente en el contexto fixture same-prefix. El control different-prefix no verificó evento/identidad. Sin loader ni juego; Proton selected Unknown, loader NoDecision y gate cerrado.
 - **Tipo de proyecto:** herramienta técnica de escritorio y posible proyecto de portafolio; no hay validación de demanda, modelo de ingresos ni rentabilidad confirmada.
 - **Base de trabajo:** idea aportada por el usuario. Las estructuras de Proton consultadas se contrastaron con fuentes de Valve; esto no valida compatibilidad del juego, mods, ni políticas aplicables.
 - **Código:** aplicación Tauri 2 con React/TypeScript y workspace Rust. Los escaneos de Steam/juegos/tools son de solo lectura; el import explícito solo escribe en almacenamiento XDG privado de LXMI.
@@ -83,3 +83,7 @@ Advanced permite probar mismo prefix y prefixes distintos con Proton explícito 
 El Context Lab solo admite fixtures LXMI en prefixes privados. El target reporta su identidad; el runner consulta únicamente ese PID con PROCESS_QUERY_LIMITED_INFORMATION y compara ruta exacta y FILETIME antes de cargar el loader oficial. No PID/path/DLL arbitrarios.
 
 Same-prefix verificó identidad y marker + nonce tras Inject 0; cross-prefix no pudo resolver el target mediante query limitada (Win32 87) y bloqueó la operación de manera concluyente. Ambos leyeron filesystem, evidencia distinta de acceso al proceso. [Verificación](SDLC/06_Verificacion/verificacion_0_8_5.md). Ningún experimento de juego está autorizado.
+
+## LXMI 0.8.6 — Existing Context Re-entry
+
+Context Lab inicia el target propio primero y un helper independiente después. Same-prefix verificó evento y PID/image/creation/nonce; different-prefix no verificó el contexto aunque compartía filesystem. No DLLs copiadas/cargadas ni game prefix utilizado. Endpoint candidato y dev/inode no se confunden con wineserver PID. [Verificación](SDLC/06_Verificacion/verificacion_0_8_6.md).

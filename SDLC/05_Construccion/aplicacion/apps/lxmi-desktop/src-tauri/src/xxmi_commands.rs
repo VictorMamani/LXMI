@@ -163,3 +163,15 @@ pub async fn run_direct_context_test(
     })
     .await
 }
+
+#[tauri::command]
+pub async fn run_context_reentry_test(
+    proton_script: String,
+    mode: lxmi_bridge::ContextExperimentMode,
+    side_effects_acknowledged: bool,
+) -> std::result::Result<lxmi_bridge::ContextReentryResult, BridgeServiceError> {
+    blocking_bridge(move || {
+        xxmi_service::run_context_reentry_test(&proton_script, mode, side_effects_acknowledged)
+    })
+    .await
+}

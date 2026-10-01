@@ -1753,3 +1753,83 @@ mod direct_context_host_tests {
         }
     }
 }
+
+pub fn run_context_reentry_test(
+    proton_script: &str,
+    mode: lxmi_bridge::ContextExperimentMode,
+    side_effects_acknowledged: bool,
+) -> std::result::Result<lxmi_bridge::ContextReentryResult, BridgeServiceError> {
+    if !side_effects_acknowledged {
+        return Err(BridgeServiceError {
+            code: "context_consent_required".into(),
+            detail: "Confirma el test aislado sin loader.".into(),
+            stderr: None,
+        });
+    }
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
+    let selected_path =
+        Path::new(proton_script)
+            .canonicalize()
+            .map_err(|e| BridgeServiceError {
+                code: "runtime_not_found".into(),
+                detail: e.to_string(),
+                stderr: None,
+            })?;
+    let runtime = resolved_bridge_runtimes(&discovery)
+        .into_iter()
+        .find(|r| r.proton_script == selected_path)
+        .ok_or_else(|| BridgeServiceError {
+            code: "runtime_not_allowed".into(),
+            detail: "Selecciona un Proton descubierto.".into(),
+            stderr: None,
+        })?;
+    let application_root = application_workspace_root().map_err(|e| BridgeServiceError {
+        code: "context_artifacts_missing".into(),
+        detail: e.to_string(),
+        stderr: None,
+    })?;
+    lxmi_bridge::run_context_reentry(
+        &lxmi_bridge::ContextLabConfig {
+            managed_root: store.root().to_owned(),
+            explicit_runtime: lxmi_bridge::ExplicitBridgeRuntime {
+                display_name: runtime.option.display_name,
+                version: runtime.option.version,
+                proton_script: runtime.proton_script,
+            },
+            steam_client_install_path: runtime.steam_root,
+            mode,
+            side_effects_acknowledged,
+        },
+        &application_root,
+        &protected_paths(&discovery),
+    )
+    .map_err(BridgeServiceError::from)
+}
+#[cfg(test)]
+mod reentry_host_tests {
+    use super::*;
+    #[test]
+    #[ignore = "opt-in: late helper in isolated LXMI prefixes, no loader or games"]
+    fn existing_context_reentry() {
+        assert_eq!(std::env::var("LXMI_REENTRY_HOST_ACK").as_deref(), Ok("YES"));
+        let proton = std::env::var("LXMI_HOST_PROTON_SCRIPT").expect("Explicit lab tool");
+        let mode = if std::env::var("LXMI_REENTRY_MODE").as_deref() == Ok("cross") {
+            lxmi_bridge::ContextExperimentMode::DifferentPrefixes
+        } else {
+            lxmi_bridge::ContextExperimentMode::SamePrefix
+        };
+        let result = run_context_reentry_test(&proton, mode, true).expect("Bounded reentry result");
+        println!(
+            "CONTEXT_REENTRY_RESULT={}",
+            serde_json::to_string(&result).unwrap()
+        );
+        assert!(!result.fixture.injector.inject_called);
+        assert!(result.fixture.target.path_readable && result.fixture.injector.path_readable);
+        if mode == lxmi_bridge::ContextExperimentMode::SamePrefix {
+            assert_eq!(result.result, lxmi_bridge::ContextReentryState::Verified);
+        } else {
+            assert_ne!(result.result, lxmi_bridge::ContextReentryState::Verified);
+        }
+    }
+}

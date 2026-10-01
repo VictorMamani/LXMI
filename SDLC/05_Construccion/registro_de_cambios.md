@@ -400,3 +400,11 @@ Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D 
 - HOST TEST same-prefix Verified, Inject 0, marker PASS. Cross-prefix query Win32 87/PidNotVisible: BLOCKED_NOT_ATTEMPTED sin llamar Inject, conclusión segura válida para cerrar el experimento.
 - UI nativa retiene resultados con imagen/time/causa; 254 tests offline, 10 ignored; gates Rust/frontend y cross-build. Versión producto 0.8.5.
 - PID collision previo permanece evidencia histórica y fixture de regresión; ninguna compatibilidad ZZZ derivada; estrategia NoDecision, Hook guard intacto, game gate cerrado.
+
+## LXMI 0.8.6 — Existing Wine Context Re-entry
+
+- Reutiliza coordinador/executor de fixtures; target añade evento con nonce y helper metadata-only independiente, sin DLL payload ni upstream load.
+- HOST TEST: late same-prefix Verified; different-prefix PrefixMismatch/evento invisible/PID collision. No loader o Inject ejecutados.
+- Prefix filesystem dev/inode y socket endpoint candidato se separan de server PID/conexión UNKNOWN; inventario ligero de registry/mappings/mtime.
+- GameContextJoinPlan y GamePrefixEntryRisk declarativos, gate cerrado, NoDecision y selected Unknown intactos. Tauri Context Lab y readiness muestran separación fixture/game.
+- Producto 0.8.6 después de host/nativo; 263 tests offline, 11 ignored, Rust/frontend/Windows gates. No 0.9, Steam/game/prefix4162040 writes o Hook.

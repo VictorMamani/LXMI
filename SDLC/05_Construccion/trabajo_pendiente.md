@@ -198,3 +198,14 @@ No iniciar 0.9 ni ejecutar helpers en compatdata/4162040. Si se necesita otra es
 - [ ] Requisitos universales de prefix/wineserver, loader compatibility y join de contexto real siguen UNKNOWN/NotEstablished; NoDecision y gate cerrado.
 
 No se inicia 0.8.6 ni 0.9; ningún helper ejecutado en 4162040. [Verificación final](../06_Verificacion/verificacion_0_8_5.md).
+
+## LXMI 0.8.6 — CERRADO para reentrada fixture
+
+- [x] Target ready antes de segunda invocación independiente de Proton.
+- [x] Same-prefix: evento y binding PID/image/time/nonce Verified; different-prefix no verifica, filesystem separado.
+- [x] Prefix dev/inode, endpoint DERIVED/socket observado, registry/mapping metadata inventory y server PID UNKNOWN.
+- [x] GameContextJoinPlan y riesgo de entry declarativos; UI nativa/quality/version 0.8.6.
+- [ ] Reentrada al contexto del juego y mutaciones/rollback exactos requieren preflight y consentimiento propios; no ejecutar en 4162040.
+- [ ] Endpoint wineserver exacto de peer y compatibilidad loader/game siguen UNKNOWN; strategy NoDecision/gate cerrado.
+
+No se inicia 0.9 ni ningún siguiente incremento automáticamente. Regresión late Direct Inject opcional no ejecutada en este probe sin loader.

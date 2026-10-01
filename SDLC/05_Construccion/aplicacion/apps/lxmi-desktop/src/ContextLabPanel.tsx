@@ -62,15 +62,53 @@ type InjectResult = {
   context_injector: Context;
   warnings: string[];
 };
+type ReentryResult = {
+  result: string;
+  prefix_relation: string;
+  named_object_visible: boolean;
+  target_identity_verified: boolean;
+  initial_target_received_event: boolean;
+  fixture: InjectResult & {
+    reentry_evidence: {
+      target_ready_before_second_invocation: boolean;
+      prefix_a: {
+        canonical_path: string;
+        device: number;
+        inode: number;
+      } | null;
+      prefix_b: {
+        canonical_path: string;
+        device: number;
+        inode: number;
+      } | null;
+      endpoint_a: {
+        derived_socket_path: string | null;
+        socket_observed: boolean;
+      };
+      endpoint_b: {
+        derived_socket_path: string | null;
+        socket_observed: boolean;
+      };
+    };
+  };
+};
 type Runtime = {
   proton_script: string;
   display_name: string;
   version: string | null;
 };
 
-export default function ContextLabPanel() {
+export default function ContextLabPanel({
+  onReentryResult,
+}: {
+  onReentryResult?: (state: string) => void;
+}) {
   const [runtimes, setRuntimes] = useState<Runtime[]>([]);
   const [runtime, setRuntime] = useState("");
+  const [reentryConsent, setReentryConsent] = useState(false);
+  const [reentryResults, setReentryResults] = useState<
+    Partial<Record<Mode, ReentryResult>>
+  >({});
   const [consent, setConsent] = useState(false);
   const [running, setRunning] = useState<Mode | "inspect" | null>(null);
   const [error, setError] = useState("");
@@ -120,6 +158,23 @@ export default function ContextLabPanel() {
         sideEffectsAcknowledged: injectConsent,
       });
       setInjectResults((previous) => ({ ...previous, [mode]: result }));
+    } catch (cause) {
+      setError(describeError(cause));
+    } finally {
+      setRunning(null);
+    }
+  }
+  async function runReentry(mode: Mode) {
+    setRunning(mode);
+    setError("");
+    try {
+      const result = await invoke<ReentryResult>("run_context_reentry_test", {
+        protonScript: runtime,
+        mode,
+        sideEffectsAcknowledged: reentryConsent,
+      });
+      setReentryResults((previous) => ({ ...previous, [mode]: result }));
+      if (mode === "same_prefix") onReentryResult?.(result.result);
     } catch (cause) {
       setError(describeError(cause));
     } finally {
@@ -260,6 +315,146 @@ export default function ContextLabPanel() {
           </section>
         );
       })}
+      <section>
+        <h3>Existing Context Re-entry</h3>
+        <p>
+          El target LXMI se inicia primero. Una segunda invocación independiente
+          de Proton prueba evento e identidad en el contexto ya activo. No copia
+          DLLs ni carga un loader. Proton escribe únicamente en prefixes
+          privados del laboratorio.
+        </p>
+        <label>
+          <input
+            type="checkbox"
+            checked={reentryConsent}
+            disabled={running !== null}
+            onChange={(event) => setReentryConsent(event.target.checked)}
+          />{" "}
+          Acepto el test aislado de reentrada sin loader.
+        </label>
+        <div className="action-row">
+          <button
+            disabled={!reentryConsent || !runtime || running !== null}
+            onClick={() => void runReentry("same_prefix")}
+          >
+            Run Same-Prefix Re-entry
+          </button>
+          <button
+            className="secondary-button"
+            disabled={!reentryConsent || !runtime || running !== null}
+            onClick={() => void runReentry("different_prefixes")}
+          >
+            Run Different-Prefix Control
+          </button>
+        </div>
+        {(["same_prefix", "different_prefixes"] as const).map((mode) => {
+          const result = reentryResults[mode];
+          const evidence = result?.fixture.reentry_evidence;
+          return (
+            <section key={mode}>
+              <h4>
+                {mode === "same_prefix"
+                  ? "Reentrada · mismo prefix"
+                  : "Reentrada · prefixes distintos"}
+              </h4>
+              {!result || !evidence ? (
+                <p>NO COMPROBADO · Todavía sin resultado.</p>
+              ) : (
+                <>
+                  <p role="status">
+                    HOST TEST · Re-entry: {result.result} · nonce{" "}
+                    {result.fixture.nonce}
+                  </p>
+                  <dl className="diagnostic-grid">
+                    <div>
+                      <dt>Target ya activo antes de la segunda invocación</dt>
+                      <dd>
+                        {evidence.target_ready_before_second_invocation
+                          ? "Confirmado por ready; helper iniciado después"
+                          : "UNKNOWN"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Identidad del target</dt>
+                      <dd>
+                        {result.fixture.injector.target_identity.result} · Win32{" "}
+                        {result.fixture.injector.windows_error}
+                      </dd>
+                      <dd className="path-value">
+                        {result.fixture.injector.target_identity
+                          .observed_image || "Imagen no disponible"}
+                      </dd>
+                      <dd>
+                        Creación esperada / observada:{" "}
+                        {
+                          result.fixture.injector.target_identity
+                            .expected_creation_time
+                        }{" "}
+                        /{" "}
+                        {
+                          result.fixture.injector.target_identity
+                            .observed_creation_time
+                        }
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Evento con nonce</dt>
+                      <dd>
+                        {result.named_object_visible ? "Visible" : "No visible"}{" "}
+                        · señal recibida por A:{" "}
+                        {result.initial_target_received_event ? "sí" : "no"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Prefix filesystem identity</dt>
+                      <dd>{result.prefix_relation}</dd>
+                      {[evidence.prefix_a, evidence.prefix_b].map((p, i) => (
+                        <dd className="path-value" key={i}>
+                          {i === 0 ? "A" : "B"}:{" "}
+                          {p
+                            ? `${p.canonical_path} · dev ${p.device} · inode ${p.inode}`
+                            : "UNKNOWN"}
+                        </dd>
+                      ))}
+                    </div>
+                    <div>
+                      <dt>Endpoint Wine candidato · DERIVED</dt>
+                      {[evidence.endpoint_a, evidence.endpoint_b].map(
+                        (e, i) => (
+                          <dd className="path-value" key={i}>
+                            {i === 0 ? "A" : "B"}:{" "}
+                            {e.derived_socket_path ?? "UNKNOWN"} · socket
+                            observado: {e.socket_observed ? "sí" : "no"}
+                          </dd>
+                        ),
+                      )}
+                      <dd>
+                        PID de wineserver y conexión exacta de peers: UNKNOWN
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Filesystem / loader</dt>
+                      <dd>
+                        Marker A/B:{" "}
+                        {result.fixture.target.path_readable &&
+                        result.fixture.injector.path_readable
+                          ? "legible"
+                          : "no confirmado"}{" "}
+                        · Inject: no llamado
+                      </dd>
+                    </div>
+                  </dl>
+                  <p>
+                    Contexto ZZZ observado en 0.8.3: Proton Experimental y
+                    prefix 4162040. Reentrada en prefix del juego: no probada;
+                    compatibilidad loader: UNKNOWN; gate cerrado.
+                  </p>
+                </>
+              )}
+            </section>
+          );
+        })}
+      </section>
       <section>
         <h3>Direct Inject Context Boundary</h3>
         <p>

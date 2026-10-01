@@ -20,6 +20,8 @@ pub struct ContextInjectorResponse {
     pub windows_error: u32,
     pub wine_prefix: String,
     pub compatdata: String,
+    #[serde(default)]
+    pub named_event_visible: Option<bool>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContextTargetResponse {
@@ -33,6 +35,8 @@ pub struct ContextTargetResponse {
     pub ready: bool,
     pub wine_prefix: String,
     pub compatdata: String,
+    #[serde(default)]
+    pub event_received: Option<bool>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -93,6 +97,8 @@ pub enum DirectContextOutcome {
     BlockedNotAttempted,
     LoaderFailure,
     MarkerNotVerified,
+    IdentityProbeVerified,
+    IdentityProbeNotVerified,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -130,7 +136,8 @@ pub struct DirectContextResult {
     pub target_launcher_identity: Option<OwnedLinuxProcessIdentity>,
     pub process_injector: BridgeProcessSummary,
     pub source_hashes: BTreeMap<String, String>,
-    pub upstream: LoaderLabProvenance,
+    pub upstream: Option<LoaderLabProvenance>,
+    pub reentry_evidence: Option<crate::context_reentry::ReentryEvidence>,
     pub requirements: Vec<LoaderContextRequirement>,
     pub capabilities: Vec<LoaderCapability>,
     pub game_join_plan: GameContextJoinPlan,
@@ -232,6 +239,43 @@ fn run_with(
     executor: Arc<dyn BridgeProcessExecutor + Send + Sync>,
     observe_servers: fn(&str) -> Vec<u32>,
 ) -> Result<DirectContextResult, BridgeError> {
+    run_core(
+        config,
+        &sources.application_root,
+        &sources.protected_roots,
+        Some(sources),
+        executor,
+        observe_servers,
+    )
+}
+pub(crate) fn run_reentry_core(
+    config: &ContextLabConfig,
+    application_root: &Path,
+    protected_roots: &[PathBuf],
+) -> Result<DirectContextResult, BridgeError> {
+    run_core(
+        config,
+        application_root,
+        protected_roots,
+        None,
+        Arc::new(NativeProcessExecutor),
+        |_| vec![],
+    )
+}
+fn run_core(
+    config: &ContextLabConfig,
+    application_root: &Path,
+    protected_roots: &[PathBuf],
+    sources: Option<&LoaderLabSources>,
+    executor: Arc<dyn BridgeProcessExecutor + Send + Sync>,
+    observe_servers: fn(&str) -> Vec<u32>,
+) -> Result<DirectContextResult, BridgeError> {
+    let reentry = sources.is_none();
+    let runner_name = if reentry {
+        "lxmi-context-reentry-helper.exe"
+    } else {
+        RUNNER
+    };
     if !config.side_effects_acknowledged {
         return Err(error(
             BridgeErrorCode::UnsafePrefixContext,
@@ -255,24 +299,37 @@ fn run_with(
         ));
     }
 
-    loaders::reject_protected_overlap(&managed, &sources.protected_roots)?;
-    loaders::validate_provenance(&sources.provenance)?;
+    loaders::reject_protected_overlap(&managed, protected_roots)?;
+    if let Some(sources) = sources {
+        loaders::validate_provenance(&sources.provenance)?;
+    }
     validate_proton_script(&config.explicit_runtime.proton_script)?;
-    let app = sources
-        .application_root
+    let app = application_root
         .canonicalize()
         .map_err(|e| error(BridgeErrorCode::Io, e.to_string()))?;
     let build = app.join("target/x86_64-pc-windows-gnu/release/lxmi-loader-lab");
-    let loader = loaders::validate_package_loader_source(&managed, &sources.upstream_loader_path)?;
-    let hash = loaders::safe_artifact_hash(&managed, &loader)?;
-    if hash != sources.expected_upstream_loader_sha256 {
-        return Err(error(
-            BridgeErrorCode::LoaderProvenanceInvalid,
-            "Official loader hash mismatch",
-        ));
-    }
+    let loader = if let Some(sources) = sources {
+        let path =
+            loaders::validate_package_loader_source(&managed, &sources.upstream_loader_path)?;
+        if loaders::safe_artifact_hash(&managed, &path)? != sources.expected_upstream_loader_sha256
+        {
+            return Err(error(
+                BridgeErrorCode::LoaderProvenanceInvalid,
+                "Official loader hash mismatch",
+            ));
+        }
+        Some(path)
+    } else {
+        None
+    };
     let nonce = random_nonce()?;
-    let session = managed.join("tests/direct-inject-boundary").join(&nonce);
+    let session = managed
+        .join(if reentry {
+            "tests/context-reentry-v1"
+        } else {
+            "tests/direct-inject-boundary"
+        })
+        .join(&nonce);
     ensure_controlled_directory(&managed, &session)?;
     use std::os::unix::fs::PermissionsExt;
     fs::set_permissions(&session, fs::Permissions::from_mode(0o700))
@@ -284,28 +341,32 @@ fn run_with(
     ] {
         ensure_controlled_directory(&managed, &root.join(sub))?;
     }
-    let entries = [
+    let mut entries = vec![
         (
             build.join(LOADER_LAB_TARGET),
             root.join("target").join(LOADER_LAB_TARGET),
             app.as_path(),
         ),
         (
-            build.join(RUNNER),
-            root.join("runner").join(RUNNER),
+            build.join(runner_name),
+            root.join("runner").join(runner_name),
             app.as_path(),
-        ),
-        (
-            build.join(LOADER_LAB_TEST_DLL),
-            root.join("runtime").join(LOADER_LAB_TEST_DLL),
-            app.as_path(),
-        ),
-        (
-            loader,
-            root.join("runtime").join(UPSTREAM_LOADER_DLL),
-            managed.as_path(),
         ),
     ];
+    if let Some(loader) = loader {
+        entries.extend([
+            (
+                build.join(LOADER_LAB_TEST_DLL),
+                root.join("runtime").join(LOADER_LAB_TEST_DLL),
+                app.as_path(),
+            ),
+            (
+                loader,
+                root.join("runtime").join(UPSTREAM_LOADER_DLL),
+                managed.as_path(),
+            ),
+        ]);
+    }
     let mut source_hashes = BTreeMap::new();
     for (source, destination, source_root) in entries {
         let digest = loaders::safe_artifact_hash(source_root, &source)?;
@@ -333,7 +394,7 @@ fn run_with(
         );
     }
     // Metadata remains separate from runtime bytes; source packages are unchanged.
-    let metadata = serde_json::to_vec(&(&source_hashes, &sources.provenance))
+    let metadata = serde_json::to_vec(&(&source_hashes, &sources.map(|s| &s.provenance)))
         .map_err(|e| error(BridgeErrorCode::Io, e.to_string()))?;
     fs::write(session.join("fixture-manifest.json"), metadata)
         .map_err(|e| error(BridgeErrorCode::Io, e.to_string()))?;
@@ -343,7 +404,7 @@ fn run_with(
     } else {
         root.join("compat-b")
     };
-    let runner = root.join("runner").join(RUNNER);
+    let runner = root.join("runner").join(runner_name);
     for compat in [&compat_a, &compat_b] {
         let call = contexts::invocation(config, &root, compat, &runner, vec!["bootstrap".into()]);
         let out = contexts::execute(executor.as_ref(), &call)?;
@@ -355,6 +416,13 @@ fn run_with(
             ));
         }
     }
+    let prefix_before = if reentry {
+        Some(crate::context_reentry::prefix_snapshot(
+            &compat_a.join("pfx"),
+        ))
+    } else {
+        None
+    };
     let marker = root.join("results/filesystem-marker");
     fs::write(&marker, &nonce).map_err(|e| error(BridgeErrorCode::Io, e.to_string()))?;
     let maps = [&compat_a, &compat_b]
@@ -371,7 +439,14 @@ fn run_with(
         &root,
         &compat_a,
         &target,
-        vec!["context-boundary".into(), nonce.clone().into()],
+        vec![
+            if reentry {
+                "context-reentry".into()
+            } else {
+                "context-boundary".into()
+            },
+            nonce.clone().into(),
+        ],
     );
     call_a
         .environment
@@ -403,6 +478,21 @@ fn run_with(
         .and_then(|bytes| serde_json::from_slice::<TargetSelfIdentity>(&bytes).ok());
     let owned_child = ownership.lock().expect("owned identity").clone();
     let candidates_a = observe_servers(&compat_a.join("pfx").display().to_string());
+    let reentry_evidence = if reentry {
+        // A has published ready; B has not been invoked. Deliberate late join.
+        if !valid_ready || worker.is_finished() {
+            None
+        } else {
+            thread::sleep(Duration::from_millis(300));
+            Some(crate::context_reentry::collect_evidence(
+                &compat_a.join("pfx"),
+                &compat_b.join("pfx"),
+                prefix_before.unwrap_or_default(),
+            ))
+        }
+    } else {
+        None
+    };
     let output_b = (|| {
         let identity = self_identity.as_ref().ok_or_else(|| {
             error(
@@ -485,6 +575,11 @@ fn run_with(
         .map_err(|_| error(BridgeErrorCode::ProcessLaunchFailed, "Target task panicked"))??;
     stop_result.map_err(|e| error(BridgeErrorCode::Io, e.to_string()))?;
     let output_b = output_b?;
+    let reentry_evidence = reentry_evidence.map(|mut e| {
+        e.prefix_after = crate::context_reentry::prefix_snapshot(&compat_a.join("pfx"));
+        e.endpoint_a_after_exit = crate::context_reentry::endpoint(&compat_a.join("pfx"));
+        e
+    });
     let target: ContextTargetResponse = parse(&output_a)?;
     let injector: ContextInjectorResponse = parse(&output_b)?;
     validate_responses(&nonce, &target, &injector)?;
@@ -561,10 +656,10 @@ fn run_with(
         outcome(&injector, marker_verified)
     ));
     game_join_plan.blockers.push("A helper outside the game Windows context has no demonstrated safe target binding; game-prefix join remains unauthorized".into());
-    Ok(DirectContextResult { mode:config.mode,nonce,explicit_runtime:config.explicit_runtime.clone(),outcome:outcome(&injector,marker_verified),target,injector,
-        context_target,context_injector,identity,marker_verified,marker,process_target:contexts::summary(&call_a,output_a),target_launcher_identity:owned_child,process_injector:contexts::summary(&call_b,output_b),source_hashes,upstream:sources.provenance.clone(),requirements:loader_context_requirements(), capabilities: vec![LoaderCapability {
-            name: if config.mode == ContextExperimentMode::SamePrefix { "DirectInjectFixtureSamePrefix" } else { "DirectInjectFixtureCrossPrefix" }.into(),
-            state: if marker_verified { LoaderCapabilityState::Verified } else if !identity_bound { LoaderCapabilityState::Blocked } else { LoaderCapabilityState::Failed },
+    Ok(DirectContextResult { mode:config.mode,nonce,explicit_runtime:config.explicit_runtime.clone(),outcome:if reentry { if identity_bound { DirectContextOutcome::IdentityProbeVerified } else { DirectContextOutcome::IdentityProbeNotVerified } } else { outcome(&injector,marker_verified) },target,injector,
+        context_target,context_injector,identity,marker_verified,marker,process_target:contexts::summary(&call_a,output_a),target_launcher_identity:owned_child,process_injector:contexts::summary(&call_b,output_b),source_hashes,upstream:sources.map(|s| s.provenance.clone()),reentry_evidence,requirements:loader_context_requirements(), capabilities: vec![LoaderCapability {
+            name: if reentry { "ContextReentryIdentityProbe" } else if config.mode == ContextExperimentMode::SamePrefix { "DirectInjectFixtureSamePrefix" } else { "DirectInjectFixtureCrossPrefix" }.into(),
+            state: if marker_verified || (reentry && identity_bound) { LoaderCapabilityState::Verified } else if !identity_bound { LoaderCapabilityState::Blocked } else { LoaderCapabilityState::Failed },
             evidence: "Only this nonce-scoped fixture; Exact fixture image/time/session identity gates the upstream call; no game compatibility established".into(),
         }],
         game_join_plan,warnings:vec!["BlockedNotAttempted is an identity preflight result, NOT an observed upstream Inject failure".into(),"No game compatibility established; Hook blocked; strategy NoDecision".into(),"Wine servers are not signalled; they may exit naturally".into()] })
@@ -592,6 +687,7 @@ mod tests {
             nonce: "a".repeat(32),
             path_readable: true,
             identity_bound: true,
+            named_event_visible: None,
             target_identity: identity(),
             inject_called: true,
             inject_code: 0,
@@ -606,6 +702,7 @@ mod tests {
             pid: 220,
             nonce: "a".repeat(32),
             path_readable: true,
+            event_received: None,
             handshake_sent: false,
             process_image: "Z:\\fixture\\target.exe".into(),
             creation_time: "123456789".into(),
@@ -682,7 +779,12 @@ mod tests {
         let app = managed.join("build");
         let build = app.join("target/x86_64-pc-windows-gnu/release/lxmi-loader-lab");
         fs::create_dir_all(&build).unwrap();
-        for name in [RUNNER, LOADER_LAB_TARGET, LOADER_LAB_TEST_DLL] {
+        for name in [
+            RUNNER,
+            LOADER_LAB_TARGET,
+            LOADER_LAB_TEST_DLL,
+            "lxmi-context-reentry-helper.exe",
+        ] {
             fs::write(build.join(name), b"MZ fixture bytes, never executed").unwrap();
         }
         let loader = managed.join("packages/xxmi/fixture/payload/3dmloader.dll");
@@ -737,7 +839,8 @@ mod tests {
                     std::os::unix::fs::symlink("../drive_c", dos.join("c:")).unwrap();
                 }
                 b"{\"protocol\":1,\"bootstrap\":true}".to_vec()
-            } else if call.args[2] == "context-boundary" {
+            } else if call.args[2] == "context-boundary" || call.args[2] == "context-reentry" {
+                let reentry = call.args[2] == "context-reentry";
                 let nonce = call.args[3].to_string_lossy().to_string();
                 *self.0.lock().unwrap() = Some(compat.clone());
                 if let Some(observer) = &call.ownership {
@@ -777,6 +880,11 @@ mod tests {
                     pid: 220,
                     nonce,
                     path_readable: true,
+                    event_received: if reentry {
+                        Some(root.join("results/event-signalled").exists())
+                    } else {
+                        None
+                    },
                     handshake_sent: false,
                     process_image: image,
                     creation_time: "123456789".into(),
@@ -788,7 +896,17 @@ mod tests {
             } else {
                 let nonce = call.args[2].to_string_lossy().to_string();
                 let same = self.0.lock().unwrap().as_ref() == Some(&compat);
-                if same {
+                let reentry = call.args[1]
+                    .to_string_lossy()
+                    .ends_with("lxmi-context-reentry-helper.exe");
+                assert!(
+                    root.join("results/target-ready").exists(),
+                    "helper cannot start before target ready"
+                );
+                if reentry && same {
+                    fs::write(root.join("results/event-signalled"), &nonce).unwrap();
+                }
+                if same && !reentry {
                     let windows = |path: PathBuf| {
                         format!("Z:{}", path.display().to_string().replace('/', "\\"))
                     };
@@ -841,8 +959,9 @@ mod tests {
                     },
                     nonce,
                     path_readable: true,
+                    named_event_visible: if reentry { Some(same) } else { None },
                     identity_bound: same,
-                    inject_called: same,
+                    inject_called: same && !reentry,
                     inject_code: if same { 0 } else { -1 },
                     windows_error: 0,
                     wine_prefix: compat.join("pfx").display().to_string(),
@@ -968,5 +1087,101 @@ mod tests {
             i.observed_creation_time = time.into();
             assert!(!DirectInjectPreflightGate::allows(&i, &i.nonce));
         }
+    }
+    #[test]
+    fn late_reentry_fake_uses_independent_invocation_without_loader() {
+        for mode in [
+            ContextExperimentMode::SamePrefix,
+            ContextExperimentMode::DifferentPrefixes,
+        ] {
+            let (_fixture, config, sources) = fixture_config(mode);
+            let result = run_core(
+                &config,
+                &sources.application_root,
+                &sources.protected_roots,
+                None,
+                Arc::new(Fake::default()),
+                |_| vec![],
+            )
+            .unwrap();
+            assert!(!result.injector.inject_called);
+            assert!(result
+                .source_hashes
+                .keys()
+                .all(|name| !name.ends_with(".dll")));
+            assert!(
+                result
+                    .reentry_evidence
+                    .unwrap()
+                    .target_ready_before_second_invocation
+            );
+            assert_eq!(
+                result.injector.named_event_visible,
+                Some(mode == ContextExperimentMode::SamePrefix)
+            );
+            assert_ne!(
+                result.process_target.arguments,
+                result.process_injector.arguments
+            );
+        }
+    }
+    #[test]
+    fn reentry_rejects_game_prefix_and_installation_before_execution() {
+        for path in ["steamapps/compatdata/4162040", "Zenless Zone Zero"] {
+            let (_fixture, mut config, sources) = fixture_config(ContextExperimentMode::SamePrefix);
+            config.managed_root = config.managed_root.join(path);
+            fs::create_dir_all(&config.managed_root).unwrap();
+            assert!(run_core(
+                &config,
+                &sources.application_root,
+                &[],
+                None,
+                Arc::new(Fake::default()),
+                |_| panic!("No process scan")
+            )
+            .is_err());
+        }
+    }
+    #[test]
+    fn exited_target_prevents_second_helper_invocation() {
+        struct EarlyExit {
+            fake: Fake,
+            helper_called: std::sync::atomic::AtomicBool,
+        }
+        impl BridgeProcessExecutor for EarlyExit {
+            fn execute(&self, call: &ProcessInvocation) -> Result<ProcessOutput, ProcessFailure> {
+                use std::os::unix::process::ExitStatusExt;
+                if call.args[2] == "context-reentry" {
+                    return Ok(ProcessOutput {
+                        status: ExitStatus::from_raw(0),
+                        elapsed_millis: 1,
+                        stdout: b"{}".to_vec(),
+                        stderr: vec![],
+                        stdout_truncated: false,
+                        stderr_truncated: false,
+                    });
+                }
+                if call.args[2] != "bootstrap" {
+                    self.helper_called
+                        .store(true, std::sync::atomic::Ordering::SeqCst);
+                }
+                self.fake.execute(call)
+            }
+        }
+        let (_fixture, config, sources) = fixture_config(ContextExperimentMode::SamePrefix);
+        let fake = Arc::new(EarlyExit {
+            fake: Fake::default(),
+            helper_called: std::sync::atomic::AtomicBool::new(false),
+        });
+        assert!(run_core(
+            &config,
+            &sources.application_root,
+            &[],
+            None,
+            fake.clone(),
+            |_| vec![]
+        )
+        .is_err());
+        assert!(!fake.helper_called.load(std::sync::atomic::Ordering::SeqCst));
     }
 }

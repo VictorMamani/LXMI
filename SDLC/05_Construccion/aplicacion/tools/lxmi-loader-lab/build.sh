@@ -32,3 +32,9 @@ common=(-O2 -Wall -Wextra -Werror -D_WIN32_WINNT=0x0601 -DUNICODE -D_UNICODE)
 
 file "$out/lxmi-context-inject-runner.exe"
 sha256sum "$out/lxmi-loader-test-target.exe" "$out/lxmi-loader-test-runner.exe" "$out/lxmi-loader-test.dll" "$out/lxmi-context-inject-runner.exe"
+
+"$cc" "${common[@]}" -DLXMI_REENTRY_ONLY -municode \
+  "$app_root/tools/lxmi-loader-lab/boundary_runner.c" \
+  -o "$out/lxmi-context-reentry-helper.exe"
+file "$out/lxmi-context-reentry-helper.exe"
+sha256sum "$out/lxmi-context-reentry-helper.exe"

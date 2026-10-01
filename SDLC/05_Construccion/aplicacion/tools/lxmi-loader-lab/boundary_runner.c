@@ -4,7 +4,9 @@
 #include <wchar.h>
 #include <string.h>
 #define PATH_CAP 4096
+#ifndef LXMI_REENTRY_ONLY
 typedef int (__cdecl *UpstreamInject)(DWORD, LPCWSTR, int);
+#endif
 static int valid_nonce(const wchar_t *nonce) {
     if (wcslen(nonce) != 32) return 0;
     for (int i = 0; i < 32; ++i)
@@ -70,6 +72,7 @@ int wmain(int argc, wchar_t **argv) {
         if(!GetExitCodeProcess(owned,&exit_code)) {error=GetLastError();identity="unknown";bound=FALSE;}
         else if(exit_code!=STILL_ACTIVE) {identity="process_exited";bound=FALSE;}
     }
+    #ifndef LXMI_REENTRY_ONLY
     if(bound) {
         HMODULE loader=LoadLibraryW(loader_path);
         if(loader) {
@@ -79,9 +82,21 @@ int wmain(int argc, wchar_t **argv) {
             FreeLibrary(loader);
         } else error=GetLastError();
     }
+    #endif
+    #ifdef LXMI_REENTRY_ONLY
+    wchar_t event_name[128];swprintf(event_name,128,L"Local\\LXMIReentryV1-%ls",argv[1]);
+    HANDLE event=OpenEventW(EVENT_MODIFY_STATE,FALSE,event_name);
+    DWORD event_error=event?0:GetLastError();
+    BOOL event_visible=event && SetEvent(event);
+    if(event)CloseHandle(event);
+    #endif
     if(owned)CloseHandle(owned);
     char expected_json[PATH_CAP*8],actual_json[PATH_CAP*8];context_escape(expected_image,expected_json,sizeof(expected_json));context_escape(actual,actual_json,sizeof(actual_json));
     printf("{\"protocol\":2,\"pid\":%lu,\"target_pid\":%lu,\"nonce\":\"%s\",\"path_readable\":true,\"identity_bound\":%s,\"inject_called\":%s,\"inject_code\":%d,\"windows_error\":%lu,\"target_identity\":{\"expected_windows_pid\":%lu,\"observed_windows_pid\":%lu,\"expected_image\":\"%s\",\"observed_image\":\"%s\",\"expected_creation_time\":\"%llu\",\"observed_creation_time\":\"%llu\",\"nonce\":\"%s\",\"result\":\"%s\"},\"wine_prefix\":",GetCurrentProcessId(),expected_pid,nonce,bound?"true":"false",called?"true":"false",code,error,expected_pid,observed_pid,expected_json,actual_json,expected_time,observed_time,nonce,identity);
-    context_env("WINEPREFIX");printf(",\"compatdata\":");context_env("STEAM_COMPAT_DATA_PATH");puts("}");
+    context_env("WINEPREFIX");printf(",\"compatdata\":");context_env("STEAM_COMPAT_DATA_PATH");
+    #ifdef LXMI_REENTRY_ONLY
+    printf(",\"named_event_visible\":%s,\"event_error\":%lu",event_visible?"true":"false",event_error);
+    #endif
+    puts("}");
     return 0;
 }

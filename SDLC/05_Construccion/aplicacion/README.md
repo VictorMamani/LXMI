@@ -1,6 +1,6 @@
 # LXMI — aplicación
 
-**LXMI 0.8.5 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Una observación nativa de una ejecución manual de ZZZ identificó Proton Experimental para esa sesión, AppID `4162040`, compatdata coincidente y prefix observado. El mapping configurado por AppID no apareció en la fuente inspeccionada; el mapping global sigue separado. `GameRuntimePlan.selected` continúa `Unknown`, estrategia `NoDecision`, readiness `NeedsEvidence` y gate cerrado. Context Lab ejecuta solo peers propios con consentimiento, en prefixes privados de LXMI. No se inicia el juego ni se modifica Steam, ZZZ o su prefix. El observer sigue siendo read-only.
+**LXMI 0.8.6 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Una observación nativa de una ejecución manual de ZZZ identificó Proton Experimental para esa sesión, AppID `4162040`, compatdata coincidente y prefix observado. El mapping configurado por AppID no apareció en la fuente inspeccionada; el mapping global sigue separado. `GameRuntimePlan.selected` continúa `Unknown`, estrategia `NoDecision`, readiness `NeedsEvidence` y gate cerrado. Context Lab ejecuta solo peers propios con consentimiento, en prefixes privados de LXMI. No se inicia el juego ni se modifica Steam, ZZZ o su prefix. El observer sigue siendo read-only.
 
 En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para discovery y planificación de solo lectura. El workspace añadió en 0.5 `lxmi-xxmi`. No usa SQLite ni escribe en Steam, juegos, compatibility tools o prefixes; el import explícito sí conserva paquetes bajo el storage privado de LXMI.
 
@@ -220,3 +220,7 @@ Advanced → Context Lab mantiene casos same-prefix y cross-prefix separados. Ta
 Same-prefix: identidad Verified, Inject 0, marker PASS. Cross-prefix: PidNotVisible Win32 87, BLOCKED_NOT_ATTEMPTED. Filesystem visible no prueba proceso visible. Loader strategy NoDecision y game gate cerrado; no writes a Steam/ZZZ/4162040 ni Hook.
 
 Los Windows fixtures se compilan con `tools/lxmi-loader-lab/build.sh`; tests normales offline y host opt-in separados. [Verificación 0.8.5](../../06_Verificacion/verificacion_0_8_5.md).
+
+## LXMI 0.8.6 — Context Re-entry
+
+Advanced Context Lab ofrece Run Same-Prefix Re-entry y Run Different-Prefix Control. Reutiliza target/executor con helper metadata-only compilado por tools/lxmi-loader-lab/build.sh. El helper no contiene ruta Inject y no requiere packages oficiales. Same-prefix late join Verified; control PrefixMismatch, evento invisible y PID collision. Prefix identity y endpoint candidate se muestran por separado; game entry sigue no probado y gate cerrado. [Verificación](../../06_Verificacion/verificacion_0_8_6.md).
