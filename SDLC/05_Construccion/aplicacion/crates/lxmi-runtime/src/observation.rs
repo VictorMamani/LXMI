@@ -290,7 +290,87 @@ struct ProcessDetail {
     environment_state: ObservationEvidenceState,
 }
 
+/// Ephemeral activity evidence, not permission to execute in this prefix.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrefixActivityEvidence {
+    pub matching_processes: usize,
+    pub game_name_matches: usize,
+    pub unresolved_runtime_processes: usize,
+    pub scan_warnings: Vec<String>,
+}
+
+impl PrefixActivityEvidence {
+    pub fn observed_inactive(&self) -> bool {
+        self.matching_processes == 0
+            && self.game_name_matches == 0
+            && self.unresolved_runtime_processes == 0
+            && self.scan_warnings.is_empty()
+    }
+}
+
 impl ProcfsObserver {
+    /// Reads current-user metadata only. A denied/missing runtime environment is
+    /// unresolved, rather than evidence that the game context is inactive.
+    pub fn inspect_prefix_activity(&self, compatdata: &Path) -> PrefixActivityEvidence {
+        let mut evidence = PrefixActivityEvidence {
+            matching_processes: 0,
+            game_name_matches: 0,
+            unresolved_runtime_processes: 0,
+            scan_warnings: Vec::new(),
+        };
+        let index = match self.read_process_index(&mut evidence.scan_warnings) {
+            Ok(index) => index,
+            Err(_) => {
+                evidence
+                    .scan_warnings
+                    .push("procfs index unavailable".into());
+                return evidence;
+            }
+        };
+        let prefix = compatdata.join("pfx");
+        for meta in index {
+            let runtime = ["wine", "proton", "zenless"]
+                .iter()
+                .any(|name| meta.comm.to_ascii_lowercase().contains(name));
+            let Some(detail) = self.read_detail(&meta) else {
+                if runtime {
+                    evidence.unresolved_runtime_processes += 1;
+                }
+                continue;
+            };
+            let game = detail.command_line.iter().any(|argument| {
+                argument
+                    .replace('\\', "/")
+                    .rsplit('/')
+                    .next()
+                    .is_some_and(|name| name.eq_ignore_ascii_case("ZenlessZoneZero.exe"))
+            });
+            evidence.game_name_matches += usize::from(game);
+            let matched = [
+                (COMPATDATA_ENV_KEY, compatdata),
+                (PREFIX_ENV_KEY, prefix.as_path()),
+            ]
+            .iter()
+            .any(|(key, expected)| {
+                detail
+                    .allowlisted_environment
+                    .get(*key)
+                    .is_some_and(|value| {
+                        Path::new(value) == *expected
+                            || Path::new(value)
+                                .canonicalize()
+                                .ok()
+                                .zip(expected.canonicalize().ok())
+                                .is_some_and(|(a, b)| a == b)
+                    })
+            });
+            evidence.matching_processes += usize::from(matched);
+            if (runtime || game) && detail.environment_state != ObservationEvidenceState::Observed {
+                evidence.unresolved_runtime_processes += 1;
+            }
+        }
+        evidence
+    }
     /// Uses the current user's `/proc` view. The application never accepts a procfs
     /// root or UID from frontend input.
     #[cfg(unix)]
@@ -1294,6 +1374,39 @@ mod tests {
     use super::*;
     use std::os::unix::fs::{symlink, MetadataExt};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn prefix_activity_requires_readable_runtime_evidence() {
+        let fixture = ProcFixture::new();
+        fixture.add_process(
+            101,
+            1,
+            "wineserver",
+            &["wineserver"],
+            &[("WINEPREFIX", "/test/steamapps/compatdata/4162040/pfx")],
+            None,
+        );
+        let mut observer = ProcfsObserver::with_proc_root(fixture.root.clone(), current_uid());
+        let path = Path::new("/test/steamapps/compatdata/4162040");
+        let active = observer.inspect_prefix_activity(path);
+        assert_eq!(active.matching_processes, 1);
+        assert!(!active.observed_inactive());
+        observer.denied_environment_pids.insert(101);
+        let unavailable = observer.inspect_prefix_activity(path);
+        assert_eq!(unavailable.unresolved_runtime_processes, 1);
+        assert!(!unavailable.observed_inactive());
+    }
+
+    #[test]
+    fn unrelated_environment_denied_does_not_prove_runtime_activity() {
+        let fixture = ProcFixture::new();
+        fixture.add_process(102, 1, "editor", &["editor"], &[], None);
+        let mut observer = ProcfsObserver::with_proc_root(fixture.root.clone(), current_uid());
+        observer.denied_environment_pids.insert(102);
+        assert!(observer
+            .inspect_prefix_activity(Path::new("/test/steamapps/compatdata/4162040"))
+            .observed_inactive());
+    }
 
     struct ProcFixture {
         root: PathBuf,

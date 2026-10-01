@@ -17,6 +17,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             commands::get_system_info,
             commands::scan_steam,
             xxmi_commands::xxmi_status,
+            xxmi_commands::inspect_zzz_prefix_preflight,
             xxmi_commands::xxmi_check_official_releases,
             xxmi_commands::xxmi_download_official_package,
             xxmi_commands::import_xxmi_directory,

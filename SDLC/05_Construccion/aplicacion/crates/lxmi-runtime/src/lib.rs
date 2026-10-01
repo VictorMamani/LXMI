@@ -16,10 +16,11 @@ pub mod observation;
 
 pub use observation::{
     ConfiguredRuntimeEvidence, ObservationEvidenceState, ObservationTarget, ObservedGameProcess,
-    ObservedProcessNode, ObservedRuntimeProcess, ObservedRuntimeTool, ProcessTopologyState,
-    ProcfsObserver, ProcfsScan, ProcfsScanDiagnostics, RuntimeObservationAppId,
-    RuntimeObservationPath, RuntimeObservationSelection, RuntimeObservationSnapshot,
-    RuntimeObservationStatus, RuntimeObservationSummary, WineServerObservation,
+    ObservedProcessNode, ObservedRuntimeProcess, ObservedRuntimeTool, PrefixActivityEvidence,
+    ProcessTopologyState, ProcfsObserver, ProcfsScan, ProcfsScanDiagnostics,
+    RuntimeObservationAppId, RuntimeObservationPath, RuntimeObservationSelection,
+    RuntimeObservationSnapshot, RuntimeObservationStatus, RuntimeObservationSummary,
+    WineServerObservation,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

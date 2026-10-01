@@ -209,3 +209,15 @@ No se inicia 0.8.6 ni 0.9; ningún helper ejecutado en 4162040. [Verificación f
 - [ ] Endpoint wineserver exacto de peer y compatibilidad loader/game siguen UNKNOWN; strategy NoDecision/gate cerrado.
 
 No se inicia 0.9 ni ningún siguiente incremento automáticamente. Regresión late Direct Inject opcional no ejecutada en este probe sin loader.
+
+## LXMI 0.8.7 — preflight implementado; NEEDS EVIDENCE
+
+- [x] Preflight read-only, identidad prefix, build drift, actividad procfs same-UID, baseline selectivo con hash y panel Tauri nativo.
+- [x] Registrar cobertura limitada de paths protegidos; MetadataOnly no se presenta como backup.
+- [ ] Establecer y probar backup/restauración suficiente para el plan real; blocker `rollback_insufficient_metadata_only`.
+- [ ] Alcanzar EligibleForReview; mientras tanto versión 0.8.6 y secuencia detenida.
+- [ ] 0.8.8 requiere gate previo y consentimiento explícito posterior; no iniciado.
+- [ ] 0.8.9 requiere éxito/ mutaciones aceptables de 0.8.8; no iniciado.
+- [ ] 0.9 no autorizado.
+
+Ver `01_Descubrimiento/game_prefix_entry_preflight_0_8_7.md` y `06_Verificacion/verificacion_0_8_7.md`.

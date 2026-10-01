@@ -7,6 +7,13 @@ use lxmi_xxmi::{
     PackageManifest, Result, RuntimeAssemblyPlan, UpstreamRelease, XxmiError,
 };
 
+#[tauri::command]
+pub async fn inspect_zzz_prefix_preflight(
+    capture_baseline: bool,
+) -> std::result::Result<lxmi_bridge::GamePrefixEntryPreflight, BridgeServiceError> {
+    blocking_bridge(move || xxmi_service::inspect_zzz_prefix_preflight(capture_baseline)).await
+}
+
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
     tauri::async_runtime::spawn_blocking(f).await.map_err(|e| {
         XxmiError::new(

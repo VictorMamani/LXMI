@@ -42,6 +42,88 @@ pub struct BridgeRuntimeOption {
     pub proton_script: String,
 }
 
+pub fn inspect_zzz_prefix_preflight(
+    capture_baseline: bool,
+) -> std::result::Result<lxmi_bridge::GamePrefixEntryPreflight, BridgeServiceError> {
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
+    let fail = |detail: &str| BridgeServiceError {
+        code: "prefix_preflight_evidence_missing".into(),
+        detail: detail.into(),
+        stderr: None,
+    };
+    let games = discovery
+        .games
+        .games
+        .iter()
+        .filter(|g| g.steam_app_id == ZENLESS_ZONE_ZERO_APP_ID)
+        .collect::<Vec<_>>();
+    if games.len() != 1 {
+        return Err(fail("Se requiere una única instalación ZZZ detectada."));
+    }
+    let game = games[0];
+    let tools = resolved_bridge_runtimes(&discovery)
+        .into_iter()
+        .filter(|r| r.option.display_name == "Proton - Experimental")
+        .collect::<Vec<_>>();
+    if tools.len() != 1 {
+        return Err(fail("No se encontró un único candidato de la tool observada en 0.8.3. No se elige otra tool."));
+    }
+    let runtime = &tools[0];
+    let observer = lxmi_runtime::ProcfsObserver::for_current_user()
+        .map_err(|_| fail("procfs no disponible"))?;
+    let activity = observer.inspect_prefix_activity(&game.compatdata.compatdata_path);
+    let mut protected = vec![
+        game.installation.install_path.clone(),
+        game.steam_library.join("steamapps/appmanifest_4162040.acf"),
+        runtime.steam_root.join("config/config.vdf"),
+        runtime.steam_root.join("userdata"),
+        store.root().join("packages"),
+        store.root().join("runtimes"),
+    ];
+    if let Some(path) = &game.installation.executable_path {
+        protected.push(path.clone());
+    }
+    // Store only hashes/metadata of localconfig, never its contents or launch options.
+    if let Ok(users) = fs::read_dir(runtime.steam_root.join("userdata")) {
+        for user in users.take(64).flatten() {
+            if !user
+                .file_name()
+                .to_string_lossy()
+                .chars()
+                .all(|c| c.is_ascii_digit())
+            {
+                continue;
+            }
+            let path = user.path().join("config/localconfig.vdf");
+            if path.exists() {
+                protected.push(path);
+            }
+        }
+    }
+    let mut report = lxmi_bridge::inspect_game_prefix(lxmi_bridge::GamePrefixPreflightInput {
+        compatdata: game.compatdata.compatdata_path.clone(),
+        proton_root: runtime
+            .proton_script
+            .parent()
+            .ok_or_else(|| fail("Tool root ausente"))?
+            .into(),
+        protected_paths: protected,
+        active_processes: activity.matching_processes + activity.game_name_matches,
+        unresolved_processes: activity.unresolved_runtime_processes + activity.scan_warnings.len(),
+    });
+    if capture_baseline {
+        lxmi_bridge::capture_game_prefix_baseline(&mut report, store.root()).map_err(|e| {
+            BridgeServiceError {
+                code: "baseline_capture_failed".into(),
+                detail: e.to_string(),
+                stderr: None,
+            }
+        })?;
+    }
+    Ok(report)
+}
+
 #[derive(Serialize)]
 pub struct RuntimeBridgePanel {
     pub options: lxmi_bridge::BridgeOptions,

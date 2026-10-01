@@ -408,3 +408,9 @@ Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D 
 - Prefix filesystem dev/inode y socket endpoint candidato se separan de server PID/conexión UNKNOWN; inventario ligero de registry/mappings/mtime.
 - GameContextJoinPlan y GamePrefixEntryRisk declarativos, gate cerrado, NoDecision y selected Unknown intactos. Tauri Context Lab y readiness muestran separación fixture/game.
 - Producto 0.8.6 después de host/nativo; 263 tests offline, 11 ignored, Rust/frontend/Windows gates. No 0.9, Steam/game/prefix4162040 writes o Hook.
+
+## LXMI 0.8.7 — investigación/preflight parcial (2026-10-01)
+
+COMPROBADO: se añaden GamePrefixEntryPreflight, GamePrefixEntryPlan declarativo, snapshot policy selectiva, recibo de manifiesto SHA-256, actividad procfs read-only y panel Advanced. Tauri nativo capturó baseline en storage LXMI; 15 paths seleccionados sin diferencias posteriores observadas.
+
+NEEDS EVIDENCE: rollback MetadataOnly no satisface backup requerido por GamePrefixEntryRisk previo. No se autoriza entry real, no se ejecutan helpers/Proton/Wine/ZZZ/loader. Secuencia detenida antes de 0.8.8/0.8.9. Versión permanece 0.8.6; no se etiqueta 0.8.7 como cerrado. Verificación detallada en verificacion_0_8_7.md.

@@ -1,4 +1,5 @@
 import ContextLabPanel from "./ContextLabPanel";
+import PrefixPreflightPanel from "./PrefixPreflightPanel";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 
@@ -1834,6 +1835,7 @@ export default function XxmiPanel() {
             )}
           </details>
           <ContextLabPanel onReentryResult={setFixtureReentry} />
+          <PrefixPreflightPanel />
           <details className="runtime-evidence bridge-test-panel">
             <summary>Advanced · Loader Lab (solo proceso LXMI)</summary>
             <p>
