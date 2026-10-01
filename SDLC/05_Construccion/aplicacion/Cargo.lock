@@ -2050,7 +2050,7 @@ version = "0.1.0"
 
 [[package]]
 name = "lxmi-desktop"
-version = "0.8.6"
+version = "0.8.7"
 dependencies = [
  "lxmi-bridge",
  "lxmi-core",

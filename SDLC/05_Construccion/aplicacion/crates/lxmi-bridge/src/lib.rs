@@ -7,9 +7,11 @@ mod context_lab;
 mod context_reentry;
 mod direct_context;
 mod game_prefix;
+mod prefix_recovery;
 pub use context_reentry::*;
 pub use direct_context::*;
 pub use game_prefix::*;
+pub use prefix_recovery::*;
 mod loader_lab;
 pub use context_lab::*;
 

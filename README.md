@@ -4,7 +4,7 @@
 
 ## Estado
 
-- **Etapa:** construcción; LXMI 0.8.6 verificó reentrada de un helper independiente en el contexto fixture same-prefix. El control different-prefix no verificó evento/identidad. Sin loader ni juego; Proton selected Unknown, loader NoDecision y gate cerrado.
+- **Etapa:** construcción; LXMI 0.8.7 verificó backup del prefix inactivo y restauración solo en sandbox LXMI. Prefix preflight EligibleForReview; restore real NotTested. No se inició 0.8.8; Proton selected Unknown, loader NoDecision y gate de juego cerrado.
 - **Tipo de proyecto:** herramienta técnica de escritorio y posible proyecto de portafolio; no hay validación de demanda, modelo de ingresos ni rentabilidad confirmada.
 - **Base de trabajo:** idea aportada por el usuario. Las estructuras de Proton consultadas se contrastaron con fuentes de Valve; esto no valida compatibilidad del juego, mods, ni políticas aplicables.
 - **Código:** aplicación Tauri 2 con React/TypeScript y workspace Rust. Los escaneos de Steam/juegos/tools son de solo lectura; el import explícito solo escribe en almacenamiento XDG privado de LXMI.
@@ -87,3 +87,7 @@ Same-prefix verificó identidad y marker + nonce tras Inject 0; cross-prefix no 
 ## LXMI 0.8.6 — Existing Context Re-entry
 
 Context Lab inicia el target propio primero y un helper independiente después. Same-prefix verificó evento y PID/image/creation/nonce; different-prefix no verificó el contexto aunque compartía filesystem. No DLLs copiadas/cargadas ni game prefix utilizado. Endpoint candidato y dev/inode no se confunden con wineserver PID. [Verificación](SDLC/06_Verificacion/verificacion_0_8_6.md).
+
+## LXMI 0.8.7 — Prefix Backup & Restore Qualification
+
+Backup completo del árbol pfx sin seguir symlinks, manifiesto SHA-256 y copia recuperable verificada. Restauración independiente VerifiedOffTarget, sin ejecutar Wine/Proton ni restaurar el prefix real. El gate de preflight alcanza EligibleForReview; consentimiento/ejecución de 0.8.8 siguen fuera de este incremento. Ver [preflight](SDLC/01_Descubrimiento/preflight_prefix_zzz_0_8_7.md) y [verificación](SDLC/06_Verificacion/verificacion_0_8_7.md).

@@ -210,7 +210,7 @@ No se inicia 0.8.6 ni 0.9; ningún helper ejecutado en 4162040. [Verificación f
 
 No se inicia 0.9 ni ningún siguiente incremento automáticamente. Regresión late Direct Inject opcional no ejecutada en este probe sin loader.
 
-## LXMI 0.8.7 — preflight implementado; NEEDS EVIDENCE
+## LXMI 0.8.7 — revisión inicial histórica; NEEDS EVIDENCE
 
 - [x] Preflight read-only, identidad prefix, build drift, actividad procfs same-UID, baseline selectivo con hash y panel Tauri nativo.
 - [x] Registrar cobertura limitada de paths protegidos; MetadataOnly no se presenta como backup.
@@ -221,3 +221,17 @@ No se inicia 0.9 ni ningún siguiente incremento automáticamente. Regresión la
 - [ ] 0.9 no autorizado.
 
 Ver `01_Descubrimiento/game_prefix_entry_preflight_0_8_7.md` y `06_Verificacion/verificacion_0_8_7.md`.
+
+## Cierre LXMI 0.8.7 mediante 0.8.7.1 — ELIGIBLE FOR REVIEW
+
+- [x] Backup completo soportado pfx en storage privado LXMI, no dereference de symlinks, metadata/hash manifest y staging exclusivo.
+- [x] HOST TEST: fuente inactiva/identidad estable, 2445 entradas verificadas y consistencia before/after dentro de política.
+- [x] Restore sandbox VERIFIED OFF-TARGET; 783 archivos/2445 entradas sin diferencias. Real-prefix restore NOT TESTED ON REAL PREFIX, sin executor/botón.
+- [x] RecoverableBackupVerifiedOffTarget; reevaluación nativa EligibleForReview sin eliminar otros blockers ni autorizar entry.
+- [x] Quality gates y producto0.8.7. Documentación y ADR-030 con cobertura/limitaciones.
+- [ ] 0.8.8: NOT STARTED; necesita instrucción posterior, revalidación, consentimiento explícito y riesgo de mutaciones entendido.
+- [ ] Restauración real, atime/ctime/inodes/hardlink topology, dependencias externas y efectos fuera de pfx no probados/cubiertos.
+- [ ] Gestión futura de retención últimos2+activo y cleanup manual; no deletion automática ni sobrescritura.
+- [ ] 0.8.9/0.9 no iniciados; loader strategy NoDecision, game gate cerrado y compatibilidad ZZMI/ZZZ UNKNOWN.
+
+[Verificación](../06_Verificacion/verificacion_0_8_7.md). No ejecutar nada dentro de4162040 para ampliar esta evidencia automáticamente.

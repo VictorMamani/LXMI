@@ -414,3 +414,11 @@ Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D 
 COMPROBADO: se añaden GamePrefixEntryPreflight, GamePrefixEntryPlan declarativo, snapshot policy selectiva, recibo de manifiesto SHA-256, actividad procfs read-only y panel Advanced. Tauri nativo capturó baseline en storage LXMI; 15 paths seleccionados sin diferencias posteriores observadas.
 
 NEEDS EVIDENCE: rollback MetadataOnly no satisface backup requerido por GamePrefixEntryRisk previo. No se autoriza entry real, no se ejecutan helpers/Proton/Wine/ZZZ/loader. Secuencia detenida antes de 0.8.8/0.8.9. Versión permanece 0.8.6; no se etiqueta 0.8.7 como cerrado. Verificación detallada en verificacion_0_8_7.md.
+
+## LXMI 0.8.7.1 — Prefix Backup & Restore Qualification (cierra 0.8.7)
+
+- ARCHITECTURAL DECISION: copia descriptor-anchored completa del scope pfx con metadata/hash/xattrs y symlinks sin seguir; staging y finalización sin reemplazo, espacio/timeout/entry limits y fallos cerrados.
+- HOST TEST / READ-ONLY SOURCE: prefix inactivo UID1000/device66306/inode11538172 y SameBuild; backup privado2445 entradas, integridad VERIFIED, fuente estable dentro de política y paths protegidos selectivos sin diferencias.
+- Restore privado2445 entradas VERIFIED OFF-TARGET; real-prefix restore NOT TESTED ON REAL PREFIX y sin executor. Rollback RecoverableBackupVerifiedOffTarget, suficiente para revisión futura, no garantía real.
+- Tauri nativo Create/Verify/Test Restore/Reevaluate muestra EligibleForReview; evidencia persistida se revalida en reapertura. App0.8.7, 280 tests PASS/11 ignored y gates Rust/frontend/diff.
+- Nuevo ADR-030 y documentación detallada. No Proton/Wine/ZZZ/helper/loader ni escritura/restauración sobre fuente. NoDecision/selected Unknown/game gate cerrado intactos. No 0.8.8/0.8.9/0.9 iniciados.

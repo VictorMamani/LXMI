@@ -1,5 +1,7 @@
 # LXMI 0.8.7 — ZZZ Game Prefix Entry Preflight
 
+> Registro histórico de la revisión parcial. El bloqueo se cerró posteriormente en [0.8.7.1: backup y restore off-target](preflight_prefix_zzz_0_8_7.md), sin ejecutar nada dentro del prefix real.
+
 Fecha: 2026-10-01. **READ-ONLY HOST / NEEDS EVIDENCE.** Se implementó y verificó el preflight, pero no alcanzó `EligibleForReview`. La secuencia se detiene aquí. Producto conserva **0.8.6**; 0.8.8 y 0.8.9 no comenzaron.
 
 ## Identidad y actividad — READ-ONLY HOST

@@ -10,8 +10,15 @@ use lxmi_xxmi::{
 #[tauri::command]
 pub async fn inspect_zzz_prefix_preflight(
     capture_baseline: bool,
-) -> std::result::Result<lxmi_bridge::GamePrefixEntryPreflight, BridgeServiceError> {
-    blocking_bridge(move || xxmi_service::inspect_zzz_prefix_preflight(capture_baseline)).await
+) -> std::result::Result<crate::prefix_recovery_service::PrefixRecoveryPanel, BridgeServiceError> {
+    blocking_bridge(move || crate::prefix_recovery_service::inspect(capture_baseline)).await
+}
+
+#[tauri::command]
+pub async fn run_zzz_prefix_recovery(
+    action: crate::prefix_recovery_service::RecoveryAction,
+) -> std::result::Result<crate::prefix_recovery_service::PrefixRecoveryPanel, BridgeServiceError> {
+    blocking_bridge(move || crate::prefix_recovery_service::run(action)).await
 }
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {

@@ -42,7 +42,7 @@ pub struct BridgeRuntimeOption {
     pub proton_script: String,
 }
 
-pub fn inspect_zzz_prefix_preflight(
+pub(crate) fn inspect_zzz_prefix_preflight_raw(
     capture_baseline: bool,
 ) -> std::result::Result<lxmi_bridge::GamePrefixEntryPreflight, BridgeServiceError> {
     let discovery = SteamDiscoveryScanner::from_environment().scan();
@@ -101,6 +101,7 @@ pub fn inspect_zzz_prefix_preflight(
             }
         }
     }
+    protected.sort();
     let mut report = lxmi_bridge::inspect_game_prefix(lxmi_bridge::GamePrefixPreflightInput {
         compatdata: game.compatdata.compatdata_path.clone(),
         proton_root: runtime
@@ -122,6 +123,14 @@ pub fn inspect_zzz_prefix_preflight(
         })?;
     }
     Ok(report)
+}
+
+pub(crate) fn prefix_recovery_storage() -> std::result::Result<PathBuf, BridgeServiceError> {
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    Ok(store_for(&discovery)
+        .map_err(BridgeServiceError::from)?
+        .root()
+        .into())
 }
 
 #[derive(Serialize)]

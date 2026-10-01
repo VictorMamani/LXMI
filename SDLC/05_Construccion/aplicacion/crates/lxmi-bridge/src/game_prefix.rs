@@ -24,13 +24,15 @@ pub enum RuntimeBuildDrift {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RollbackCapability {
+    RecoverableBackupVerifiedOffTarget,
+    FullRestoreVerifiedOnTarget,
     Full,
     Partial,
     MetadataOnly,
     Unknown,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SelectedPathEvidence {
     pub path: PathBuf,
     pub metadata: Option<PrefixMetadata>,
