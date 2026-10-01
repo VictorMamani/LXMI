@@ -139,6 +139,18 @@ El resultado demuestra solo la carga del DLL de test dentro del proceso de labor
 - La sección por AppID y el mapping global `0` se conservan como datos distintos. Un mapping global nunca rellena `selected_game_runtime`.
 - El scanner no escribe Steam; no consulta procesos y no ejecuta Proton/Wine/wineserver/ZZZ. La presencia de `compatdata/4162040/pfx` sigue siendo evidencia de filesystem, no evidencia de runtime activo.
 
+### LXMI 0.8.3 — observación de procfs
+
+- El inicio requiere consentimiento explícito que confirma que el usuario ejecutará ZZZ manualmente desde Steam. El backend vuelve a construir AppID, nombre/path ejecutable, compatdata esperado y Proton candidates desde discovery; la UI no puede enviar una ruta, PID, UID ni proceso arbitrarios.
+- Solo se observa procfs Linux y procesos cuya metadata de directorio y UID efectivo corresponden al usuario actual. La sesión tiene 90 segundos máximos, muestreo de 1 segundo y lista limitada de ancestros. El único control disponible detiene el thread observador; no señala procesos del sistema.
+- Se leen `status`, `stat`, `comm` para indexar procesos del UID actual. Para candidatos relacionados se leen `exe`, `cmdline` y un subconjunto exacto de environment. Las claves permitidas son `STEAM_COMPAT_APP_ID`, `SteamAppId`, `SteamGameId`, `STEAM_COMPAT_DATA_PATH` y `WINEPREFIX`; no se devuelve environment ni cmdline completos.
+- No se abre `/proc/<pid>/mem`; no se usa `ptrace`, `process_vm_readv`, debugger/tracing attach, ni APIs de señal. No se abre ni manipula el proceso observado. El timestamp de inicio del proceso se coteja antes/después de la lectura para descartar reutilización obvia de PID.
+- Los datos son efímeros en memoria, no se escriben a logs ni almacenamiento. El snapshot frontend redacta el home de los paths de compatdata/prefix/tool; nombres de proceso, roles y evidencia estructural no incluyen PID seleccionable o path arbitrario.
+- Un proceso con `WINEPREFIX` coincidente no se declara wineserver efectivo del juego: relación de endpoint, same-prefix/same-wineserver del futuro loader, compatibilidad ZZMI/ZZZ y gate permanecen desconocidos.
+- Los errores de permiso en `environ` se conservan como `PermissionDenied`, separados de otros `Unavailable`; el resto de evidencia independiente puede seguir mostrándose. Los contadores distinguen candidatos directos de contextos aceptados que incluyen ascendencia. Múltiples candidatos producen `AmbiguousProcess` y no se escoge uno.
+
+La revisión del código y los fixtures se complementó con observación manual en la ventana Tauri nativa. El proceso observado y los límites/unknowns están registrados en `../01_Descubrimiento/observacion_runtime_zzz_steam_0_8_3.md` y `../06_Verificacion/verificacion_0_8_3.md`.
+
 ### LXMI 0.8.1 — evaluación de estrategia y aislamiento
 
 - La auditoría upstream fijada confirma que `use_hook=true` es default de ZZMI, y que Custom Launch con modo `Inject` llega a la rama genérica Direct Inject. El default de ZZMI no se altera en LXMI y ninguna opción UI habilita ejecución del juego.

@@ -12,6 +12,16 @@ use lxmi_proton::{
 use lxmi_steam::{SteamDiscoveryResult, SteamGameDiscoveryStatus, SteamGameInstallation};
 use tracing::info;
 
+pub mod observation;
+
+pub use observation::{
+    ConfiguredRuntimeEvidence, ObservationEvidenceState, ObservationTarget, ObservedGameProcess,
+    ObservedProcessNode, ObservedRuntimeProcess, ObservedRuntimeTool, ProcessTopologyState,
+    ProcfsObserver, ProcfsScan, ProcfsScanDiagnostics, RuntimeObservationAppId,
+    RuntimeObservationPath, RuntimeObservationSelection, RuntimeObservationSnapshot,
+    RuntimeObservationStatus, RuntimeObservationSummary, WineServerObservation,
+};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeCandidate {
     pub internal_id: Option<String>,

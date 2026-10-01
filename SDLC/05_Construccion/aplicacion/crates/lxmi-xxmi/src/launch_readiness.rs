@@ -177,6 +177,95 @@ pub struct SteamProcessContextFinding {
     pub detail: String,
 }
 
+/// Adds per-session process observations to readiness context without changing
+/// the configured Steam mapping or the planner's runtime selection.
+pub fn incorporate_runtime_observation(
+    context: &mut SteamProtonProcessContextEvidence,
+    observation: &lxmi_runtime::RuntimeObservationSummary,
+) {
+    use lxmi_runtime::{ObservationEvidenceState, RuntimeObservationStatus};
+
+    context.runtime_observation = Some(observation.clone());
+    if !observation.process_observed
+        || observation.status == RuntimeObservationStatus::AmbiguousProcess
+    {
+        return;
+    }
+
+    context.process_context = RuntimeContextKnowledge::Known;
+    if observation.app_id.state == ObservationEvidenceState::Verified
+        && observation.runtime.state == ObservationEvidenceState::Verified
+    {
+        context.effective_runtime_selection = RuntimeContextKnowledge::Known;
+    }
+    if matches!(
+        observation.prefix.state,
+        ObservationEvidenceState::Observed
+            | ObservationEvidenceState::DerivedFromObservedCompatdata
+    ) {
+        context.effective_prefix = RuntimeContextKnowledge::Known;
+    }
+    // A matching WINEPREFIX environment is useful observation, but it does not
+    // prove which wineserver instance the game communicates with.
+
+    let source = format!(
+        "LXMI passive observation session at {} ms",
+        observation.observed_at_unix_millis.unwrap_or_default()
+    );
+    context.findings.push(SteamProcessContextFinding {
+        claim: "Steam/Proton/ZZZ runtime observation".into(),
+        state: ContextFindingState::Detected,
+        source: source.clone(),
+        detail: "Ephemeral evidence from a uniquely identified process started manually by the user; this does not change configured Steam mapping or loader strategy.".into(),
+    });
+    context.findings.push(SteamProcessContextFinding {
+        claim: "Runtime observed for this execution".into(),
+        state: if observation.runtime.state == ObservationEvidenceState::Verified {
+            ContextFindingState::Detected
+        } else {
+            ContextFindingState::Unknown
+        },
+        source: observation
+            .runtime
+            .evidence_source
+            .clone()
+            .unwrap_or_else(|| source.clone()),
+        detail: "Observation applies only to this session. GameRuntimePlan selection and configured Steam mapping remain separate.".into(),
+    });
+    context.findings.push(SteamProcessContextFinding {
+        claim: "compatdata observed".into(),
+        state: if observation.compatdata.state == ObservationEvidenceState::ObservedAndMatches {
+            ContextFindingState::Detected
+        } else {
+            ContextFindingState::Unknown
+        },
+        source: observation
+            .compatdata
+            .evidence_source
+            .clone()
+            .unwrap_or_else(|| source.clone()),
+        detail: "The allowlisted process environment is compared with the manifest-derived compatdata path; no files are changed.".into(),
+    });
+    context.findings.push(SteamProcessContextFinding {
+        claim: "Prefix observed or derived".into(),
+        state: if matches!(
+            observation.prefix.state,
+            ObservationEvidenceState::Observed
+                | ObservationEvidenceState::DerivedFromObservedCompatdata
+        ) {
+            ContextFindingState::Detected
+        } else {
+            ContextFindingState::Unknown
+        },
+        source: observation
+            .prefix
+            .evidence_source
+            .clone()
+            .unwrap_or_else(|| source.clone()),
+        detail: "A prefix derived from STEAM_COMPAT_DATA_PATH remains explicitly derived; it says nothing about the loader's required context.".into(),
+    });
+}
+
 /// Read-only observations. A configured mapping is not represented as the runtime
 /// Steam actually launched; effective context remains independently unknown.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -203,6 +292,8 @@ pub struct SteamProtonProcessContextEvidence {
     pub loader_same_prefix_requirement: RuntimeContextKnowledge,
     pub loader_same_wineserver_requirement: RuntimeContextKnowledge,
     pub wineserver_relationship: RuntimeContextKnowledge,
+    /// Ephemeral evidence from a user-started, read-only observation session.
+    pub runtime_observation: Option<lxmi_runtime::RuntimeObservationSummary>,
     pub findings: Vec<SteamProcessContextFinding>,
 }
 
@@ -1382,6 +1473,7 @@ mod tests {
             loader_same_prefix_requirement: RuntimeContextKnowledge::Unknown,
             loader_same_wineserver_requirement: RuntimeContextKnowledge::Unknown,
             wineserver_relationship: RuntimeContextKnowledge::Unknown,
+            runtime_observation: None,
             findings: vec![SteamProcessContextFinding {
                 claim: "Per-game compatibility-tool mapping".into(),
                 state: ContextFindingState::Configured,
@@ -1709,5 +1801,160 @@ mod tests {
             ReadinessCapabilityState::Unknown
         );
         assert_eq!(result.loader_strategy.preferred_mode, None);
+    }
+
+    #[test]
+    fn passive_observation_enriches_readiness_without_selecting_game_runtime_or_loader_context() {
+        use lxmi_runtime::{
+            ObservationEvidenceState, ProcessTopologyState, RuntimeObservationAppId,
+            RuntimeObservationPath, RuntimeObservationSelection, RuntimeObservationStatus,
+            RuntimeObservationSummary, WineServerObservation,
+        };
+
+        let mut context = context_evidence_with_mapping();
+        let observed = RuntimeObservationSummary {
+            status: RuntimeObservationStatus::Completed,
+            active: false,
+            process_observed: true,
+            ambiguous_process_count: 0,
+            app_id: RuntimeObservationAppId {
+                state: ObservationEvidenceState::Verified,
+                observed_values: vec![4_162_040],
+                sources: vec!["STEAM_COMPAT_APP_ID (fixture PID)".into()],
+            },
+            runtime: RuntimeObservationSelection {
+                state: ObservationEvidenceState::Verified,
+                tool: Some(lxmi_runtime::ObservedRuntimeTool {
+                    internal_id: Some("proton_experimental".into()),
+                    display_name: "Proton Experimental".into(),
+                    version: Some("fixture-version".into()),
+                    path: "~/.steam/Proton Experimental".into(),
+                }),
+                evidence_source: Some("fixture process argv".into()),
+            },
+            compatdata: RuntimeObservationPath {
+                state: ObservationEvidenceState::ObservedAndMatches,
+                observed_path: Some("~/.steam/compatdata/4162040".into()),
+                expected_path: Some("~/.steam/compatdata/4162040".into()),
+                evidence_source: Some("STEAM_COMPAT_DATA_PATH".into()),
+            },
+            prefix: RuntimeObservationPath {
+                state: ObservationEvidenceState::DerivedFromObservedCompatdata,
+                observed_path: Some("~/.steam/compatdata/4162040/pfx".into()),
+                expected_path: None,
+                evidence_source: Some("STEAM_COMPAT_DATA_PATH + Proton layout".into()),
+            },
+            wineserver: WineServerObservation {
+                state: ObservationEvidenceState::ObservedAndMatches,
+                related_process_count: 1,
+                evidence: "fixture WINEPREFIX match".into(),
+            },
+            process_topology_state: ProcessTopologyState::ObservedAncestry,
+            observed_at_unix_millis: Some(123),
+        };
+        incorporate_runtime_observation(&mut context, &observed);
+
+        let mut input = ready_input();
+        input.game_runtime_selection = ReadinessCapabilityState::Unknown;
+        input.selected_game_runtime = None;
+        input.steam_process_context = Some(context);
+        let readiness = assess_zzmi_launch_readiness(input);
+        let process_context = readiness.steam_process_context.as_ref().unwrap();
+
+        assert_eq!(readiness.selected_game_runtime, None);
+        assert_eq!(
+            readiness.game_runtime_selection,
+            ReadinessCapabilityState::Unknown
+        );
+        assert_eq!(
+            process_context.effective_runtime_selection,
+            RuntimeContextKnowledge::Known
+        );
+        assert_eq!(
+            process_context.effective_prefix,
+            RuntimeContextKnowledge::Known
+        );
+        assert_eq!(
+            process_context.wineserver_relationship,
+            RuntimeContextKnowledge::Unknown
+        );
+        assert_eq!(
+            process_context
+                .runtime_observation
+                .as_ref()
+                .unwrap()
+                .wineserver
+                .state,
+            ObservationEvidenceState::ObservedAndMatches
+        );
+        assert_eq!(
+            process_context.loader_same_prefix_requirement,
+            RuntimeContextKnowledge::Unknown
+        );
+        assert_eq!(
+            process_context.loader_same_wineserver_requirement,
+            RuntimeContextKnowledge::Unknown
+        );
+        assert_eq!(
+            readiness.loader_strategy.outcome,
+            LoaderStrategyOutcome::NoDecision
+        );
+        assert_eq!(readiness.decision, ZzmiReadinessDecision::NeedsEvidence);
+        assert!(!readiness.controlled_experiment_gate.eligible_for_review);
+        assert!(!readiness.controlled_experiment_gate.launches_game);
+    }
+
+    #[test]
+    fn ambiguous_or_unverified_runtime_observation_does_not_promote_effective_selection() {
+        use lxmi_runtime::{
+            ObservationEvidenceState, ProcessTopologyState, RuntimeObservationAppId,
+            RuntimeObservationPath, RuntimeObservationSelection, RuntimeObservationStatus,
+            RuntimeObservationSummary, WineServerObservation,
+        };
+
+        let mut context = context_evidence_with_mapping();
+        let observation = RuntimeObservationSummary {
+            status: RuntimeObservationStatus::AmbiguousProcess,
+            active: false,
+            process_observed: false,
+            ambiguous_process_count: 2,
+            app_id: RuntimeObservationAppId {
+                state: ObservationEvidenceState::Ambiguous,
+                observed_values: vec![],
+                sources: vec![],
+            },
+            runtime: RuntimeObservationSelection {
+                state: ObservationEvidenceState::Ambiguous,
+                tool: None,
+                evidence_source: None,
+            },
+            compatdata: RuntimeObservationPath {
+                state: ObservationEvidenceState::Ambiguous,
+                observed_path: None,
+                expected_path: None,
+                evidence_source: None,
+            },
+            prefix: RuntimeObservationPath {
+                state: ObservationEvidenceState::Ambiguous,
+                observed_path: None,
+                expected_path: None,
+                evidence_source: None,
+            },
+            wineserver: WineServerObservation {
+                state: ObservationEvidenceState::Ambiguous,
+                related_process_count: 0,
+                evidence: "multiple fixtures".into(),
+            },
+            process_topology_state: ProcessTopologyState::Ambiguous,
+            observed_at_unix_millis: Some(456),
+        };
+        incorporate_runtime_observation(&mut context, &observation);
+        assert_eq!(
+            context.effective_runtime_selection,
+            RuntimeContextKnowledge::Unknown
+        );
+        assert_eq!(context.effective_prefix, RuntimeContextKnowledge::Unknown);
+        assert_eq!(context.process_context, RuntimeContextKnowledge::Unknown);
+        assert_eq!(context.runtime_observation, Some(observation));
     }
 }

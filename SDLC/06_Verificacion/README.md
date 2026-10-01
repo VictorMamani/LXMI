@@ -20,6 +20,8 @@ LXMI-0.1 a 0.5.1 cuenta con fixtures Rust de KeyValues/ACF, Steam games/compatda
 - [Verificación LXMI 0.5.3](verificacion_0_5_3.md)
 - [Verificación LXMI 0.7](verificacion_0_7.md)
 - [Verificación LXMI 0.8](verificacion_0_8.md)
+- [Verificación LXMI 0.8.2](verificacion_0_8_2.md)
+- [Verificación LXMI 0.8.3](verificacion_0_8_3.md) — observación pasiva de ejecución; validada manualmente en Tauri nativo.
 
 ## Salida de fase
 

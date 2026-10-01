@@ -344,3 +344,33 @@ Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D 
 - **LOCAL VERIFIED:** manifest AppID `4162040`, ejecutable de ZZZ, directorios `compatdata/4162040/pfx` y Proton Experimental con metadata estructural existen en el host. Proton instalado no se promueve a selección.
 - **FIXTURE:** parser/readiness cubiertos por mapping explícito/global, mapping global sin override, config malformed/missing, varios candidates y compatdata/pfx presentes/ausentes.
 - Pasaron los quality gates Rust y frontend; total workspace `194 passed`, `7 ignored`. Resultados exactos y límites en `SDLC/06_Verificacion/verificacion_0_8_2.md`.
+
+## LXMI-0.8.3 — Passive ZZZ Runtime Observation (CERRADO, 2026-09-30)
+
+### Implementación en el árbol de trabajo
+
+- Se añadió un observer procfs efímero, con consentimiento explícito, límite de 90 segundos, muestreo de 1 segundo y filtro de UID actual. El identificador combina nombre ejecutable esperado con evidencia independiente; múltiples matches permanecen ambiguos.
+- Se leen solamente `STEAM_COMPAT_APP_ID`, `SteamAppId`, `SteamGameId`, `STEAM_COMPAT_DATA_PATH` y `WINEPREFIX` de procesos relevantes. No se lee memoria ni se controla el proceso observado.
+- Se conectó el summary a ZZZ readiness sin promover Proton instalado/configurado a selección ni modificar `GameRuntimePlan.selected`. Proton observado por proceso, compatdata, prefix derivado/directo y wineserver se conservan con evidencia separada.
+- Advanced incorpora consentimiento, Start/Stop y exposición de evidencia acotada. El usuario debe iniciar ZZZ manualmente desde Steam, sin mods.
+
+### Estado de verificación
+
+- Rust format/check/clippy/tests pasan (221 passed, 8 ignored); frontend typecheck/lint/format/build y `git diff --check` pasan. `tauri:dev` compiló y arrancó 0.8.3. Los resultados se registran en `SDLC/06_Verificacion/verificacion_0_8_3.md`.
+- La observación manual completada desde la ventana Tauri se registra abajo; los metadatos de la aplicación se actualizaron a `0.8.3` solo después de esa evidencia.
+
+### Diagnóstico de resultado silencioso (2026-09-30)
+
+- La sesión manual reportada por el usuario se inició con ZZZ ya abierto. Los logs de la versión anterior registraron el inicio y la finalización aproximada a los 91 segundos, sin escaneos, resultado terminal o evidencia de snapshot. **UNKNOWN:** si detectó ZZZ, expiró sin match, encontró ambigüedad o no pudo leer el entorno.
+- **COMPROBADO por código:** el scan inicial ya ocurría antes de dormir; el command Tauri devuelve el snapshot y React lo retenía mientras el panel estaba montado. El único lugar de render era el cuerpo del `<details>` Advanced. La extracción que solo mostró summaries no demuestra pérdida del DTO.
+- Se agregó un resumen persistente visible fuera del disclosure, estado `active`/elapsed, resultado explícito (`Completed`, `ProcessNotFound`, `TimedOut`, `AmbiguousProcess`, etc.), detalle de error con código y contadores agregados de scan. Tauri registra el primer resultado y transiciones sin volcar `cmdline` ni variables.
+- Se distingue permiso denegado al leer `environ`, metadatos inaccesibles, nombre no coincidente y evidencia independiente insuficiente. El candidato busca nombre esperado en las señales de proceso disponibles, incluso cuando `/proc/<pid>/exe` sea Wine/preloader.
+- **FIXTURE:** un ZZZ preexistente en la primera lectura se identifica con `comm=wine64-preloader`, `cmdline` con el EXE esperado y AppID/compatdata en ascendencia Proton. También se verifica la serialización del snapshot y que el stop no borra evidencia.
+- **LOCAL OBSERVED — Tauri nativo (evidencia del usuario):** proceso `ZenlessZoneZero.exe`, PID `691954`; AppID `4162040`; Proton Experimental ID `1790244902`, build `experimental-11.0-20260924-x86_64`; compatdata coincidente; prefix observado; ascendencia Steam observada.
+- El primer scan fue `WaitingForGame` (191 procesos, cero candidatos); el scan de `00:52:42Z` observó cuatro candidatos y aceptó uno. A los 67 segundos la UI mostró el snapshot `Observed · En curso`. Se demuestra detección durante la ventana; que ZZZ ya estuviera presente en el primer scan no se afirma.
+- **LOCAL OBSERVED:** un wineserver del UID actual mostró el mismo `WINEPREFIX`, con la advertencia visible de que no prueba que ZZZ utilice esa instancia. El mapping por AppID no apareció en la fuente inspeccionada; el default global se mantuvo separado.
+- **INFERIDO:** `PermissionDenied` y cero denegaciones entre candidatos directos son compatibles porque el estado del contexto agrega ascendencia, mientras ese contador no. La salida no identifica el PID denegado. Se añadió distinción de estos alcances en los diagnósticos/UI.
+- **UNKNOWN:** estado terminal de la sesión después de la captura activa a 67 s, relación efectiva de ZZZ con una instancia concreta de wineserver, compatibilidad ZZMI/ZZZ bajo Steam Linux/Proton y requisitos same-prefix/same-wineserver del loader.
+- `GameRuntimePlan.selected` permanece `Unknown`; loader strategy `NoDecision`; readiness `NeedsEvidence`/gate cerrado. La observación no lanzó ni controló ZZZ ni ejecutó Hook, Direct Inject, Proton de laboratorio, helper o loader.
+- El observer no tiene camino de escritura a Steam/juego/prefix. No se tomó hash pre/post de esos árboles; no se reclama una comparación de filesystem.
+- 0.8.3 se cerró con versión `0.8.3`; resultados y límites completos en `SDLC/06_Verificacion/verificacion_0_8_3.md`.

@@ -602,6 +602,105 @@ h3 {
   margin-top: 0;
   color: #adbab7;
 }
+
+.observation-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  max-width: 62rem;
+  margin: 13px 0 15px;
+  color: #c3cecb;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.observation-consent input {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  accent-color: #a8d7bf;
+}
+
+.observation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.runtime-observation-result {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #2a393a;
+}
+
+.runtime-observation-result > p {
+  line-height: 1.5;
+}
+
+.runtime-observation-result .runtime-summary {
+  margin: 14px 0;
+}
+
+.observation-last-result {
+  margin: 10px 0 18px;
+  padding: 12px 14px;
+  background: #111718;
+  border: 1px solid #2a393a;
+  border-radius: 7px;
+  color: #dce5e2;
+}
+
+.observation-last-heading {
+  margin-bottom: 5px;
+  color: #aebbb8;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.observation-last-result > p {
+  margin: 4px 0 10px;
+  line-height: 1.45;
+}
+
+.observation-last-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 8px 18px;
+  margin: 0;
+}
+
+.observation-last-grid > div {
+  min-width: 0;
+}
+
+.observation-last-grid dt {
+  color: #9fadaa;
+  font-size: 0.72rem;
+}
+
+.observation-last-grid dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+
+.observation-warnings {
+  margin: 12px 0;
+  padding-left: 19px;
+  color: #d8b67f;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .observation-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .observation-actions button {
+    width: 100%;
+  }
+}
 .xxmi-warnings {
   padding-left: 20px;
   color: #c1b39d;

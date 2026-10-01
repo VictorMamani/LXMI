@@ -4,7 +4,7 @@
 
 ## Estado
 
-- **Etapa:** construcción; LXMI 0.8.2 añade evidencia local de `CompatToolMapping` y contexto Steam/Proton sin iniciar procesos. El mapping por juego no fue encontrado en el Steam local; runtime efectivo, relaciones de prefix/wineserver y readiness de ZZZ siguen desconocidos/`NeedsEvidence`.
+- **Etapa:** construcción; LXMI 0.8.3 añade observación pasiva de contexto durante una sesión ZZZ iniciada manualmente. En una sesión local se observó Proton Experimental, AppID `4162040`, compatdata y prefix. La selección configurada permanece separada y `GameRuntimePlan.selected` sigue `Unknown`.
 - **Tipo de proyecto:** herramienta técnica de escritorio y posible proyecto de portafolio; no hay validación de demanda, modelo de ingresos ni rentabilidad confirmada.
 - **Base de trabajo:** idea aportada por el usuario. Las estructuras de Proton consultadas se contrastaron con fuentes de Valve; esto no valida compatibilidad del juego, mods, ni políticas aplicables.
 - **Código:** aplicación Tauri 2 con React/TypeScript y workspace Rust. Los escaneos de Steam/juegos/tools son de solo lectura; el import explícito solo escribe en almacenamiento XDG privado de LXMI.
@@ -32,7 +32,9 @@ LXMI-0.7 añade un Loader Lab avanzado aislado: target y DLL propios para Window
 
 LXMI-0.8 evalúa readiness de manera declarativa y conserva un guard fail-closed para Hook porque su aislamiento a un proceso no está demostrado. LXMI-0.8.1 fija la lectura de XXMI Launcher v2.2.1: ZZMI hereda Hook como modo estándar; Custom Launch expone Hook, Inject y Bypass, y Direct Inject utiliza una ruta genérica de `3dmloader.dll`. La prueba 0.7 demuestra solo el mecanismo contra el fixture LXMI, no que ZZMI funcione con ZZZ en Steam Linux/Proton. No se estableció que ZZMI requiera exclusivamente Hook, pero eso tampoco demuestra que Direct Inject sea compatible. Por ello LXMI mantiene `LoaderStrategyDecision = NoDecision`, `GameRuntimePlan.selected = Unknown`, readiness `NeedsEvidence` y gate cerrado. Ver [investigación de estrategia](SDLC/01_Descubrimiento/estrategia_loader_zzmi_linux.md), [flujo Steam/Linux](SDLC/01_Descubrimiento/launch_zzmi_steam_linux.md), [ADR-027](SDLC/04_Arquitectura_y_seguridad/ADR/027_xxmi_loader_strategy_for_lxmi.md) y [verificación 0.8.1](SDLC/06_Verificacion/verificacion_0_8.md).
 
-LXMI-0.8.2 lee de forma acotada y read-only `config/config.vdf`, informa por separado mapping por AppID, default global, runtimes instalados y paths `compatdata/pfx` detectados. En el host actual el bloque `CompatToolMapping` está vacío; esto no determina el runtime efectivo. La UI expone fuentes y unknowns, mientras `LoaderStrategyDecision = NoDecision`, Proton efectivo `Unknown`, readiness `NeedsEvidence` y gate cerrado. No se iniciaron procesos ni se modificaron Steam, ZZZ, compatdata o prefix. Ver [evidencia de contexto Steam/Proton](SDLC/01_Descubrimiento/evidencia_contexto_steam_proton_0_8_2.md) y [verificación 0.8.2](SDLC/06_Verificacion/verificacion_0_8_2.md).
+LXMI-0.8.2 lee de forma acotada y read-only `config/config.vdf`, e informa por separado mapping por AppID, default global, runtimes instalados y paths `compatdata/pfx` detectados. En la fuente local inspeccionada no se encontró mapping por AppID; eso no determina el runtime efectivo. El resultado de ese incremento está documentado en [evidencia de contexto Steam/Proton](SDLC/01_Descubrimiento/evidencia_contexto_steam_proton_0_8_2.md) y [verificación 0.8.2](SDLC/06_Verificacion/verificacion_0_8_2.md).
+
+LXMI-0.8.3 añade observación efímera de procfs con consentimiento. En la validación manual desde Tauri, el observer detectó una ejecución Steam de ZZZ con Proton Experimental y prefix/compatdata coincidentes. Esta evidencia describe esa sesión; no actualiza la selección configurada, no demuestra compatibilidad ZZMI ni habilita lanzamiento. Ver [observación local](SDLC/01_Descubrimiento/observacion_runtime_zzz_steam_0_8_3.md) y [verificación 0.8.3](SDLC/06_Verificacion/verificacion_0_8_3.md).
 
 ## Documentos SDLC
 
@@ -62,11 +64,11 @@ LXMI-0.5 pasó los quality gates del workspace con 114 tests Rust (45 nuevos) y 
 
 ## Estado actual de investigación
 
-LXMI 0.8.2 queda completado como evidencia de filesystem/configuración, no como prueba de ejecución. Permanecen `UNKNOWN` el runtime efectivo, el `WINEPREFIX` efectivo y las relaciones del loader con prefix/wineserver. No se habilitó ni implementó una ruta de lanzamiento.
+LXMI 0.8.2 quedó completado como evidencia de filesystem/configuración. LXMI 0.8.3 observó una ejecución manual concreta, pero no resolvió compatibilidad del loader, requisito same-prefix/same-wineserver ni compatibilidad ZZMI/ZZZ. No se habilitó ni implementó una ruta de lanzamiento.
 
 ## Estado local de Git
 
-El repositorio efectivo es esta carpeta LXMI, rama `main`, remote `origin` en `git@github.com:VictorMamani/LXMI.git`. Se preservaron los cambios no comprometidos de 0.8.1 y se añadieron los de 0.8.2; no se hizo commit ni push.
+El repositorio efectivo es esta carpeta LXMI, rama `main`, remote `origin` en `git@github.com:VictorMamani/LXMI.git`. Los cambios previos 0.8.1/0.8.2 y el incremento 0.8.3 permanecen sin commit ni push.
 
 ## Criterio de honestidad
 

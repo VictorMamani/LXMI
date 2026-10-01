@@ -1,4 +1,6 @@
 mod commands;
+mod runtime_observation;
+mod runtime_observation_commands;
 mod xxmi_commands;
 mod xxmi_service;
 
@@ -10,6 +12,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         .try_init();
 
     tauri::Builder::default()
+        .manage(runtime_observation::RuntimeObservationController::default())
         .invoke_handler(tauri::generate_handler![
             commands::get_system_info,
             commands::scan_steam,
@@ -26,7 +29,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             xxmi_commands::run_runtime_bridge_test,
             xxmi_commands::inspect_loader_lab,
             xxmi_commands::prepare_loader_lab,
-            xxmi_commands::run_loader_lab_experiment
+            xxmi_commands::run_loader_lab_experiment,
+            runtime_observation_commands::start_zzz_runtime_observation,
+            runtime_observation_commands::get_zzz_runtime_observation,
+            runtime_observation_commands::stop_zzz_runtime_observation
         ])
         .run(tauri::generate_context!())?;
 

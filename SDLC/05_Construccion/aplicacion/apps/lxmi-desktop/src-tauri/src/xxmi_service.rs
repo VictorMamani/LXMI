@@ -9,7 +9,7 @@ use lxmi_proton::{
 };
 use lxmi_runtime::{
     CompatDataAssessment, GameInstallationAssessment, GameInstallationCompleteness,
-    PrefixAssessment, RuntimePlanner, RuntimeSelection,
+    PrefixAssessment, RuntimeObservationSnapshot, RuntimePlanner, RuntimeSelection,
 };
 use lxmi_steam::{
     inspect_steam_compat_tool_config, SteamCompatToolConfigStatus, SteamCompatToolMapping,
@@ -894,6 +894,7 @@ fn steam_process_context_evidence(
     compatibility_tools: &[CompatibilityTool],
     platform: &lxmi_runtime::GameRuntimePlan,
     app_id: u32,
+    observation: Option<&RuntimeObservationSnapshot>,
 ) -> SteamProtonProcessContextEvidence {
     let compatdata_state = evidence_from_compatdata(&platform.compatdata);
     let compatdata_path = compatdata_path(&platform.compatdata);
@@ -1026,8 +1027,8 @@ fn steam_process_context_evidence(
     findings.push(context_finding(
         "Effective Steam/Proton execution context",
         ContextFindingState::Unknown,
-        "No Steam/Proton/game process was started or observed in LXMI 0.8.2".into(),
-        "A configuration mapping and installed candidates do not establish the runtime used by a particular execution.",
+        "LXMI no inicia Steam ni ZZZ; el contexto efectivo se obtiene únicamente mediante observación pasiva de una sesión iniciada manualmente.".into(),
+        "Los mappings configurados y los candidatos instalados no demuestran por sí solos el runtime de una ejecución concreta.",
     ));
     findings.push(context_finding(
         "Loader prefix and wineserver relationship",
@@ -1045,7 +1046,7 @@ fn steam_process_context_evidence(
         ));
     }
 
-    SteamProtonProcessContextEvidence {
+    let mut context = SteamProtonProcessContextEvidence {
         app_id,
         steam_root,
         library_root,
@@ -1068,13 +1069,19 @@ fn steam_process_context_evidence(
         loader_same_prefix_requirement: RuntimeContextKnowledge::Unknown,
         loader_same_wineserver_requirement: RuntimeContextKnowledge::Unknown,
         wineserver_relationship: RuntimeContextKnowledge::Unknown,
+        runtime_observation: None,
         findings,
+    };
+    if let Some(observation) = observation {
+        lxmi_xxmi::incorporate_runtime_observation(&mut context, &observation.summary());
     }
+    context
 }
 
 pub fn inspect_zzz_launch_readiness(
     zzmi_id: Option<&str>,
     libraries_id: Option<&str>,
+    observation: Option<&RuntimeObservationSnapshot>,
 ) -> std::result::Result<ZzmiLaunchReadiness, BridgeServiceError> {
     let discovery = SteamDiscoveryScanner::from_environment().scan();
     let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
@@ -1344,7 +1351,7 @@ pub fn inspect_zzz_launch_readiness(
     let compatdata_path = compatdata_path(&platform.compatdata);
     let prefix = prefix_path(&platform.prefix);
     let steam_process_context =
-        steam_process_context_evidence(&discovery, &tools.tools, &platform, app_id);
+        steam_process_context_evidence(&discovery, &tools.tools, &platform, app_id, observation);
     Ok(lxmi_xxmi::assess_zzmi_launch_readiness(
         ZzmiLaunchReadinessInput {
             game_id: platform.game.id.into(),

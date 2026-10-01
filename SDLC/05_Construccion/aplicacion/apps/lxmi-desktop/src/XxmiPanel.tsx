@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Package = {
   id: string;
@@ -426,6 +426,7 @@ type SteamProtonProcessContextEvidence = {
   loader_same_prefix_requirement: string;
   loader_same_wineserver_requirement: string;
   wineserver_relationship: string;
+  runtime_observation: RuntimeObservationSummary | null;
   findings: {
     claim: string;
     state: string;
@@ -433,6 +434,98 @@ type SteamProtonProcessContextEvidence = {
     detail: string;
   }[];
 };
+type ObservationTool = {
+  internal_id: string | null;
+  display_name: string;
+  version: string | null;
+  path: string;
+};
+type ObservationPath = {
+  state: string;
+  observed_path: string | null;
+  expected_path: string | null;
+  evidence_source: string | null;
+};
+type ObservationSummary = {
+  state: string;
+  observed_values: number[];
+  sources: string[];
+};
+type RuntimeObservationSummary = {
+  status: string;
+  active: boolean;
+  process_observed: boolean;
+  ambiguous_process_count: number;
+  app_id: ObservationSummary;
+  runtime: {
+    state: string;
+    tool: ObservationTool | null;
+    evidence_source: string | null;
+  };
+  compatdata: ObservationPath;
+  prefix: ObservationPath;
+  wineserver: {
+    state: string;
+    related_process_count: number;
+    evidence: string;
+  };
+  process_topology_state: string;
+  observed_at_unix_millis: number | null;
+};
+type ProcfsScanDiagnostics = {
+  same_uid_processes_scanned: number;
+  candidate_processes_considered: number;
+  candidate_metadata_unavailable: number;
+  candidate_environments_read: number;
+  candidate_environments_unavailable: number;
+  candidate_environments_permission_denied: number;
+  accepted_contexts_environment_unavailable: number;
+  accepted_contexts_environment_permission_denied: number;
+  rejected_executable_mismatch: number;
+  rejected_insufficient_identity_evidence: number;
+  accepted_candidates: number;
+};
+type RuntimeObservationSnapshot = {
+  session_id: number;
+  status: string;
+  active: boolean;
+  app_id: number;
+  started_at_unix_millis: number;
+  updated_at_unix_millis: number;
+  elapsed_millis: number;
+  scan_diagnostics: ProcfsScanDiagnostics;
+  process: {
+    pid: number;
+    parent_pid: number | null;
+    executable_name: string;
+    identity_evidence: string[];
+  } | null;
+  ambiguous_process_count: number;
+  app_id_evidence: ObservationSummary;
+  configured_runtime: {
+    per_game_state: string;
+    per_game_internal_id: string | null;
+    global_state: string;
+    global_internal_id: string | null;
+    source: string | null;
+  };
+  available_proton_tools: ObservationTool[];
+  observed_runtime: RuntimeObservationSummary["runtime"];
+  compatdata: ObservationPath;
+  prefix: ObservationPath;
+  process_topology: {
+    pid: number;
+    parent_pid: number | null;
+    process_name: string;
+    executable_name: string | null;
+    role: string;
+  }[];
+  process_topology_state: string;
+  wineserver: RuntimeObservationSummary["wineserver"];
+  environment_evidence: string;
+  warnings: string[];
+};
+type ObservationCommandError = { code: string; detail: string };
 type ContextToolEvidence = {
   internal_id: string | null;
   display_name: string;
@@ -473,6 +566,23 @@ const loaderOutcomeLabels: Record<string, string> = {
 function stateLabel(value: string): string {
   const labels: Record<string, string> = {
     verified: "Verificado",
+    observed: "Observado",
+    observed_and_matches: "Observado · coincide",
+    observed_different: "Observado · distinto",
+    derived_from_observed_compatdata: "Derivado del compatdata observado",
+    conflicting: "Evidencia contradictoria",
+    unavailable: "No disponible",
+    permission_denied: "Permiso denegado",
+    not_observed: "No observado",
+    waiting_for_game: "Esperando inicio manual",
+    completed: "Observación completada",
+    process_not_found: "No se encontró un proceso coincidente",
+    ambiguous_process: "Varios procesos candidatos",
+    process_exited: "El proceso terminó",
+    timed_out: "Ventana de observación finalizada",
+    backend_error: "Fallo del backend de observación",
+    observed_ancestry: "Ascendencia observada",
+    partial_topology: "Topología parcial",
     upstream_documented: "Documentado upstream",
     unverified: "Sin verificar",
     not_tested: "No probado",
@@ -513,6 +623,20 @@ function errorText(error: unknown): string {
     return error.detail;
   return "No se pudo completar la operación local. Revisa permisos y el diagnóstico de Steam.";
 }
+function observationErrorValue(error: unknown): ObservationCommandError {
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as { code?: unknown; detail?: unknown };
+    return {
+      code:
+        typeof candidate.code === "string" ? candidate.code : "backend_error",
+      detail:
+        typeof candidate.detail === "string"
+          ? candidate.detail
+          : errorText(error),
+    };
+  }
+  return { code: "backend_error", detail: errorText(error) };
+}
 
 export default function XxmiPanel() {
   const [status, setStatus] = useState<Status | null>(null);
@@ -552,6 +676,33 @@ export default function XxmiPanel() {
   const [zzzReadiness, setZzzReadiness] = useState<ZzzLaunchReadiness | null>(
     null,
   );
+  const [runtimeObservation, setRuntimeObservation] =
+    useState<RuntimeObservationSnapshot | null>(null);
+  const [observationConsent, setObservationConsent] = useState(false);
+  const [observationBusy, setObservationBusy] = useState(false);
+  const [observationError, setObservationError] =
+    useState<ObservationCommandError | null>(null);
+  const observationSessionId = runtimeObservation?.session_id;
+  const observationSessionActive = runtimeObservation?.active === true;
+
+  useEffect(() => {
+    if (!observationSessionActive) return;
+    const timer = window.setInterval(() => {
+      void invoke<RuntimeObservationSnapshot | null>(
+        "get_zzz_runtime_observation",
+      )
+        .then((snapshot) => {
+          if (snapshot) {
+            setRuntimeObservation(snapshot);
+            setObservationError(null);
+          }
+        })
+        .catch((reason: unknown) =>
+          setObservationError(observationErrorValue(reason)),
+        );
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [observationSessionActive, observationSessionId]);
 
   function selectDefaultPackages(nextStatus: Status) {
     const preferredZzmi = nextStatus.packages
@@ -907,6 +1058,39 @@ export default function XxmiPanel() {
       setBusy(false);
     }
   }
+
+  async function startRuntimeObservation() {
+    setObservationBusy(true);
+    setObservationError(null);
+    try {
+      const snapshot = await invoke<RuntimeObservationSnapshot>(
+        "start_zzz_runtime_observation",
+        { userConfirmedManualLaunch: observationConsent },
+      );
+      setRuntimeObservation(snapshot);
+      setObservationConsent(false);
+    } catch (reason: unknown) {
+      setObservationError(observationErrorValue(reason));
+    } finally {
+      setObservationBusy(false);
+    }
+  }
+
+  async function stopRuntimeObservation() {
+    setObservationBusy(true);
+    setObservationError(null);
+    try {
+      const snapshot = await invoke<RuntimeObservationSnapshot | null>(
+        "stop_zzz_runtime_observation",
+      );
+      if (snapshot) setRuntimeObservation(snapshot);
+    } catch (reason: unknown) {
+      setObservationError(observationErrorValue(reason));
+    } finally {
+      setObservationBusy(false);
+    }
+  }
+
   const packages = status?.packages ?? [];
   const zzmiRelease = releases.find(
     (release) => release.package_kind === "zzmi",
@@ -1896,6 +2080,456 @@ export default function XxmiPanel() {
             )}
           </details>
           <details className="runtime-evidence bridge-test-panel">
+            <summary>Advanced · Runtime Observation de ZZZ</summary>
+            <p>
+              Si ZZZ ya está abierto, inicia la observación y LXMI lo buscará en
+              el primer scan. Si todavía no está abierto, inícialo manualmente
+              desde Steam mientras la sesión está activa. LXMI solo lee
+              metadatos de procesos del usuario actual y un conjunto pequeño de
+              variables allowlist; no lee memoria, no controla procesos y no
+              inicia el juego. La sesión dura como máximo 90 segundos y no se
+              guarda en disco.
+            </p>
+            <label className="observation-consent">
+              <input
+                type="checkbox"
+                checked={observationConsent}
+                disabled={observationBusy}
+                onChange={(event) =>
+                  setObservationConsent(event.target.checked)
+                }
+              />
+              Confirmo que iniciaré Zenless Zone Zero manualmente desde Steam, o
+              que ya está abierto, y acepto que LXMI observe sus metadatos de
+              proceso durante esta sesión.
+            </label>
+            <div className="observation-actions">
+              <button
+                className="secondary-button"
+                disabled={
+                  observationBusy ||
+                  !observationConsent ||
+                  observationSessionActive
+                }
+                onClick={() => void startRuntimeObservation()}
+              >
+                {observationBusy
+                  ? "Preparando observación…"
+                  : "Start Observation"}
+              </button>
+              <button
+                className="secondary-button"
+                disabled={observationBusy || !observationSessionActive}
+                onClick={() => void stopRuntimeObservation()}
+              >
+                Stop Observation
+              </button>
+            </div>
+            {runtimeObservation ? (
+              <div className="runtime-observation-result" role="status">
+                <p>
+                  Sesión {runtimeObservation.session_id} ·{" "}
+                  <strong aria-live="polite">
+                    {stateLabel(runtimeObservation.status)}
+                  </strong>
+                  {runtimeObservation.active && " · En curso"}
+                  {` · ${Math.floor(runtimeObservation.elapsed_millis / 1000)} s`}
+                  {runtimeObservation.process && (
+                    <>
+                      {" · "}
+                      {runtimeObservation.process.executable_name} · PID{" "}
+                      <code>{runtimeObservation.process.pid}</code>
+                    </>
+                  )}
+                  {runtimeObservation.ambiguous_process_count > 0 &&
+                    ` · ${runtimeObservation.ambiguous_process_count} procesos candidatos`}
+                </p>
+                {runtimeObservation.status === "waiting_for_game" && (
+                  <p>
+                    Scan en curso. Puede detectar un juego que ya estaba abierto
+                    al comenzar; si no lo está, inicia Steam y pulsa Play tú
+                    mismo.
+                  </p>
+                )}
+                {runtimeObservation.status === "process_not_found" && (
+                  <p>
+                    La observación terminó sin encontrar un proceso de ZZZ
+                    coincidente.
+                  </p>
+                )}
+                {runtimeObservation.status === "timed_out" && (
+                  <p>
+                    La ventana terminó. Los datos parciales del último scan se
+                    conservan abajo.
+                  </p>
+                )}
+                <dl className="runtime-summary readiness-summary">
+                  <div>
+                    <dt>AppID observado</dt>
+                    <dd>
+                      {stateLabel(runtimeObservation.app_id_evidence.state)}
+                      {runtimeObservation.app_id_evidence.observed_values.length
+                        ? ` · ${runtimeObservation.app_id_evidence.observed_values.join(", ")}`
+                        : " · sin valor en el entorno inspeccionado"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Mapping configurado por AppID</dt>
+                    <dd>
+                      {runtimeObservation.configured_runtime
+                        .per_game_internal_id ??
+                        stateLabel(
+                          runtimeObservation.configured_runtime.per_game_state,
+                        )}
+                      {runtimeObservation.configured_runtime.global_internal_id
+                        ? ` · default global ${runtimeObservation.configured_runtime.global_internal_id}`
+                        : " · default global separado"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Proton observado en esta ejecución</dt>
+                    <dd>
+                      {runtimeObservation.observed_runtime.tool
+                        ? `${runtimeObservation.observed_runtime.tool.display_name}${runtimeObservation.observed_runtime.tool.version ? ` · ${runtimeObservation.observed_runtime.tool.version}` : ""}`
+                        : stateLabel(runtimeObservation.observed_runtime.state)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Proton instalado</dt>
+                    <dd>
+                      {runtimeObservation.available_proton_tools.length
+                        ? runtimeObservation.available_proton_tools
+                            .map(
+                              (tool) =>
+                                `${tool.display_name}${tool.version ? ` · ${tool.version}` : ""}`,
+                            )
+                            .join(", ")
+                        : "No se detectaron candidatos válidos"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Compatdata efectivo</dt>
+                    <dd>
+                      {stateLabel(runtimeObservation.compatdata.state)}
+                      {runtimeObservation.compatdata.observed_path && (
+                        <>
+                          <br />
+                          <code className="path-value">
+                            {runtimeObservation.compatdata.observed_path}
+                          </code>
+                        </>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Prefix efectivo</dt>
+                    <dd>
+                      {stateLabel(runtimeObservation.prefix.state)}
+                      {runtimeObservation.prefix.observed_path && (
+                        <>
+                          <br />
+                          <code className="path-value">
+                            {runtimeObservation.prefix.observed_path}
+                          </code>
+                        </>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Wineserver</dt>
+                    <dd>
+                      {stateLabel(runtimeObservation.wineserver.state)} ·{" "}
+                      {runtimeObservation.wineserver.evidence}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Entorno allowlist · proceso y ascendencia</dt>
+                    <dd>
+                      {stateLabel(runtimeObservation.environment_evidence)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Topología observada</dt>
+                    <dd>
+                      {stateLabel(runtimeObservation.process_topology_state)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Scan procfs</dt>
+                    <dd>
+                      {
+                        runtimeObservation.scan_diagnostics
+                          .same_uid_processes_scanned
+                      }{" "}
+                      procesos del usuario ·{" "}
+                      {
+                        runtimeObservation.scan_diagnostics
+                          .candidate_processes_considered
+                      }{" "}
+                      candidatos ·{" "}
+                      {runtimeObservation.scan_diagnostics.accepted_candidates}{" "}
+                      aceptados ·{" "}
+                      {
+                        runtimeObservation.scan_diagnostics
+                          .rejected_insufficient_identity_evidence
+                      }{" "}
+                      descartados por evidencia insuficiente
+                    </dd>
+                  </div>
+                </dl>
+                {runtimeObservation.observed_runtime.evidence_source && (
+                  <p>
+                    Evidencia Proton:{" "}
+                    {runtimeObservation.observed_runtime.evidence_source}
+                  </p>
+                )}
+                {runtimeObservation.process && (
+                  <p>
+                    Identidad del proceso:{" "}
+                    {runtimeObservation.process.identity_evidence
+                      .map(stateLabel)
+                      .join(" · ")}
+                  </p>
+                )}
+                {runtimeObservation.process_topology.length > 0 && (
+                  <details className="runtime-evidence">
+                    <summary>Relaciones relevantes de proceso</summary>
+                    <ul>
+                      {runtimeObservation.process_topology.map((process) => (
+                        <li key={`${process.pid}:${process.role}`}>
+                          <strong>{stateLabel(process.role)}</strong> ·{" "}
+                          {process.process_name} · PID {process.pid}
+                          {process.parent_pid
+                            ? ` · padre ${process.parent_pid}`
+                            : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+                {runtimeObservation.warnings.length > 0 && (
+                  <ul className="observation-warnings">
+                    {runtimeObservation.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                )}
+                <p className="discovery-note">
+                  La herramienta observada describe esta ejecución. El Proton
+                  configurado, los candidatos disponibles y
+                  GameRuntimePlan.selected siguen separados.
+                </p>
+                <button
+                  className="secondary-button"
+                  disabled={busy}
+                  onClick={() => void inspectZzzReadiness()}
+                >
+                  Re-evaluar readiness con esta evidencia
+                </button>
+              </div>
+            ) : (
+              <p className="discovery-note">
+                Aún no hay una sesión de observación. Se revisarán solamente
+                procesos que coincidan con la instalación Steam detectada de
+                ZZZ.
+              </p>
+            )}
+          </details>
+          <section
+            className="observation-last-result"
+            aria-live="off"
+            aria-label="Resultado de la última observación de ZZZ"
+          >
+            <div className="observation-last-heading">
+              Última observación de ZZZ
+            </div>
+            {observationError && (
+              <p className="message-error" role="alert">
+                <strong>Observation failed · {observationError.code}</strong>
+                <br />
+                {observationError.detail}
+              </p>
+            )}
+            {runtimeObservation ? (
+              <>
+                <p>
+                  <strong aria-live="polite">
+                    {stateLabel(runtimeObservation.status)}
+                  </strong>
+                  {runtimeObservation.active && " · En curso"}
+                  {` · ${Math.floor(runtimeObservation.elapsed_millis / 1000)} s`}
+                </p>
+                <dl className="observation-last-grid">
+                  <div>
+                    <dt>Proceso</dt>
+                    <dd>
+                      {runtimeObservation.process
+                        ? `${runtimeObservation.process.executable_name} · PID ${runtimeObservation.process.pid}`
+                        : runtimeObservation.status === "ambiguous_process"
+                          ? `${runtimeObservation.ambiguous_process_count} procesos candidatos`
+                          : "No identificado"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>AppID</dt>
+                    <dd>
+                      {stateLabel(runtimeObservation.app_id_evidence.state)}
+                      {runtimeObservation.app_id_evidence.observed_values.length
+                        ? ` · ${runtimeObservation.app_id_evidence.observed_values.join(", ")} · LOCAL OBSERVED`
+                        : ""}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Proton observado</dt>
+                    <dd>
+                      {runtimeObservation.observed_runtime.tool
+                        ? `${runtimeObservation.observed_runtime.tool.display_name}${runtimeObservation.observed_runtime.tool.version ? ` · ${runtimeObservation.observed_runtime.tool.version}` : ""} · LOCAL OBSERVED`
+                        : stateLabel(runtimeObservation.observed_runtime.state)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Compatdata</dt>
+                    <dd>
+                      {stateLabel(runtimeObservation.compatdata.state)}
+                      {["observed_and_matches", "observed_different"].includes(
+                        runtimeObservation.compatdata.state,
+                      ) && " · LOCAL OBSERVED"}
+                      {runtimeObservation.compatdata.observed_path && (
+                        <>
+                          <br />
+                          <code className="path-value">
+                            {runtimeObservation.compatdata.observed_path}
+                          </code>
+                        </>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Prefix</dt>
+                    <dd>
+                      {stateLabel(runtimeObservation.prefix.state)}
+                      {runtimeObservation.prefix.state ===
+                      "derived_from_observed_compatdata"
+                        ? " · DERIVED"
+                        : runtimeObservation.prefix.state === "observed"
+                          ? " · LOCAL OBSERVED"
+                          : ""}
+                      {runtimeObservation.prefix.observed_path && (
+                        <>
+                          <br />
+                          <code className="path-value">
+                            {runtimeObservation.prefix.observed_path}
+                          </code>
+                        </>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Topología · wineserver</dt>
+                    <dd>
+                      {stateLabel(runtimeObservation.process_topology_state)} ·{" "}
+                      {stateLabel(runtimeObservation.wineserver.state)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Scan</dt>
+                    <dd>
+                      {
+                        runtimeObservation.scan_diagnostics
+                          .same_uid_processes_scanned
+                      }{" "}
+                      procesos ·{" "}
+                      {
+                        runtimeObservation.scan_diagnostics
+                          .candidate_processes_considered
+                      }{" "}
+                      candidatos ·{" "}
+                      {runtimeObservation.scan_diagnostics.accepted_candidates}{" "}
+                      aceptados
+                    </dd>
+                  </div>
+                </dl>
+                {runtimeObservation.environment_evidence ===
+                  "permission_denied" && (
+                  <p className="discovery-note observation-diagnostics">
+                    Linux denegó la lectura allowlist de <code>environ</code> en
+                    el proceso observado o uno de sus ascendientes. El contador
+                    de abajo mide lecturas denegadas de candidatos directos y
+                    puede ser cero aunque un ascendiente no sea legible.
+                  </p>
+                )}
+                {runtimeObservation.warnings.length > 0 && (
+                  <ul className="observation-warnings">
+                    {runtimeObservation.warnings.slice(0, 3).map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                )}
+                {runtimeObservation.environment_evidence ===
+                  "permission_denied" && (
+                  <p className="discovery-note observation-diagnostics">
+                    Linux denegó la lectura allowlist de <code>environ</code> en
+                    el proceso observado o uno de sus ascendientes. El contador
+                    de candidatos directos no incluye todos los procesos de la
+                    ascendencia.
+                  </p>
+                )}
+                {(runtimeObservation.scan_diagnostics
+                  .rejected_executable_mismatch > 0 ||
+                  runtimeObservation.scan_diagnostics
+                    .rejected_insufficient_identity_evidence > 0 ||
+                  runtimeObservation.scan_diagnostics
+                    .candidate_metadata_unavailable > 0 ||
+                  runtimeObservation.scan_diagnostics
+                    .candidate_environments_permission_denied > 0 ||
+                  runtimeObservation.scan_diagnostics
+                    .accepted_contexts_environment_unavailable > 0 ||
+                  runtimeObservation.scan_diagnostics
+                    .accepted_contexts_environment_permission_denied > 0) && (
+                  <p className="discovery-note observation-diagnostics">
+                    Candidatos directos:{" "}
+                    {
+                      runtimeObservation.scan_diagnostics
+                        .rejected_executable_mismatch
+                    }{" "}
+                    nombre no coincide ·{" "}
+                    {
+                      runtimeObservation.scan_diagnostics
+                        .rejected_insufficient_identity_evidence
+                    }{" "}
+                    evidencia insuficiente ·{" "}
+                    {
+                      runtimeObservation.scan_diagnostics
+                        .candidate_metadata_unavailable
+                    }{" "}
+                    metadatos no disponibles ·{" "}
+                    {
+                      runtimeObservation.scan_diagnostics
+                        .candidate_environments_permission_denied
+                    }{" "}
+                    entorno no legible · contextos aceptados con entorno no
+                    disponible:{" "}
+                    {
+                      runtimeObservation.scan_diagnostics
+                        .accepted_contexts_environment_unavailable
+                    }{" "}
+                    · con permiso denegado:{" "}
+                    {
+                      runtimeObservation.scan_diagnostics
+                        .accepted_contexts_environment_permission_denied
+                    }
+                    .
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="discovery-note">
+                Aún no se ha iniciado una observación. El resultado permanecerá
+                aquí al terminar, incluso si el panel avanzado está plegado.
+              </p>
+            )}
+          </section>
+          <details className="runtime-evidence bridge-test-panel">
             <summary>Zenless Zone Zero · Launch Readiness</summary>
             <p>
               Assessment declarativo. El Proton elegido en Loader Lab no se
@@ -2019,7 +2653,11 @@ export default function XxmiPanel() {
                               .per_game_mapping_state,
                           )}
                       </strong>{" "}
-                      · contexto efectivo: Desconocido
+                      · contexto efectivo:{" "}
+                      {stateLabel(
+                        zzzReadiness.steam_process_context
+                          .effective_runtime_selection,
+                      )}
                     </p>
                     <details>
                       <summary>Evidencia del contexto Steam / Proton</summary>
@@ -2134,7 +2772,8 @@ export default function XxmiPanel() {
                           {zzzReadiness.steam_process_context.matched_installed_tools
                             .map((tool) => tool.display_name)
                             .join(", ")}
-                          . Esto no observa una ejecución activa.
+                          . Este dato procede de config.vdf, no de la sesión
+                          observada.
                         </p>
                       )}
                       <ul>
@@ -2149,6 +2788,26 @@ export default function XxmiPanel() {
                           ),
                         )}
                       </ul>
+                      {zzzReadiness.steam_process_context
+                        .runtime_observation && (
+                        <p>
+                          Sesión observada:{" "}
+                          {stateLabel(
+                            zzzReadiness.steam_process_context
+                              .runtime_observation.status,
+                          )}
+                          {" · "}
+                          Proton en esa sesión:{" "}
+                          {zzzReadiness.steam_process_context
+                            .runtime_observation.runtime.tool?.display_name ??
+                            stateLabel(
+                              zzzReadiness.steam_process_context
+                                .runtime_observation.runtime.state,
+                            )}
+                          . Esta evidencia es temporal y no modifica la
+                          selección configurada ni el planner.
+                        </p>
+                      )}
                     </details>
                   </>
                 )}

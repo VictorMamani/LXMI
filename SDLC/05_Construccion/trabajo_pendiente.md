@@ -115,10 +115,34 @@
 
 Se preservan los cambios sin commit de 0.8.1 y se añadieron cambios de 0.8.2 en la misma rama. No se hizo commit ni push. Las incógnitas de contexto de proceso siguen abiertas; este resultado no autoriza un experimento de lanzamiento.
 
+## LXMI-0.8.3 — Passive ZZZ Runtime Observation
+
+**CERRADO (2026-09-30, hora local).** La ventana Tauri nativa mostró un proceso ZZZ observado, AppID `4162040`, Proton Experimental, compatdata y prefix. La versión de aplicación/proyecto es `0.8.3`. Esta evidencia es por sesión: no cambia la selección configurada ni autoriza loaders/lanzamiento.
+
+- [x] Preservar el árbol existente de 0.8.1/0.8.2; trabajar en `main` sin commit/push.
+- [x] Añadir domain observer con filtrado por usuario, allowlist exacta de environment, PID starttime revalidado, process ancestry limitada, ambigüedad y estados de permiso/desaparición.
+- [x] Instrumentar scans con contadores agregados y razones de descarte; distinguir `PermissionDenied` de `Unavailable` sin loguear command lines ni environment completo.
+- [x] Representar `active`, elapsed y estados terminales `Completed`, `ProcessNotFound`, `TimedOut`, `ProcessExited`, `AmbiguousProcess` y `BackendError` en el snapshot serializado.
+- [x] Probar con fixture que un ZZZ ya presente antes de comenzar se detecta en el primer scan, incluyendo `/proc/exe` de Wine/preloader y evidencia de AppID/compatdata en ascendencia.
+- [x] Mantener configurado, disponible y observado como evidencia separada; no modificar `GameRuntimePlan.selected`, `LoaderStrategyDecision` o la política de gate.
+- [x] Exponer observación consentida en Advanced, conservar estado efímero con redacción del home y mantener resultado/errores visibles incluso con el disclosure plegado.
+- [x] Ejecutar `cargo fmt`, `cargo check`, `cargo clippy -D warnings` y `cargo test --workspace`.
+- [x] Ejecutar frontend typecheck/lint/format/build y `git diff --check`; pasan.
+- [x] Ejecutar `npm run tauri:dev`; Vite y el proceso nativo `lxmi-desktop` iniciaron.
+- [x] Validar en Tauri nativo: el resultado visible fue `Observado · En curso`; PID `691954`, `ZenlessZoneZero.exe`, Steam AppID `4162040`.
+- [x] Registrar Proton de esta ejecución: `Proton - Experimental`, internal ID `1790244902`, build `experimental-11.0-20260924-x86_64`; config sin mapping por AppID en la fuente inspeccionada y default global separado.
+- [x] Registrar compatdata `~/.local/share/Steam/steamapps/compatdata/4162040` como observado/coincidente y prefix `.../pfx/` como observado.
+- [x] Registrar ascendencia observada y evidencia de proceso wineserver del UID actual con `WINEPREFIX` coincidente; esto no prueba que el juego use esa instancia.
+- [x] Registrar la limitación allowlist: `environ` fue denegado en el contexto del juego/ascendencia; el contador directo de candidatos marcó cero. Se añadió UI/backend para exponer esos alcances por separado.
+- [x] Mantener `GameRuntimePlan.selected = Unknown`, loader strategy `NoDecision`, readiness `NeedsEvidence` y gate cerrado.
+- [x] Verificar el flujo del observer por código/tests: procfs read-only, sin señales, sin lectura de memoria y sin launch/injection; no se tomó un hash baseline pre/post del árbol completo del juego.
+- [x] Actualizar la aplicación a `0.8.3` tras la validación manual y documentar findings/unknowns.
+- [x] Ejecutar los quality gates después de las últimas modificaciones; resultados en `SDLC/06_Verificacion/verificacion_0_8_3.md`.
+
 ## Estado de Git
 
 - LXMI se trabaja en branch `main` en el repositorio independiente `04_Proyectos/19_LXMI`, con `origin` `git@github.com:VictorMamani/LXMI.git`.
-- Los cambios de 0.8.1 y 0.8.2 continúan sin commit ni push; preservar ambos al preparar un checkpoint.
+- Los cambios previos 0.8.1/0.8.2 y el incremento 0.8.3 continúan sin commit ni push; preservar el árbol completo al preparar un checkpoint.
 
 ## Antes de integrar runtimes o contenido de mods
 

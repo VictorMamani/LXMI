@@ -1,3 +1,4 @@
+use crate::runtime_observation::RuntimeObservationController;
 use crate::xxmi_service::{
     self, BridgeServiceError, IntegrationStatus, LoaderLabPanel, RuntimeBridgePanel,
 };
@@ -80,9 +81,15 @@ pub async fn inspect_zzmi_launch_topology(
 pub async fn inspect_zzz_launch_readiness(
     zzmi_id: Option<String>,
     libraries_id: Option<String>,
+    state: tauri::State<'_, RuntimeObservationController>,
 ) -> std::result::Result<lxmi_xxmi::ZzmiLaunchReadiness, BridgeServiceError> {
+    let observation = state.current();
     blocking_bridge(move || {
-        xxmi_service::inspect_zzz_launch_readiness(zzmi_id.as_deref(), libraries_id.as_deref())
+        xxmi_service::inspect_zzz_launch_readiness(
+            zzmi_id.as_deref(),
+            libraries_id.as_deref(),
+            observation.as_ref(),
+        )
     })
     .await
 }

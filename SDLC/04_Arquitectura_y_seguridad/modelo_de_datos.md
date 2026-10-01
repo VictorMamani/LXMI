@@ -56,3 +56,13 @@ El estado “activo” debería derivarse del perfil aplicado y del resultado ve
 En 0.5.1, `distribution=Steam` y `steam_app_id=4162040` se sostienen por el manifest local del host. El catálogo de juegos y las integraciones son conceptos distintos: `Zenless Zone Zero` se asocia a `ZZMI`, mientras `Wuthering Waves` se asocia a `WWMI`. HoYoPlay y Manual no tienen scanners en esta versión. `steam_support` y `linux_proton_support` conservan `Unverified`; un candidato Proton no cambia esos estados ni completa `selected_runtime`.
 
 En 0.5.3 el runtime ensamblado por LXMI usa `App.Root/<importer_path>` como topología administrada: `App.Root` está bajo XDG y `importer_path` es `ZZMI/`. Las rutas derivadas del ejecutable de ZZZ solo proporcionan el `target` del `d3dx.ini`; no son destinos de escritura. La copia derivada conserva la identidad upstream `XXMI Launcher.exe`; LXMI nativo no se presenta como ese proceso Windows.
+
+## LXMI 0.8.3 — snapshot de observación pasiva
+
+`RuntimeObservationSnapshot` representa una sesión efímera del usuario que inicia ZZZ manualmente. Contiene estado temporal, identidad del proceso candidato, evidencia AppID, configuración Steam consultada por separado, Proton instalado disponible, Proton observado durante esa ejecución, compatdata, prefix, topología relevante, evidencia acotada de entorno, wineserver y warnings. `RuntimeObservationSummary` es la proyección mínima que readiness consume; no contiene environment ni cmdline crudos.
+
+`ConfiguredRuntimeEvidence`, `available_proton_tools` y `observed_runtime` son fuentes distintas. `GameRuntimePlan.selected` no se modifica. `ObservedAndMatches` para `STEAM_COMPAT_DATA_PATH` significa comparación con compatdata esperado; `DerivedFromObservedCompatdata` para `pfx` es una derivación declarada; `WINEPREFIX` de un wineserver coincidente no establece identidad de instancia ni relación efectiva del juego con ese servidor. Los estados `Ambiguous`, `Unavailable`, `NotObserved` y `Unknown` se conservan en lugar de elegir una explicación.
+
+El snapshot se mantiene en memoria dentro del controller Tauri y solo se devuelve al cliente tras consentimiento para la sesión. No se añade persistencia/SQLite ni historial de procesos. Los detalles completos permanecen internos; la interfaz recibe campos de evidencia allowlisted y paths bajo home redactados.
+
+Los contadores `candidate_environments_*` describen procesos candidatos inspeccionados directamente. `accepted_contexts_environment_*` describe si una cadena aceptada del proceso de juego/ascendencia incluyó lecturas de entorno inaccesibles. Esos alcances se conservan separados para que un `PermissionDenied` contextual no parezca incompatible con cero denegaciones entre candidatos directos.
