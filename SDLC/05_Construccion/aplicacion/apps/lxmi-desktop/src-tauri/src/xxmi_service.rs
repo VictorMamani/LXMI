@@ -1647,3 +1647,109 @@ pub fn run_context_lab_test(
     })
     .map_err(BridgeServiceError::from)
 }
+
+pub fn run_direct_context_test(
+    proton_script: &str,
+    mode: lxmi_bridge::ContextExperimentMode,
+    side_effects_acknowledged: bool,
+) -> std::result::Result<lxmi_bridge::DirectContextResult, BridgeServiceError> {
+    if !side_effects_acknowledged {
+        return Err(BridgeServiceError {
+            code: "context_consent_required".into(),
+            detail: "Confirma el experimento aislado con fixtures LXMI.".into(),
+            stderr: None,
+        });
+    }
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
+    let selected_path =
+        Path::new(proton_script)
+            .canonicalize()
+            .map_err(|e| BridgeServiceError {
+                code: "runtime_not_found".into(),
+                detail: e.to_string(),
+                stderr: None,
+            })?;
+    let runtime = resolved_bridge_runtimes(&discovery)
+        .into_iter()
+        .find(|r| r.proton_script == selected_path)
+        .ok_or_else(|| BridgeServiceError {
+            code: "runtime_not_allowed".into(),
+            detail: "Selecciona un Proton descubierto.".into(),
+            stderr: None,
+        })?;
+    let (package, component, loader_path, loader_sha256) = verified_loader_package(&store, None)?
+        .ok_or_else(|| BridgeServiceError {
+        code: "upstream_loader_unavailable".into(),
+        detail: "Se requiere XXMI Libraries autenticado.".into(),
+        stderr: None,
+    })?;
+    let upstream = package
+        .manifest()
+        .upstream
+        .as_ref()
+        .ok_or_else(|| BridgeServiceError {
+            code: "loader_provenance_invalid".into(),
+            detail: "Falta provenance.".into(),
+            stderr: None,
+        })?;
+    let application_root = application_workspace_root().map_err(|e| BridgeServiceError {
+        code: "loader_artifacts_missing".into(),
+        detail: e.to_string(),
+        stderr: None,
+    })?;
+    lxmi_bridge::run_direct_context_lab(
+        &lxmi_bridge::ContextLabConfig {
+            managed_root: store.root().to_owned(),
+            explicit_runtime: lxmi_bridge::ExplicitBridgeRuntime {
+                display_name: runtime.option.display_name,
+                version: runtime.option.version,
+                proton_script: runtime.proton_script,
+            },
+            steam_client_install_path: runtime.steam_root,
+            mode,
+            side_effects_acknowledged,
+        },
+        &lxmi_bridge::LoaderLabSources {
+            application_root,
+            upstream_loader_path: loader_path,
+            expected_upstream_loader_sha256: loader_sha256,
+            provenance: component.into_provenance(upstream),
+            protected_roots: protected_paths(&discovery),
+        },
+    )
+    .map_err(BridgeServiceError::from)
+}
+
+#[cfg(test)]
+mod direct_context_host_tests {
+    use super::*;
+    #[test]
+    #[ignore = "opt-in: isolated owned fixtures, no game prefix or game process"]
+    fn direct_context_boundary() {
+        assert_eq!(
+            std::env::var("LXMI_DIRECT_CONTEXT_HOST_ACK").as_deref(),
+            Ok("YES")
+        );
+        let proton =
+            std::env::var("LXMI_HOST_PROTON_SCRIPT").expect("Explicit test Proton required");
+        let mode = if std::env::var("LXMI_DIRECT_CONTEXT_MODE").as_deref() == Ok("cross") {
+            lxmi_bridge::ContextExperimentMode::DifferentPrefixes
+        } else {
+            lxmi_bridge::ContextExperimentMode::SamePrefix
+        };
+        let result = run_direct_context_test(&proton, mode, true).expect("Host fixture result");
+        println!(
+            "DIRECT_CONTEXT_RESULT={}",
+            serde_json::to_string(&result).unwrap()
+        );
+        assert!(result.target.path_readable && result.injector.path_readable);
+        assert!(!result.game_join_plan.game_experiment_authorized);
+        if mode == lxmi_bridge::ContextExperimentMode::SamePrefix {
+            assert!(
+                result.marker_verified,
+                "Same-prefix fixture must load its test DLL"
+            );
+        }
+    }
+}

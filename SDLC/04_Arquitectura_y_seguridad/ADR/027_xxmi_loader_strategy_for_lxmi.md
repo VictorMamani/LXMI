@@ -55,3 +55,7 @@ La inspección read-only encontró vacío el `CompatToolMapping` local para AppI
 - [Estrategia ZZMI Linux 0.8.1](../../01_Descubrimiento/estrategia_loader_zzmi_linux.md)
 - [Readiness ZZMI / Steam / Linux](../../01_Descubrimiento/launch_zzmi_steam_linux.md)
 - [Verificación de LXMI 0.7](../../06_Verificacion/verificacion_0_7.md)
+
+### Seguimiento 0.8.5 — límite de identidad del fixture
+
+Same-prefix: Direct Inject del componente oficial vuelve a cargar la DLL propia con marker/nonce. Cross-prefix: ambos ven filesystem pero el pipe de identidad no cruza; se observaron IDs Windows iguales en target y runner de contexts distintos. El guard impide entregar a upstream un PID no correlacionado. `TargetIdentityUnavailable` no acredita un error de `Inject`, ni same-prefix como requisito universal. **NoDecision** permanece; Hook sigue bloqueado; 0.9 no está autorizado. Ver [investigación 0.8.5](../../01_Descubrimiento/direct_inject_context_boundary_0_8_5.md).

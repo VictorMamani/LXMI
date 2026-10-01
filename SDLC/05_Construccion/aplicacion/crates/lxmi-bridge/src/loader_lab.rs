@@ -958,7 +958,7 @@ fn capability_results(
     ]
 }
 
-fn validate_provenance(provenance: &LoaderLabProvenance) -> Result<(), BridgeError> {
+pub(crate) fn validate_provenance(provenance: &LoaderLabProvenance) -> Result<(), BridgeError> {
     if provenance.package_id.len() != 64
         || !provenance
             .package_id
@@ -995,7 +995,10 @@ fn canonical_managed_root(path: &Path) -> Result<PathBuf, BridgeError> {
         .map_err(|error| BridgeError::new(BridgeErrorCode::Io, error.to_string()))
 }
 
-fn reject_protected_overlap(root: &Path, protected_roots: &[PathBuf]) -> Result<(), BridgeError> {
+pub(crate) fn reject_protected_overlap(
+    root: &Path,
+    protected_roots: &[PathBuf],
+) -> Result<(), BridgeError> {
     for path in protected_roots {
         let protected = match path.canonicalize() {
             Ok(value) => value,
@@ -1014,7 +1017,10 @@ fn reject_protected_overlap(root: &Path, protected_roots: &[PathBuf]) -> Result<
     Ok(())
 }
 
-fn validate_package_loader_source(root: &Path, path: &Path) -> Result<PathBuf, BridgeError> {
+pub(crate) fn validate_package_loader_source(
+    root: &Path,
+    path: &Path,
+) -> Result<PathBuf, BridgeError> {
     let canonical = safe_existing_file(root, path)?;
     let packages_root = root.join("packages/xxmi").canonicalize().map_err(|error| {
         BridgeError::new(BridgeErrorCode::LoaderProvenanceInvalid, error.to_string())
@@ -1030,7 +1036,7 @@ fn validate_package_loader_source(root: &Path, path: &Path) -> Result<PathBuf, B
     Ok(canonical)
 }
 
-fn safe_artifact_hash(root: &Path, path: &Path) -> Result<String, BridgeError> {
+pub(crate) fn safe_artifact_hash(root: &Path, path: &Path) -> Result<String, BridgeError> {
     let canonical = safe_existing_file(root, path)?;
     sha256_file(&canonical, ARTIFACT_MAX_BYTES)
         .map_err(|error| BridgeError::new(BridgeErrorCode::Io, error.to_string()))

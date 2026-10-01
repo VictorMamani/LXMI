@@ -127,6 +127,7 @@ pub struct GameContextJoinPlan {
     pub same_prefix: String,
     pub same_wineserver: String,
     pub shared_drive_mapping: String,
+    pub loader_context_evidence: Vec<String>,
     pub game_experiment_authorized: bool,
     pub blockers: Vec<String>,
 }
@@ -138,6 +139,7 @@ impl Default for GameContextJoinPlan {
             same_prefix: "NotEstablished".into(),
             same_wineserver: "NotEstablished".into(),
             shared_drive_mapping: "NotEstablished".into(),
+            loader_context_evidence: vec![],
             game_experiment_authorized: false,
             blockers: vec![
                 "Fixture object visibility does not establish loader/game compatibility".into(),
@@ -231,7 +233,7 @@ pub fn stage_context_peers(managed_root: &Path, build_root: &Path) -> Result<(),
 fn error(code: BridgeErrorCode, text: impl Into<String>) -> BridgeError {
     BridgeError::new(code, text)
 }
-fn checked_root(path: &Path) -> Result<PathBuf, BridgeError> {
+pub(crate) fn checked_root(path: &Path) -> Result<PathBuf, BridgeError> {
     let root = path
         .canonicalize()
         .map_err(|e| error(BridgeErrorCode::UnsafePath, e.to_string()))?;
@@ -280,7 +282,7 @@ fn artifact(root: &Path, peer: &str) -> Result<PathBuf, BridgeError> {
     }
     Ok(file)
 }
-fn invocation(
+pub(crate) fn invocation(
     config: &ContextLabConfig,
     root: &Path,
     compat: &Path,
@@ -320,7 +322,7 @@ fn invocation(
         terminate_group_on_timeout: false,
     }
 }
-fn execute(
+pub(crate) fn execute(
     executor: &dyn BridgeProcessExecutor,
     call: &ProcessInvocation,
 ) -> Result<ProcessOutput, BridgeError> {
@@ -374,7 +376,7 @@ fn observed(value: String, source: &str) -> ContextEvidence {
         source: source.into(),
     }
 }
-fn server_candidates(prefix: &str) -> Vec<u32> {
+pub(crate) fn server_candidates(prefix: &str) -> Vec<u32> {
     use std::os::unix::fs::MetadataExt;
     let mut pids = Vec::new();
     let Ok(entries) = fs::read_dir("/proc") else {
@@ -411,7 +413,7 @@ fn server_candidates(prefix: &str) -> Vec<u32> {
     pids.sort();
     pids
 }
-fn context(
+pub(crate) fn context(
     config: &ContextLabConfig,
     response: &ContextPeerResponse,
     mapping: WindowsPathMapping,
@@ -454,7 +456,7 @@ fn context(
         drive_mapping: mapping, wineserver_candidates: candidates,
     }
 }
-fn summary(call: &ProcessInvocation, output: ProcessOutput) -> BridgeProcessSummary {
+pub(crate) fn summary(call: &ProcessInvocation, output: ProcessOutput) -> BridgeProcessSummary {
     BridgeProcessSummary {
         executable: call.executable.clone(),
         arguments: call

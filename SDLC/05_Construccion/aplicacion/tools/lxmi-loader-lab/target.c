@@ -51,7 +51,13 @@ static int create_ready_marker(const wchar_t *path, const wchar_t *nonce) {
     return 1;
 }
 
-int wmain(void) {
+#define valid_nonce is_nonce
+#define exists file_exists
+#include "context_target.h"
+
+int wmain(int argc, wchar_t **argv) {
+    if (argc == 3 && !wcscmp(argv[1], L"context-boundary"))
+        return context_target(argv[2]);
     wchar_t nonce[64] = {0};
     wchar_t phase[32] = {0};
     wchar_t ready_path[PATH_CAP];

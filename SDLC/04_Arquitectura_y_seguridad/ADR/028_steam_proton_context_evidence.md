@@ -55,3 +55,7 @@ La UI no expone PID arbitrario ni selector de procesos. El backend parte del man
 Dos peers propios compartieron un evento con mismo prefix y no lo compartieron con prefixes diferentes usando Proton constante. Ambos pudieron leer el mismo marker mediante Z. Mappings completos y mapping de ese marker se comparan aparte. Esta evidencia se añade al laboratorio, no a una configuración persistente de Steam ni a una selección del planner.
 
 El wineserver se mantiene Unknown como identidad/endpoint: UID y WINEPREFIX coincidentes solo producen candidatos efímeros. La observación de ZZZ 0.8.3 se compara documentalmente; no se vuelve a lanzar el juego ni se ejecuta helper en 4162040. No se establece aún un requisito de contexto para un loader ni se cambia ADR-027/gate. [Investigación 0.8.4](../../01_Descubrimiento/contexto_wine_proton_0_8_4.md), [ADR-029](029_windows_runtime_context_probe.md).
+
+### Seguimiento 0.8.5 — PID y contexto no se colapsan
+
+La identidad de tool, compatdata, prefix, mapping, wineserver y PID sigue independiente. Un PID Windows observado en un prefix no es una identidad global reutilizable en otro: el control tuvo PID 220 para target y runner simultáneamente en contexts distintos. El handshake de pipe precede cualquier acceso query-only al target y la llamada upstream. La DLL se verificó únicamente en el fixture same-prefix; no se usó el prefix del juego. GameContextJoinPlan incorpora evidencia del fixture como dato declarativo, con guard y blockers intactos. Cross-prefix Inject permanece **NO COMPROBADO**.

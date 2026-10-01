@@ -383,3 +383,12 @@ Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D 
 - HOST TEST: mismo prefix compartió evento; control de prefixes distintos no lo encontró; marker legible en ambos. Identidad wineserver permanece Unknown.
 - Tauri nativo recorrió ambos casos vía accesibilidad; resultados persistieron en React. Readiness se evaluó read-only sin abrir el gate. App version 0.8.4.
 - Calidad: 236 tests offline, 9 ignored, Rust/frontend gates. Referencia: [verificación](../06_Verificacion/verificacion_0_8_4.md). No se inició 0.9, juego o loaders.
+
+## LXMI 0.8.5 — Direct Inject Context Boundary (PARCIAL / BLOCKED)
+
+- Fixture same-prefix: official `3dmloader.dll` Inject carga la DLL LXMI; marker, nonce y paths verificados.
+- Control different-prefix: filesystem visible, pipe inaccesible (Win32 2), PID numérico homónimo observado. Guard bloquea upstream antes de seleccionar un proceso no correlacionado.
+- Nuevo runner cerrado, handshake pipe/PID, handle query-only del target ya verificado, artefactos por sesión y panel en Context Lab.
+- Modelos de resultados/capabilities/requirements y GameContextJoinPlan declarativo; no selección loader ni autorización game.
+- 11 tests offline específicos; Tauri nativo y gates registrados en verificacion_0_8_5.md.
+- Cross-prefix API no invocada por falta de binding seguro: incremento abierto, versión conserva 0.8.4. No trabajo 0.9.

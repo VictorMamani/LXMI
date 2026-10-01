@@ -174,3 +174,17 @@ CERRADO para laboratorio. [Verificación](../06_Verificacion/verificacion_0_8_4.
 - [ ] Ensayar otras tools/versiones únicamente si se autoriza: no generalizar el resultado a todos los Proton/Wine.
 
 0.9 permanece sin autorización. Hook bloqueado; Direct Inject fixture no se promueve a compatibilidad ZZMI/ZZZ.
+
+## LXMI 0.8.5 — estado PARCIAL / BLOCKED
+
+- [x] Mismo prefix: Direct Inject real y marker/nonce de fixture propios.
+- [x] Different-prefix: control con los mismos binarios/tool; filesystem visible y pipe identity no visible, resultado explícito.
+- [x] Rechazar PID homónimo de otro contexto; nonce y PID del pipe antes de acceso query-only/Inject.
+- [x] UI Context Lab y modelos separados; requisitos del juego no promovidos; Hook guard intacto.
+- [x] Tests offline y validaciones registrados en verificacion_0_8_5.md.
+- [ ] Demostrar una vinculación segura al target propio cross-prefix antes de invocar la API. No pasar PID Windows de A a B a ciegas.
+- [ ] Resolver la llamada Direct Inject cross-prefix real. Un pipe inaccesible no es resultado upstream.
+- [ ] Cerrar 0.8.5 y actualizar versión solo después de resolver el bloqueo. Actual 0.8.4.
+- [ ] Requisitos same-prefix/wineserver del futuro loader siguen NotEstablished. ZZZ compatibility UNKNOWN; LoaderStrategy NoDecision; gate cerrado.
+
+No iniciar 0.9 ni ejecutar helpers en compatdata/4162040. Si se necesita otra estrategia de contexto, primero documentar su identidad y alcance, sin debilitar la regla fixture-only.

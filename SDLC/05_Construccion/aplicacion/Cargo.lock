@@ -2059,6 +2059,7 @@ dependencies = [
  "lxmi-steam",
  "lxmi-xxmi",
  "serde",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tracing",

@@ -25,5 +25,10 @@ common=(-O2 -Wall -Wextra -Werror -D_WIN32_WINNT=0x0601 -DUNICODE -D_UNICODE)
   "$app_root/tools/lxmi-loader-lab/test_dll.c" \
   -o "$out/lxmi-loader-test.dll"
 
-file "$out/lxmi-loader-test-target.exe" "$out/lxmi-loader-test-runner.exe" "$out/lxmi-loader-test.dll"
-sha256sum "$out/lxmi-loader-test-target.exe" "$out/lxmi-loader-test-runner.exe" "$out/lxmi-loader-test.dll"
+
+"$cc" "${common[@]}" -municode \
+  "$app_root/tools/lxmi-loader-lab/boundary_runner.c" \
+  -o "$out/lxmi-context-inject-runner.exe"
+
+file "$out/lxmi-context-inject-runner.exe"
+sha256sum "$out/lxmi-loader-test-target.exe" "$out/lxmi-loader-test-runner.exe" "$out/lxmi-loader-test.dll" "$out/lxmi-context-inject-runner.exe"
