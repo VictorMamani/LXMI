@@ -3,7 +3,9 @@
 //! This crate never launches a game. Its only accepted executable is an LXMI-managed helper,
 //! and its only accepted prefix is an LXMI-owned isolated test context.
 
+mod context_lab;
 mod loader_lab;
+pub use context_lab::*;
 
 pub use loader_lab::*;
 
@@ -240,6 +242,7 @@ struct ProcessInvocation {
     input: Vec<u8>,
     timeout: Duration,
     output_limit: usize,
+    terminate_group_on_timeout: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -281,51 +284,82 @@ impl BridgeProcessExecutor for NativeProcessExecutor {
 
         let started = Instant::now();
         let mut child = command.spawn().map_err(ProcessFailure::Launch)?;
-        let stdout = child.stdout.take().expect("stdout pipe configured");
-        let stderr = child.stderr.take().expect("stderr pipe configured");
-        let output_limit = invocation.output_limit;
-        let stdout_reader = thread::spawn(move || read_capped(stdout, output_limit));
-        let stderr_reader = thread::spawn(move || read_capped(stderr, output_limit));
-
+        info!(
+            pid = child.id(),
+            "LXMI-owned compatibility launcher started"
+        );
+        let mut stdout = child.stdout.take().expect("stdout pipe configured");
+        let mut stderr = child.stderr.take().expect("stderr pipe configured");
+        set_nonblocking(&stdout)
+            .and_then(|()| set_nonblocking(&stderr))
+            .map_err(|e| {
+                let _ = child.kill();
+                let _ = child.wait();
+                ProcessFailure::OutputRead(e)
+            })?;
         if let Some(mut stdin) = child.stdin.take() {
             if let Err(error) = stdin.write_all(&invocation.input) {
                 warn!(error = %error, "Bridge helper closed stdin before request completed");
             }
         }
-
+        let mut captured_stdout = CappedOutput {
+            bytes: Vec::new(),
+            truncated: false,
+        };
+        let mut captured_stderr = CappedOutput {
+            bytes: Vec::new(),
+            truncated: false,
+        };
         let deadline = started + invocation.timeout;
-        let status = loop {
+        let (status, timed_out) = loop {
+            if let Err(error) =
+                drain_available(&mut stdout, &mut captured_stdout, invocation.output_limit)
+                    .and_then(|()| {
+                        drain_available(&mut stderr, &mut captured_stderr, invocation.output_limit)
+                    })
+            {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(ProcessFailure::OutputRead(error));
+            }
             match child.try_wait() {
-                Ok(Some(status)) => break status,
-                Ok(None) if Instant::now() < deadline => {
-                    thread::sleep(Duration::from_millis(20));
-                }
+                Ok(Some(status)) => break (status, false),
+                Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(20)),
                 Ok(None) => {
-                    let status = terminate_owned_process_group(&mut child)
-                        .map_err(ProcessFailure::OutputRead)?;
-                    let output = collect_readers(
-                        status,
-                        started.elapsed().as_millis(),
-                        stdout_reader,
-                        stderr_reader,
-                    )
+                    let status = if invocation.terminate_group_on_timeout {
+                        terminate_owned_process_group(&mut child)
+                    } else {
+                        // Context Lab never signals wineserver or descendant Windows processes.
+                        child.kill().and_then(|()| child.wait())
+                    }
                     .map_err(ProcessFailure::OutputRead)?;
-                    return Err(ProcessFailure::TimedOut(output));
+                    break (status, true);
                 }
                 Err(error) => {
-                    let _ = terminate_owned_process_group(&mut child);
+                    let _ = child.kill();
+                    let _ = child.wait();
                     return Err(ProcessFailure::Launch(error));
                 }
             }
         };
-        let output = collect_readers(
+        drain_available(&mut stdout, &mut captured_stdout, invocation.output_limit)
+            .and_then(|()| {
+                drain_available(&mut stderr, &mut captured_stderr, invocation.output_limit)
+            })
+            .map_err(ProcessFailure::OutputRead)?;
+        let output = ProcessOutput {
             status,
-            started.elapsed().as_millis(),
-            stdout_reader,
-            stderr_reader,
-        )
-        .map_err(ProcessFailure::OutputRead)?;
-        Ok(output)
+            elapsed_millis: started.elapsed().as_millis(),
+            stdout: captured_stdout.bytes,
+            stderr: captured_stderr.bytes,
+            stdout_truncated: captured_stdout.truncated,
+            stderr_truncated: captured_stderr.truncated,
+        };
+        if timed_out {
+            Err(ProcessFailure::TimedOut(output))
+        } else {
+            Ok(output)
+        }
     }
 }
 
@@ -349,26 +383,35 @@ fn terminate_owned_process_group(child: &mut Child) -> io::Result<ExitStatus> {
     child.wait()
 }
 
-fn collect_readers(
-    status: ExitStatus,
-    elapsed_millis: u128,
-    stdout_reader: thread::JoinHandle<io::Result<CappedOutput>>,
-    stderr_reader: thread::JoinHandle<io::Result<CappedOutput>>,
-) -> io::Result<ProcessOutput> {
-    let stdout = stdout_reader
-        .join()
-        .map_err(|_| io::Error::other("stdout reader panicked"))??;
-    let stderr = stderr_reader
-        .join()
-        .map_err(|_| io::Error::other("stderr reader panicked"))??;
-    Ok(ProcessOutput {
-        status,
-        elapsed_millis,
-        stdout: stdout.bytes,
-        stderr: stderr.bytes,
-        stdout_truncated: stdout.truncated,
-        stderr_truncated: stderr.truncated,
-    })
+fn set_nonblocking(reader: &impl std::os::fd::AsRawFd) -> io::Result<()> {
+    let fd = reader.as_raw_fd();
+    let flags = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+    if flags < 0 || unsafe { libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK) } < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
+}
+fn drain_available(
+    reader: &mut impl Read,
+    output: &mut CappedOutput,
+    limit: usize,
+) -> io::Result<()> {
+    let mut buffer = [0u8; 8192];
+    // Bound each polling pass even if a child produces output continuously.
+    for _ in 0..128 {
+        match reader.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(count) => {
+                let keep = count.min(limit.saturating_sub(output.bytes.len()));
+                output.bytes.extend_from_slice(&buffer[..keep]);
+                output.truncated |= keep < count;
+            }
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
+            Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -377,6 +420,7 @@ struct CappedOutput {
     truncated: bool,
 }
 
+#[cfg(test)]
 fn read_capped(mut reader: impl Read, limit: usize) -> io::Result<CappedOutput> {
     let mut bytes = Vec::with_capacity(limit.min(16 * 1024));
     let mut buffer = [0u8; 8192];
@@ -787,6 +831,7 @@ fn run_bridge_test_with_executor(
         input,
         timeout: BRIDGE_TEST_TIMEOUT,
         output_limit: BRIDGE_OUTPUT_LIMIT_BYTES,
+        terminate_group_on_timeout: true,
     };
     info!(runtime = %config.explicit_runtime.display_name, "Explicit bridge test runtime selected");
     info!(helper = %helper_path.display(), "Windows bridge helper launched");
@@ -1515,5 +1560,34 @@ mod tests {
         assert!(invocation.timeout <= Duration::from_secs(30));
         assert_eq!(invocation.output_limit, 1024 * 1024);
         assert!(invocation.input.len() < REQUEST_LIMIT_BYTES);
+    }
+    #[test]
+    fn native_executor_context_timeout_is_bounded_without_group_signals() {
+        let invocation = ProcessInvocation {
+            executable: PathBuf::from("/usr/bin/sleep"),
+            args: vec!["2".into()],
+            environment: BTreeMap::new(),
+            working_directory: env::temp_dir(),
+            input: vec![],
+            timeout: Duration::from_millis(50),
+            output_limit: 128,
+            terminate_group_on_timeout: false,
+        };
+        let start = Instant::now();
+        assert!(matches!(
+            NativeProcessExecutor.execute(&invocation),
+            Err(ProcessFailure::TimedOut(_))
+        ));
+        assert!(start.elapsed() < Duration::from_secs(1));
+    }
+    #[test]
+    fn nonblocking_output_capture_caps_and_marks_truncation() {
+        let mut output = CappedOutput {
+            bytes: vec![],
+            truncated: false,
+        };
+        drain_available(&mut io::Cursor::new(vec![b'x'; 4096]), &mut output, 128).unwrap();
+        assert_eq!(output.bytes.len(), 128);
+        assert!(output.truncated);
     }
 }

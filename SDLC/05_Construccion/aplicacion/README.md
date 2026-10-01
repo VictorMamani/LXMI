@@ -1,6 +1,6 @@
 # LXMI — aplicación
 
-**LXMI 0.8.3 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Una observación nativa de una ejecución manual de ZZZ identificó Proton Experimental para esa sesión, AppID `4162040`, compatdata coincidente y prefix observado. El mapping configurado por AppID no apareció en la fuente inspeccionada; el mapping global sigue separado. `GameRuntimePlan.selected` continúa `Unknown`, estrategia `NoDecision`, readiness `NeedsEvidence` y gate cerrado. LXMI no inicia el juego ni ejecuta loaders y el observer no modifica Steam, ZZZ, compatdata o prefix.
+**LXMI 0.8.4 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Una observación nativa de una ejecución manual de ZZZ identificó Proton Experimental para esa sesión, AppID `4162040`, compatdata coincidente y prefix observado. El mapping configurado por AppID no apareció en la fuente inspeccionada; el mapping global sigue separado. `GameRuntimePlan.selected` continúa `Unknown`, estrategia `NoDecision`, readiness `NeedsEvidence` y gate cerrado. Context Lab ejecuta solo peers propios con consentimiento, en prefixes privados de LXMI. No se inicia el juego ni se modifica Steam, ZZZ o su prefix. El observer sigue siendo read-only.
 
 En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para discovery y planificación de solo lectura. El workspace añadió en 0.5 `lxmi-xxmi`. No usa SQLite ni escribe en Steam, juegos, compatibility tools o prefixes; el import explícito sí conserva paquetes bajo el storage privado de LXMI.
 
@@ -189,3 +189,26 @@ En el host consultado el mapping global y por AppID no estaban presentes en la s
 El árbol de trabajo incorpora un observer efímero de Linux procfs y una sección Advanced para observar metadatos de una ejecución normal de ZZZ iniciada manualmente por el usuario desde Steam. El backend deriva el objetivo desde el manifest de AppID `4162040`, filtra procesos por UID actual, lee solo claves environment allowlisted, limita la sesión a 90 segundos y no ofrece señales/control. El snapshot se presenta separado de mapping configurado y Proton candidates; no modifica `GameRuntimePlan.selected`, estrategia loader o el gate.
 
 La observación manual en la ventana Tauri mostró un resultado real. La sesión comenzó con un primer scan `WaitingForGame` y, durante la ventana, aceptó un proceso `ZenlessZoneZero.exe` (PID `691954`). Se observó AppID `4162040`, Proton Experimental `1790244902` / `experimental-11.0-20260924-x86_64`, compatdata coincidente y `WINEPREFIX` observado. Un proceso wineserver del usuario mostró el mismo `WINEPREFIX`; esto no prueba que el juego use esa instancia. La lectura allowlist fue denegada en algún punto del contexto de proceso/ascendencia; el contador previo solo contaba candidatos directos, y la UI ahora distingue ambos alcances. La versión del producto se actualizó a `0.8.3`. El runtime observado describe esa sesión y no cambia la selección configurada ni `GameRuntimePlan.selected`. Diseño/evidencia: [observación 0.8.3](../../01_Descubrimiento/observacion_runtime_zzz_steam_0_8_3.md); verificación: [verificación 0.8.3](../../06_Verificacion/verificacion_0_8_3.md).
+
+## LXMI-0.8.4 — Proton/Wine Context Lab
+
+`lxmi-bridge/src/context_lab.rs` reutiliza el executor del bridge con peers fijos y hashes de build. Hay relaciones independientes para tool, compatdata, prefix, wineserver, mappings completos y mapping del marker. Un evento nombrado con nonce mide visibilidad de objetos; no enumera/abre procesos. GameContextJoinPlan no tiene executor.
+
+Construcción Windows (MinGW GCC x86-64, sin sudo/install automático):
+
+```bash
+bash tools/lxmi-context-peers/build.sh
+```
+
+Desde Tauri:
+
+1. Scan Steam.
+2. Abrir Advanced / Proton-Wine Context Lab.
+3. Consultar y elegir Proton explícito.
+4. Consentir prefixes privados y probar ambos casos.
+
+ El script Proton se valida contra el discovery; el frontend no puede enviar prefix, executable, DLL o PID. Si falta un artefacto o cambia su hash se presenta un error específico; no se ejecuta.
+
+El staging no sobrescribe un artefacto anterior diferente: informa `HelperHashMismatch` para revisión. Los bins locales de desarrollo pueden cambiar de hash entre builds MinGW por su timestamp PE; una futura actualización de artefactos requerirá un procedimiento explícito. No se alteran paquetes oficiales ni el runtime ZZMI. Las sesiones usan directories nuevos por nonce y permiten inspección posterior; los prefixes de laboratorio son regenerables. No se elimina ni señaliza wineserver globalmente.
+
+Los host tests de `lxmi-bridge/tests/context_host.rs` están ignorados normalmente. Para una ejecución explícita se requieren `LXMI_RUN_CONTEXT_HOST_TEST=YES`, `LXMI_HOST_MANAGED_ROOT`, `LXMI_CONTEXT_BUILD_ROOT`, `LXMI_HOST_PROTON_SCRIPT` y `LXMI_HOST_STEAM_ROOT`. `LXMI_CONTEXT_MODE=different` selecciona el control; sin esa variable usa mismo prefix. `cargo test -p lxmi-bridge --test context_host -- --ignored --nocapture` ejecuta únicamente el fixture elegido; no lo uses con el prefix del juego. [Resultados](../../06_Verificacion/verificacion_0_8_4.md).

@@ -374,3 +374,12 @@ Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D 
 - `GameRuntimePlan.selected` permanece `Unknown`; loader strategy `NoDecision`; readiness `NeedsEvidence`/gate cerrado. La observación no lanzó ni controló ZZZ ni ejecutó Hook, Direct Inject, Proton de laboratorio, helper o loader.
 - El observer no tiene camino de escritura a Steam/juego/prefix. No se tomó hash pre/post de esos árboles; no se reclama una comparación de filesystem.
 - 0.8.3 se cerró con versión `0.8.3`; resultados y límites completos en `SDLC/06_Verificacion/verificacion_0_8_3.md`.
+
+## LXMI-0.8.4 — Proton/Wine Context Join (2026-09-30 local)
+
+- Peers propios MinGW + named event Local con nonce; sin process enumeration/open, memoria, loaders o red.
+- Context Lab reutiliza bridge, dosdevices y Proton discovery; prefixes por sesión, argv directo, hash inventory y protección de paths. Captura no bloqueante y timeout propio del launcher sin señales wineserver/grupos en este lab.
+- Modelo de contexto y comparación independiente; mappings completos separados del marker mapping; requisitos futuros NotEstablished y GameContextJoinPlan declarativo.
+- HOST TEST: mismo prefix compartió evento; control de prefixes distintos no lo encontró; marker legible en ambos. Identidad wineserver permanece Unknown.
+- Tauri nativo recorrió ambos casos vía accesibilidad; resultados persistieron en React. Readiness se evaluó read-only sin abrir el gate. App version 0.8.4.
+- Calidad: 236 tests offline, 9 ignored, Rust/frontend gates. Referencia: [verificación](../06_Verificacion/verificacion_0_8_4.md). No se inició 0.9, juego o loaders.

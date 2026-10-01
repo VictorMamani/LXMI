@@ -161,3 +161,9 @@ La revisión del código y los fixtures se complementó con observación manual 
 - El servicio conserva `hook_scope_not_isolated` como la primera condición del command Hook. No cambia el modelo de amenazas ni relaja la política de ejecución.
 
 La comparación upstream y fuentes están en `../01_Descubrimiento/estrategia_loader_zzmi_linux.md`; la verificación está en `../06_Verificacion/verificacion_0_8.md#lxmi-081`.
+
+## Context Lab 0.8.4
+
+Solo se copian PE authored LXMI y hashes desde outputs de build controlados. No hay binary upstream ni loader en esta prueba. Se rechazan artefactos modificados/symlinks y roots Steam/steamapps/compatdata/pfx; paths de ejecución y markers los deriva el backend en una sesión privada (0700) con nonce. No se aceptan paths/PIDs/DLLs del frontend. El staging existente diferente requiere revisión en vez de overwrite silencioso. No se altera managed runtime/packages.
+
+Solo se inspeccionan metadatos de wineserver del UID actual y WINEPREFIX allowlisted; un match se conserva como candidato, nunca como server endpoint probado. Peers usan handles de evento, no procesos, y no ejecutan red/registry/loader/memory APIs. Env de ejecución se construye desde allowlist, HOME/XDG privados y compatdata nuevos. Proton/Wine puede escribir prefixes y sockets en /tmp/.wine-UID: esto es parte explícita del experimento. Context Lab no señaliza wineserver ni grupos; su timeout solo termina el launcher Linux hijo. Captura no bloqueante limita stdout/stderr a 1MiB cada uno, aun con pipes heredados.

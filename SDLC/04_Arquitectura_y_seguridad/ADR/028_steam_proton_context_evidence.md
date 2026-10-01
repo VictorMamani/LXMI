@@ -49,3 +49,9 @@ La UI no expone PID arbitrario ni selector de procesos. El backend parte del man
 
 - [Diseño y límites de observación 0.8.3](../../01_Descubrimiento/observacion_runtime_zzz_steam_0_8_3.md)
 - [Verificación 0.8.3](../../06_Verificacion/verificacion_0_8_3.md)
+
+## Extensión 0.8.4 — fixture de contexto, sin join del juego
+
+Dos peers propios compartieron un evento con mismo prefix y no lo compartieron con prefixes diferentes usando Proton constante. Ambos pudieron leer el mismo marker mediante Z. Mappings completos y mapping de ese marker se comparan aparte. Esta evidencia se añade al laboratorio, no a una configuración persistente de Steam ni a una selección del planner.
+
+El wineserver se mantiene Unknown como identidad/endpoint: UID y WINEPREFIX coincidentes solo producen candidatos efímeros. La observación de ZZZ 0.8.3 se compara documentalmente; no se vuelve a lanzar el juego ni se ejecuta helper en 4162040. No se establece aún un requisito de contexto para un loader ni se cambia ADR-027/gate. [Investigación 0.8.4](../../01_Descubrimiento/contexto_wine_proton_0_8_4.md), [ADR-029](029_windows_runtime_context_probe.md).

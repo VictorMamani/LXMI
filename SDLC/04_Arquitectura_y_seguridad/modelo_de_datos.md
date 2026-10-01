@@ -66,3 +66,7 @@ En 0.5.3 el runtime ensamblado por LXMI usa `App.Root/<importer_path>` como topo
 El snapshot se mantiene en memoria dentro del controller Tauri y solo se devuelve al cliente tras consentimiento para la sesión. No se añade persistencia/SQLite ni historial de procesos. Los detalles completos permanecen internos; la interfaz recibe campos de evidencia allowlisted y paths bajo home redactados.
 
 Los contadores `candidate_environments_*` describen procesos candidatos inspeccionados directamente. `accepted_contexts_environment_*` describe si una cadena aceptada del proceso de juego/ascendencia incluyó lecturas de entorno inaccesibles. Esos alcances se conservan separados para que un `PermissionDenied` contextual no parezca incompatible con cero denegaciones entre candidatos directos.
+
+## Modelo LXMI 0.8.4
+
+WindowsRuntimeContext agrega evidencia de tool, compatdata, prefix, candidato wineserver, sesión y mappings. ContextIdentity compara por separado esas relaciones y la ruta del marker. ContextPeerResponse usa protocol1, rol fijo a/b, nonce, PID propio, estado del evento y tres variables allowlisted. ContextLabResult contiene los dos contextos/respuestas/salidas acotadas y requisitos declarativos. La UI retiene resultados por modo en memoria. GameContextJoinPlan es exclusivamente datos y mantiene la autorización de juego false; no modifica GameRuntimePlan.selected ni LoaderStrategyDecision.

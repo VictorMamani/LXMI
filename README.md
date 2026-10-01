@@ -4,7 +4,7 @@
 
 ## Estado
 
-- **Etapa:** construcción; LXMI 0.8.3 añade observación pasiva de contexto durante una sesión ZZZ iniciada manualmente. En una sesión local se observó Proton Experimental, AppID `4162040`, compatdata y prefix. La selección configurada permanece separada y `GameRuntimePlan.selected` sigue `Unknown`.
+- **Etapa:** construcción; LXMI 0.8.4 caracteriza contexto Proton/Wine con peers LXMI aislados. El evento con nonce fue visible con el mismo prefix y no con prefixes distintos; ambos leyeron el marker privado. Esto no prueba compatibilidad ZZMI/ZZZ. `GameRuntimePlan.selected` sigue `Unknown`, loader strategy `NoDecision` y gate cerrado.
 - **Tipo de proyecto:** herramienta técnica de escritorio y posible proyecto de portafolio; no hay validación de demanda, modelo de ingresos ni rentabilidad confirmada.
 - **Base de trabajo:** idea aportada por el usuario. Las estructuras de Proton consultadas se contrastaron con fuentes de Valve; esto no valida compatibilidad del juego, mods, ni políticas aplicables.
 - **Código:** aplicación Tauri 2 con React/TypeScript y workspace Rust. Los escaneos de Steam/juegos/tools son de solo lectura; el import explícito solo escribe en almacenamiento XDG privado de LXMI.
@@ -73,3 +73,7 @@ El repositorio efectivo es esta carpeta LXMI, rama `main`, remote `origin` en `g
 ## Criterio de honestidad
 
 Los nombres de tecnologías, juegos, runtimes, versiones y etapas que aparecen en estos documentos son una dirección inicial propuesta, no una declaración de compatibilidad comprobada. Los requisitos y roadmap podrán cambiar con los hallazgos.
+
+## LXMI 0.8.4 — Context Lab
+
+Advanced permite probar mismo prefix y prefixes distintos con Proton explícito y peers propios. No usa compatdata 4162040 ni loaders. La relación de evento, mappings, prefix y candidato wineserver se informa por separado; no se crea un launcher de juego. [Investigación y host evidence](SDLC/01_Descubrimiento/contexto_wine_proton_0_8_4.md) · [Verificación](SDLC/06_Verificacion/verificacion_0_8_4.md).

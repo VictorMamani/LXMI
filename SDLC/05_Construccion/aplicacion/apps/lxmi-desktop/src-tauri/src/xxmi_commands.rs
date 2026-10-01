@@ -139,3 +139,15 @@ pub async fn run_loader_lab_experiment(
     })
     .await
 }
+
+#[tauri::command]
+pub async fn run_context_lab_test(
+    proton_script: String,
+    mode: lxmi_bridge::ContextExperimentMode,
+    side_effects_acknowledged: bool,
+) -> std::result::Result<lxmi_bridge::ContextLabResult, BridgeServiceError> {
+    blocking_bridge(move || {
+        xxmi_service::run_context_lab_test(&proton_script, mode, side_effects_acknowledged)
+    })
+    .await
+}

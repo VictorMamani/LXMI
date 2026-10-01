@@ -142,7 +142,7 @@ Se preservan los cambios sin commit de 0.8.1 y se añadieron cambios de 0.8.2 en
 ## Estado de Git
 
 - LXMI se trabaja en branch `main` en el repositorio independiente `04_Proyectos/19_LXMI`, con `origin` `git@github.com:VictorMamani/LXMI.git`.
-- Los cambios previos 0.8.1/0.8.2 y el incremento 0.8.3 continúan sin commit ni push; preservar el árbol completo al preparar un checkpoint.
+- Checkpoint previo: `a481d98`, cierre de 0.8.3; se inició 0.8.4 desde worktree limpio. Los cambios 0.8.4 permanecen sin commit/push.
 
 ## Antes de integrar runtimes o contenido de mods
 
@@ -151,3 +151,26 @@ Se preservan los cambios sin commit de 0.8.1 y se añadieron cambios de 0.8.2 en
 - [x] Diseñar importación segura de directorio y ZIP; probar traversal, rutas absolutas, enlaces, colisiones, profundidad, tamaño y relación de compresión.
 - [ ] Investigar función live e IPC de forma separada; no asumir que existe un protocolo upstream.
 - [ ] Evaluar SteamOS y distribución solo después de un MVP probado.
+
+## LXMI-0.8.4 — Context Join fixture
+
+CERRADO para laboratorio. [Verificación](../06_Verificacion/verificacion_0_8_4.md).
+
+- [x] Fijar fuentes Wine/Proton y separar prefix, endpoint, tool y sesión.
+- [x] Construir dos PE LXMI con MinGW, hashes y staging privado.
+- [x] Ejecutar mismo prefix y control de prefixes distintos, con nonce/evento y marker real.
+- [x] ContextIdentity, requirements independientes y GameContextJoinPlan sin executor.
+- [x] Ejercitar ambos casos desde Tauri nativo por accesibilidad; no browser-only.
+- [x] Mantener Unknown de server identity y de requisitos del loader; NoDecision/gate cerrado.
+- [x] Comparar metadata protegida pre/post sin diferencias; juego y managed ZZMI no usados.
+- [x] Rust/frontend quality gates y versión producto 0.8.4.
+
+### Evidencia aún necesaria; siguiente trabajo requiere autorización
+
+- [ ] Demostrar endpoint wineserver en fixture sin confundir candidato por entorno con instancia usada.
+- [ ] Precisar propiedades necesarias para el loader (evento visible no prueba permisos de proceso ni compatibility).
+- [ ] Antes de proponer usar 4162040, diseñar riesgo/preflight específico: mutaciones esperables Proton, frontera backup/rollback, helper exacto y consentimiento. No ejecutar helper en ese prefix durante 0.8.4.
+- [ ] Procedimiento explícito para actualizar bins propios del laboratorio cuyo hash cambie; nunca sobrescribir un artefacto diferente silenciosamente.
+- [ ] Ensayar otras tools/versiones únicamente si se autoriza: no generalizar el resultado a todos los Proton/Wine.
+
+0.9 permanece sin autorización. Hook bloqueado; Direct Inject fixture no se promueve a compatibilidad ZZMI/ZZZ.

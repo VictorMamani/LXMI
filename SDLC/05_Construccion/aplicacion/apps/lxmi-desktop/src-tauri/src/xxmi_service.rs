@@ -1594,3 +1594,56 @@ mod loader_lab_host_tests {
         eprintln!("ZZZ metadata unchanged; test does not launch or enumerate game processes.");
     }
 }
+
+pub fn run_context_lab_test(
+    proton_script: &str,
+    mode: lxmi_bridge::ContextExperimentMode,
+    side_effects_acknowledged: bool,
+) -> std::result::Result<lxmi_bridge::ContextLabResult, BridgeServiceError> {
+    if !side_effects_acknowledged {
+        return Err(BridgeServiceError {
+            code: "context_consent_required".into(),
+            detail: "Confirma la creación de prefixes aislados de LXMI.".into(),
+            stderr: None,
+        });
+    }
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let store = store_for(&discovery).map_err(BridgeServiceError::from)?;
+    let selected_path =
+        Path::new(proton_script)
+            .canonicalize()
+            .map_err(|e| BridgeServiceError {
+                code: "runtime_not_found".into(),
+                detail: e.to_string(),
+                stderr: None,
+            })?;
+    let runtime = resolved_bridge_runtimes(&discovery)
+        .into_iter()
+        .find(|r| r.proton_script == selected_path)
+        .ok_or_else(|| BridgeServiceError {
+            code: "runtime_not_allowed".into(),
+            detail: "Selecciona un Proton descubierto; no se aceptan comandos arbitrarios.".into(),
+            stderr: None,
+        })?;
+    let application_root = application_workspace_root().map_err(|e| BridgeServiceError {
+        code: "context_artifacts_missing".into(),
+        detail: e.to_string(),
+        stderr: None,
+    })?;
+    lxmi_bridge::stage_context_peers(
+        store.root(),
+        &application_root.join("target/x86_64-pc-windows-gnu/release/lxmi-context-peers"),
+    )?;
+    lxmi_bridge::run_context_lab(&lxmi_bridge::ContextLabConfig {
+        managed_root: store.root().to_owned(),
+        explicit_runtime: lxmi_bridge::ExplicitBridgeRuntime {
+            display_name: runtime.option.display_name,
+            version: runtime.option.version,
+            proton_script: runtime.proton_script,
+        },
+        steam_client_install_path: runtime.steam_root,
+        mode,
+        side_effects_acknowledged,
+    })
+    .map_err(BridgeServiceError::from)
+}

@@ -26,3 +26,5 @@ LXMI-0.1 a 0.5.1 cuenta con fixtures Rust de KeyValues/ACF, Steam games/compatda
 ## Salida de fase
 
 La salida de fase para un piloto requerirá completar las pruebas de sistema que correspondan. El discovery local de Steam no prueba selección, compatibilidad o ejecución de juegos con Proton.
+
+- [Verificación LXMI 0.8.4](verificacion_0_8_4.md) — Context Lab nativo y peers aislados, evento mismo/diferente prefix, sin uso del juego.
