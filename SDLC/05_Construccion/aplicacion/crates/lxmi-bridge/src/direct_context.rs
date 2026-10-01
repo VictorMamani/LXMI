@@ -1,5 +1,5 @@
 //! Fixed fixture context boundary. A Windows PID is never accepted from IPC.
-//! A nonce-scoped pipe and its server PID must bind the target before Inject.
+//! Session image, Windows creation time and owned-child report gate Inject without a shared pipe.
 use super::*;
 use crate::{context_lab as contexts, loader_lab as loaders};
 use lxmi_xxmi::{inspect_prefix_dosdevices, map_linux_path};
@@ -14,6 +14,7 @@ pub struct ContextInjectorResponse {
     pub nonce: String,
     pub path_readable: bool,
     pub identity_bound: bool,
+    pub target_identity: CrossPrefixTargetIdentity,
     pub inject_called: bool,
     pub inject_code: i32,
     pub windows_error: u32,
@@ -27,14 +28,69 @@ pub struct ContextTargetResponse {
     pub nonce: String,
     pub path_readable: bool,
     pub handshake_sent: bool,
+    pub process_image: String,
+    pub creation_time: String,
+    pub ready: bool,
     pub wine_prefix: String,
     pub compatdata: String,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum TargetIdentityResult {
+    Verified,
+    PidNotVisible,
+    PidCollision,
+    ImageMismatch,
+    CreationTimeMismatch,
+    AccessDenied,
+    ProcessExited,
+    Unknown,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CrossPrefixTargetIdentity {
+    pub expected_windows_pid: u32,
+    pub observed_windows_pid: u32,
+    pub expected_image: String,
+    pub observed_image: String,
+    // Decimal FILETIME strings preserve all 64 bits across JSON/JavaScript.
+    pub expected_creation_time: String,
+    pub observed_creation_time: String,
+    pub nonce: String,
+    pub result: TargetIdentityResult,
+}
+pub struct DirectInjectPreflightGate;
+impl DirectInjectPreflightGate {
+    pub fn allows(identity: &CrossPrefixTargetIdentity, nonce: &str) -> bool {
+        identity.result == TargetIdentityResult::Verified
+            && identity.nonce == nonce
+            && identity.expected_windows_pid != 0
+            && identity.expected_windows_pid == identity.observed_windows_pid
+            && !identity.expected_image.is_empty()
+            && identity
+                .expected_image
+                .eq_ignore_ascii_case(&identity.observed_image)
+            && identity
+                .expected_creation_time
+                .parse::<u64>()
+                .ok()
+                .is_some_and(|v| v > 0)
+            && identity.expected_creation_time == identity.observed_creation_time
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct TargetSelfIdentity {
+    protocol: u16,
+    nonce: String,
+    pid: u32,
+    process_image: String,
+    creation_time: String,
+    ready: bool,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DirectContextOutcome {
     InjectedSuccessfully,
-    TargetIdentityUnavailable,
+    BlockedNotAttempted,
     LoaderFailure,
     MarkerNotVerified,
 }
@@ -71,6 +127,7 @@ pub struct DirectContextResult {
     pub marker_verified: bool,
     pub marker: Option<LoaderDllMarker>,
     pub process_target: BridgeProcessSummary,
+    pub target_launcher_identity: Option<OwnedLinuxProcessIdentity>,
     pub process_injector: BridgeProcessSummary,
     pub source_hashes: BTreeMap<String, String>,
     pub upstream: LoaderLabProvenance,
@@ -87,28 +144,36 @@ fn validate_responses(
     target: &ContextTargetResponse,
     runner: &ContextInjectorResponse,
 ) -> Result<(), BridgeError> {
-    if target.protocol != 1
-        || runner.protocol != 1
+    if target.protocol != 2
+        || runner.protocol != 2
         || target.nonce != nonce
         || runner.nonce != nonce
         || target.pid == 0
         || runner.pid == 0
         || (runner.identity_bound
-            && (!target.handshake_sent
-                || runner.target_pid != target.pid
-                || runner.target_pid == runner.pid))
+            && (runner.target_pid != target.pid || runner.target_pid == runner.pid))
+        || !target.ready
+        || runner.target_identity.expected_windows_pid != target.pid
+        || !runner
+            .target_identity
+            .expected_image
+            .eq_ignore_ascii_case(&target.process_image)
+        || runner.target_identity.expected_creation_time != target.creation_time
+        || runner.target_identity.nonce != nonce
+        || runner.identity_bound
+            != DirectInjectPreflightGate::allows(&runner.target_identity, nonce)
         || (runner.inject_called && !runner.identity_bound)
     {
         return Err(error(
             BridgeErrorCode::ProtocolMismatch,
-            "Owned target/pipe/nonce/protocol mismatch",
+            "Owned target/image/creation-time/nonce/protocol mismatch",
         ));
     }
     Ok(())
 }
 fn outcome(r: &ContextInjectorResponse, marker: bool) -> DirectContextOutcome {
     if !r.identity_bound {
-        DirectContextOutcome::TargetIdentityUnavailable
+        DirectContextOutcome::BlockedNotAttempted
     } else if !r.inject_called || r.inject_code != 0 {
         DirectContextOutcome::LoaderFailure
     } else if !marker {
@@ -158,7 +223,7 @@ pub fn run_direct_context_lab(
         config,
         sources,
         Arc::new(NativeProcessExecutor),
-        contexts::server_candidates,
+        |_| vec![], // No global process enumeration in this identity preflight.
     )
 }
 fn run_with(
@@ -207,7 +272,7 @@ fn run_with(
         ));
     }
     let nonce = random_nonce()?;
-    let session = managed.join("tests/direct-context-v1").join(&nonce);
+    let session = managed.join("tests/direct-inject-boundary").join(&nonce);
     ensure_controlled_directory(&managed, &session)?;
     use std::os::unix::fs::PermissionsExt;
     fs::set_permissions(&session, fs::Permissions::from_mode(0o700))
@@ -318,6 +383,8 @@ fn run_with(
         &runner,
         vec![nonce.clone().into()],
     );
+    let ownership = Arc::new(std::sync::Mutex::new(None));
+    call_a.ownership = Some(ownership.clone());
     let executor_a = executor.clone();
     let child_call = call_a.clone();
     let worker = thread::spawn(move || contexts::execute(executor_a.as_ref(), &child_call));
@@ -329,15 +396,73 @@ fn run_with(
     let valid_ready = read_bounded_file(&ready, 32)
         .ok()
         .is_some_and(|b| b == nonce.as_bytes());
+    let expected_image =
+        map_linux_path(&target, &inspect_prefix_dosdevices(&compat_a.join("pfx"))).windows_path;
+    let self_identity = read_bounded_file(&root.join("results/target-identity.json"), 65536)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<TargetSelfIdentity>(&bytes).ok());
+    let owned_child = ownership.lock().expect("owned identity").clone();
     let candidates_a = observe_servers(&compat_a.join("pfx").display().to_string());
-    let output_b = if valid_ready {
+    let output_b = (|| {
+        let identity = self_identity.as_ref().ok_or_else(|| {
+            error(
+                BridgeErrorCode::MalformedResponse,
+                "Target self identity unavailable",
+            )
+        })?;
+        let image = expected_image.as_deref().ok_or_else(|| {
+            error(
+                BridgeErrorCode::PathNotVisible,
+                "Target mapping unavailable",
+            )
+        })?;
+        let time = identity.creation_time.parse::<u64>().map_err(|_| {
+            error(
+                BridgeErrorCode::ProtocolMismatch,
+                "Invalid target creation time",
+            )
+        })?;
+        if !valid_ready
+            || identity.protocol != 2
+            || identity.nonce != nonce
+            || !identity.ready
+            || identity.pid == 0
+            || time == 0
+            || !identity.process_image.eq_ignore_ascii_case(image)
+            || worker.is_finished()
+            || !owned_child
+                .as_ref()
+                .is_some_and(|child| child.pid > 0 && child.start_time_ticks.is_some())
+        {
+            return Err(error(
+                BridgeErrorCode::ProtocolMismatch,
+                "Session/path/creation/owned-child correlation failed before PID query",
+            ));
+        }
+        let utf16: Vec<u16> = image.encode_utf16().collect();
+        if utf16.len() >= 4096 || utf16.contains(&0) {
+            return Err(error(
+                BridgeErrorCode::UnsafePath,
+                "Invalid Windows fixture path",
+            ));
+        }
+        let mut request = Vec::new();
+        request.extend_from_slice(&2u32.to_le_bytes());
+        request.extend_from_slice(&identity.pid.to_le_bytes());
+        request.extend_from_slice(&time.to_le_bytes());
+        request.extend_from_slice(nonce.as_bytes());
+        request.extend_from_slice(&(utf16.len() as u32).to_le_bytes());
+        for value in utf16 {
+            request.extend_from_slice(&value.to_le_bytes());
+        }
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(root.join("results/identity-request.bin"))
+            .and_then(|mut file| file.write_all(&request))
+            .map_err(|e| error(BridgeErrorCode::Io, e.to_string()))?;
         contexts::execute(executor.as_ref(), &call_b)
-    } else {
-        Err(error(
-            BridgeErrorCode::Timeout,
-            "Owned fixture did not publish fresh ready nonce",
-        ))
-    };
+    })();
     let candidates_b = observe_servers(&compat_b.join("pfx").display().to_string());
 
     // DLL marker creation is asynchronous. Keep the bound fixture alive until
@@ -363,6 +488,17 @@ fn run_with(
     let target: ContextTargetResponse = parse(&output_a)?;
     let injector: ContextInjectorResponse = parse(&output_b)?;
     validate_responses(&nonce, &target, &injector)?;
+    let ready_identity = self_identity
+        .ok_or_else(|| error(BridgeErrorCode::ProtocolMismatch, "Missing self identity"))?;
+    if ready_identity.pid != target.pid
+        || ready_identity.creation_time != target.creation_time
+        || ready_identity.process_image != target.process_image
+    {
+        return Err(error(
+            BridgeErrorCode::ProtocolMismatch,
+            "Target final response differs from ready identity",
+        ));
+    }
     let marker_path = root.join("results/loader-result.json");
     let marker = match read_bounded_file(&marker_path, 16384) {
         Ok(bytes) => Some(
@@ -420,29 +556,43 @@ fn run_with(
     let identity_bound = injector.identity_bound;
     let mut game_join_plan = GameContextJoinPlan::default();
     game_join_plan.loader_context_evidence.push(format!(
-        "Fixture {:?}: {:?}; not a ZZZ test; cross-prefix unavailable pipe means Inject was not attempted",
-        config.mode, outcome(&injector, marker_verified)
+        "Fixture {:?}: {:?}; not a ZZZ test; non-Verified process identity blocks Inject",
+        config.mode,
+        outcome(&injector, marker_verified)
     ));
-    game_join_plan.blockers.push("A numeric Windows PID from another context cannot authorize injection; no game-prefix join executor exists".into());
+    game_join_plan.blockers.push("A helper outside the game Windows context has no demonstrated safe target binding; game-prefix join remains unauthorized".into());
     Ok(DirectContextResult { mode:config.mode,nonce,explicit_runtime:config.explicit_runtime.clone(),outcome:outcome(&injector,marker_verified),target,injector,
-        context_target,context_injector,identity,marker_verified,marker,process_target:contexts::summary(&call_a,output_a),process_injector:contexts::summary(&call_b,output_b),source_hashes,upstream:sources.provenance.clone(),requirements:loader_context_requirements(), capabilities: vec![LoaderCapability {
+        context_target,context_injector,identity,marker_verified,marker,process_target:contexts::summary(&call_a,output_a),target_launcher_identity:owned_child,process_injector:contexts::summary(&call_b,output_b),source_hashes,upstream:sources.provenance.clone(),requirements:loader_context_requirements(), capabilities: vec![LoaderCapability {
             name: if config.mode == ContextExperimentMode::SamePrefix { "DirectInjectFixtureSamePrefix" } else { "DirectInjectFixtureCrossPrefix" }.into(),
             state: if marker_verified { LoaderCapabilityState::Verified } else if !identity_bound { LoaderCapabilityState::Blocked } else { LoaderCapabilityState::Failed },
-            evidence: "Only this nonce-scoped fixture; missing pipe prevents the upstream call, not an observed Inject failure".into(),
+            evidence: "Only this nonce-scoped fixture; Exact fixture image/time/session identity gates the upstream call; no game compatibility established".into(),
         }],
-        game_join_plan,warnings:vec!["TargetIdentityUnavailable prevents Inject; it is NOT an observed upstream Inject failure".into(),"No game compatibility established; Hook blocked; strategy NoDecision".into(),"Wine servers are not signalled; they may exit naturally".into()] })
+        game_join_plan,warnings:vec!["BlockedNotAttempted is an identity preflight result, NOT an observed upstream Inject failure".into(),"No game compatibility established; Hook blocked; strategy NoDecision".into(),"Wine servers are not signalled; they may exit naturally".into()] })
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn identity() -> CrossPrefixTargetIdentity {
+        CrossPrefixTargetIdentity {
+            expected_windows_pid: 220,
+            observed_windows_pid: 220,
+            expected_image: "Z:\\fixture\\target.exe".into(),
+            observed_image: "Z:\\fixture\\target.exe".into(),
+            expected_creation_time: "123456789".into(),
+            observed_creation_time: "123456789".into(),
+            nonce: "a".repeat(32),
+            result: TargetIdentityResult::Verified,
+        }
+    }
     fn runner() -> ContextInjectorResponse {
         ContextInjectorResponse {
-            protocol: 1,
+            protocol: 2,
             pid: 200,
             target_pid: 220,
             nonce: "a".repeat(32),
             path_readable: true,
             identity_bound: true,
+            target_identity: identity(),
             inject_called: true,
             inject_code: 0,
             windows_error: 0,
@@ -452,11 +602,14 @@ mod tests {
     }
     fn target() -> ContextTargetResponse {
         ContextTargetResponse {
-            protocol: 1,
+            protocol: 2,
             pid: 220,
             nonce: "a".repeat(32),
             path_readable: true,
-            handshake_sent: true,
+            handshake_sent: false,
+            process_image: "Z:\\fixture\\target.exe".into(),
+            creation_time: "123456789".into(),
+            ready: true,
             wine_prefix: String::new(),
             compatdata: String::new(),
         }
@@ -486,7 +639,7 @@ mod tests {
         r.inject_called = false;
         assert_eq!(
             outcome(&r, false),
-            DirectContextOutcome::TargetIdentityUnavailable
+            DirectContextOutcome::BlockedNotAttempted
         );
     }
     #[test]
@@ -587,18 +740,47 @@ mod tests {
             } else if call.args[2] == "context-boundary" {
                 let nonce = call.args[3].to_string_lossy().to_string();
                 *self.0.lock().unwrap() = Some(compat.clone());
+                if let Some(observer) = &call.ownership {
+                    *observer.lock().unwrap() = Some(OwnedLinuxProcessIdentity {
+                        pid: 42,
+                        start_time_ticks: Some(100),
+                    });
+                }
+                let image = format!(
+                    "Z:{}",
+                    root.join("target")
+                        .join(LOADER_LAB_TARGET)
+                        .display()
+                        .to_string()
+                        .replace('/', "\\")
+                );
+                fs::write(
+                    root.join("results/target-identity.json"),
+                    serde_json::to_vec(&TargetSelfIdentity {
+                        protocol: 2,
+                        nonce: nonce.clone(),
+                        pid: 220,
+                        process_image: image.clone(),
+                        creation_time: "123456789".into(),
+                        ready: true,
+                    })
+                    .unwrap(),
+                )
+                .unwrap();
                 fs::write(root.join("results/target-ready"), &nonce).unwrap();
                 let end = Instant::now() + Duration::from_secs(5);
                 while !root.join("results/stop").exists() && Instant::now() < end {
                     thread::sleep(Duration::from_millis(5));
                 }
-                let same = self.0.lock().unwrap().as_ref() == Some(&compat);
                 serde_json::to_vec(&ContextTargetResponse {
-                    protocol: 1,
+                    protocol: 2,
                     pid: 220,
                     nonce,
                     path_readable: true,
-                    handshake_sent: same,
+                    handshake_sent: false,
+                    process_image: image,
+                    creation_time: "123456789".into(),
+                    ready: true,
                     wine_prefix: compat.join("pfx").display().to_string(),
                     compatdata: compat.display().to_string(),
                 })
@@ -626,15 +808,43 @@ mod tests {
                 }
                 // Different server tables may use the same numeric Windows PID.
                 serde_json::to_vec(&ContextInjectorResponse {
-                    protocol: 1,
+                    protocol: 2,
                     pid: if same { 236 } else { 220 },
-                    target_pid: if same { 220 } else { 0 },
+                    target_pid: 220,
+                    target_identity: CrossPrefixTargetIdentity {
+                        expected_windows_pid: 220,
+                        observed_windows_pid: 220,
+                        expected_image: format!(
+                            "Z:{}",
+                            root.join("target")
+                                .join(LOADER_LAB_TARGET)
+                                .display()
+                                .to_string()
+                                .replace('/', "\\")
+                        ),
+                        observed_image: format!(
+                            "Z:{}",
+                            root.join(if same { "target" } else { "runner" })
+                                .join(if same { LOADER_LAB_TARGET } else { RUNNER })
+                                .display()
+                                .to_string()
+                                .replace('/', "\\")
+                        ),
+                        expected_creation_time: "123456789".into(),
+                        observed_creation_time: if same { "123456789" } else { "987654321" }.into(),
+                        nonce: nonce.clone(),
+                        result: if same {
+                            TargetIdentityResult::Verified
+                        } else {
+                            TargetIdentityResult::PidCollision
+                        },
+                    },
                     nonce,
                     path_readable: true,
                     identity_bound: same,
                     inject_called: same,
                     inject_code: if same { 0 } else { -1 },
-                    windows_error: if same { 0 } else { 2 },
+                    windows_error: 0,
                     wine_prefix: compat.join("pfx").display().to_string(),
                     compatdata: compat.display().to_string(),
                 })
@@ -671,10 +881,7 @@ mod tests {
         assert_eq!(result.target.pid, result.injector.pid);
         assert!(!result.injector.inject_called);
         assert!(!result.marker_verified);
-        assert_eq!(
-            result.outcome,
-            DirectContextOutcome::TargetIdentityUnavailable
-        );
+        assert_eq!(result.outcome, DirectContextOutcome::BlockedNotAttempted);
         assert_eq!(result.identity.prefix, ContextRelation::Different);
         assert_eq!(result.identity.marker_path_mapping, ContextRelation::Same);
         assert_eq!(result.capabilities[0].state, LoaderCapabilityState::Blocked);
@@ -708,5 +915,58 @@ mod tests {
             ))
             .is_err()
         );
+    }
+    #[test]
+    fn correct_pid_image_time_is_allowed() {
+        assert!(DirectInjectPreflightGate::allows(
+            &identity(),
+            &"a".repeat(32)
+        ));
+    }
+    #[test]
+    fn same_pid_wrong_image_and_session_path_are_rejected() {
+        for path in ["Z:\\other\\target.exe", "Z:\\fixture\\runner.exe"] {
+            let mut i = identity();
+            i.observed_image = path.into();
+            assert!(!DirectInjectPreflightGate::allows(&i, &i.nonce));
+        }
+    }
+    #[test]
+    fn same_pid_wrong_creation_time_is_rejected() {
+        let mut i = identity();
+        i.observed_creation_time = "987654321".into();
+        assert!(!DirectInjectPreflightGate::allows(&i, &i.nonce));
+    }
+    #[test]
+    fn correct_pid_with_wrong_nonce_is_rejected() {
+        assert!(!DirectInjectPreflightGate::allows(
+            &identity(),
+            &"b".repeat(32)
+        ));
+    }
+    #[test]
+    fn every_non_verified_state_blocks_inject() {
+        for state in [
+            TargetIdentityResult::PidNotVisible,
+            TargetIdentityResult::PidCollision,
+            TargetIdentityResult::ImageMismatch,
+            TargetIdentityResult::CreationTimeMismatch,
+            TargetIdentityResult::AccessDenied,
+            TargetIdentityResult::ProcessExited,
+            TargetIdentityResult::Unknown,
+        ] {
+            let mut i = identity();
+            i.result = state;
+            assert!(!DirectInjectPreflightGate::allows(&i, &i.nonce));
+        }
+    }
+    #[test]
+    fn windows_filetime_requires_nonzero_exact_decimal() {
+        for time in ["0", "not-time", "18446744073709551616"] {
+            let mut i = identity();
+            i.expected_creation_time = time.into();
+            i.observed_creation_time = time.into();
+            assert!(!DirectInjectPreflightGate::allows(&i, &i.nonce));
+        }
     }
 }

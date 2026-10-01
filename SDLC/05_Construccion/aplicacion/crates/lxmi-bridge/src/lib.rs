@@ -235,6 +235,19 @@ pub struct BridgeTestConfig {
     pub prefix_mode: PrefixMode,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OwnedLinuxProcessIdentity {
+    pub pid: u32,
+    pub start_time_ticks: Option<u64>,
+}
+fn process_start_ticks(stat: &str) -> Option<u64> {
+    stat.rsplit_once(')')?
+        .1
+        .split_whitespace()
+        .nth(19)?
+        .parse()
+        .ok()
+}
 #[derive(Debug, Clone)]
 struct ProcessInvocation {
     executable: PathBuf,
@@ -245,6 +258,7 @@ struct ProcessInvocation {
     timeout: Duration,
     output_limit: usize,
     terminate_group_on_timeout: bool,
+    ownership: Option<std::sync::Arc<std::sync::Mutex<Option<OwnedLinuxProcessIdentity>>>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -286,6 +300,17 @@ impl BridgeProcessExecutor for NativeProcessExecutor {
 
         let started = Instant::now();
         let mut child = command.spawn().map_err(ProcessFailure::Launch)?;
+        if let Some(observer) = &invocation.ownership {
+            let ticks =
+                read_bounded_file(&PathBuf::from(format!("/proc/{}/stat", child.id())), 65536)
+                    .ok()
+                    .and_then(|bytes| process_start_ticks(&String::from_utf8_lossy(&bytes)));
+            *observer.lock().expect("owned child identity observer") =
+                Some(OwnedLinuxProcessIdentity {
+                    pid: child.id(),
+                    start_time_ticks: ticks,
+                });
+        }
         info!(
             pid = child.id(),
             "LXMI-owned compatibility launcher started"
@@ -834,6 +859,7 @@ fn run_bridge_test_with_executor(
         timeout: BRIDGE_TEST_TIMEOUT,
         output_limit: BRIDGE_OUTPUT_LIMIT_BYTES,
         terminate_group_on_timeout: true,
+        ownership: None,
     };
     info!(runtime = %config.explicit_runtime.display_name, "Explicit bridge test runtime selected");
     info!(helper = %helper_path.display(), "Windows bridge helper launched");
@@ -1200,6 +1226,20 @@ mod tests {
         sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };
+
+    #[test]
+    fn owned_child_start_identity_parses_stat_without_process_scan() {
+        let tail = (0..20)
+            .map(|i| if i == 19 { "12345" } else { "0" })
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert_eq!(
+            process_start_ticks(&format!("42 (name with ) chars) {tail}")),
+            Some(12345)
+        );
+        assert_eq!(process_start_ticks("malformed"), None);
+        assert_eq!(process_start_ticks("42 (child) R 1"), None);
+    }
 
     static NEXT: AtomicU64 = AtomicU64::new(0);
 
@@ -1574,6 +1614,7 @@ mod tests {
             timeout: Duration::from_millis(50),
             output_limit: 128,
             terminate_group_on_timeout: false,
+            ownership: None,
         };
         let start = Instant::now();
         assert!(matches!(

@@ -392,3 +392,11 @@ Pasaron `cargo fmt --all -- --check`, `cargo check --workspace`, Clippy con `-D 
 - Modelos de resultados/capabilities/requirements y GameContextJoinPlan declarativo; no selección loader ni autorización game.
 - 11 tests offline específicos; Tauri nativo y gates registrados en verificacion_0_8_5.md.
 - Cross-prefix API no invocada por falta de binding seguro: incremento abierto, versión conserva 0.8.4. No trabajo 0.9.
+
+## LXMI 0.8.5.1 — Safe Cross-Prefix Target Binding (cierra producto 0.8.5)
+
+- Reemplaza dependencia de pipe para binding por self identity protocol 2: nonce/ruta exacta/Windows PID/FILETIME, correlación con child propio y request fijo.
+- Preflight OpenProcess con PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW y GetProcessTimes sobre solo el PID esperado; gate estricto antes de cargar upstream.
+- HOST TEST same-prefix Verified, Inject 0, marker PASS. Cross-prefix query Win32 87/PidNotVisible: BLOCKED_NOT_ATTEMPTED sin llamar Inject, conclusión segura válida para cerrar el experimento.
+- UI nativa retiene resultados con imagen/time/causa; 254 tests offline, 10 ignored; gates Rust/frontend y cross-build. Versión producto 0.8.5.
+- PID collision previo permanece evidencia histórica y fixture de regresión; ninguna compatibilidad ZZZ derivada; estrategia NoDecision, Hook guard intacto, game gate cerrado.

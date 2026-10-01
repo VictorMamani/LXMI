@@ -1,6 +1,69 @@
+# Cierre 0.8.5 mediante 0.8.5.1 — Safe Cross-Prefix Target Binding
+
+**COMPROBADO: CERRADO para el experimento fixture; producto 0.8.5.** Cross-prefix queda **BLOCKED_NOT_ATTEMPTED** por evidencia concluyente del preflight, resultado autorizado para cerrar este incremento. No significa compatibilidad del juego ni fallo observado de Inject. No se inicia otro incremento.
+
+## Binding de identidad — COMPROBADO
+
+Cada sesión crea un nonce aleatorio de 32 caracteres hex y un directorio privado (0700) `$XDG_DATA_HOME/lxmi/tests/direct-inject-boundary/<nonce>/loader-v1/`. Target, runner y DLL están separados. Se reutilizan los binarios fixture de LXMI y el executor argv/timeout existentes.
+
+El target publica protocol 2, nonce, Windows PID propio, imagen completa mediante GetModuleFileNameW, creación FILETIME mediante GetProcessTimes y ready. Se publica JSON completo antes del marker ready. El controller valida contra la ruta Windows derivada de dosdevices del target, la sesión y el child que creó, y genera un request binario fijo CREATE_NEW. El runner no recibe PID/path arbitrarios por argv o frontend.
+
+El child Linux registrado es el **launcher Proton** creado por LXMI, con PID y start ticks de `/proc/<ese-child>/stat`; no se presenta como el PID Unix del target Windows. El reporte propio, el argv fijo, el nonce, la ruta única y el tiempo de creación correlacionan la sesión. No se enumera `/proc` para buscar el target o wineserver. Los IDs son efímeros, no identidad criptográfica.
+
+El runner consulta exactamente el PID esperado con **PROCESS_QUERY_LIMITED_INFORMATION**, sin SYNCHRONIZE, VM_READ, VM_WRITE, VM_OPERATION o CREATE_THREAD. Obtiene imagen con QueryFullProcessImageNameW (flags 0, formato Win32), creación con GetProcessTimes y liveness. Compara la ruta completa exacta con case-insensitive Windows, sin aceptar otro basename, alias o fallback. Conserva el handle de consulta y vuelve a comprobar liveness antes de llamar upstream; PID y creación reducen el riesgo de reutilización. FILETIME viaja como string decimal para conservar sus 64 bits en JSON/JavaScript. [OpenProcess](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocess), [QueryFullProcessImageNameW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew), [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes). **UPSTREAM VERIFIED**, documentación consultada 2026-10-01 UTC.
+
+```mermaid
+flowchart TD
+    N[Controller LXMI crea sesión y child propio] --> T[Target informa PID imagen y creación]
+    T --> R[Controller valida reporte y genera request fijo]
+    R --> Q[Runner consulta solo ese PID con derechos limitados]
+    Q --> V{PID imagen creación y sesión coinciden}
+    V -->|Sí| I[Una llamada al Inject oficial sobre el fixture]
+    V -->|No| B[BLOCKED_NOT_ATTEMPTED sin cargar loader]
+    I --> M[Verificar marker y nonce de DLL]
+```
+
+## HOST TEST — 2026-10-01 UTC
+
+Proton explícito `1790244902 experimental-11.0-20260924-x86_64`; tool y DLL constantes. No selección del Proton del juego.
+
+| Caso | Nonce | Windows PID target / runner | Consulta de identidad | Inject |
+|---|---|---|---|---|
+| Same-prefix | `30c291a7a26fc2d28ddce86250c6a91b` | 216 / 232 | Verified; imagen exacta y FILETIME `134352993149145620` coinciden | return 0; marker + nonce verified |
+| Cross-prefix | `21d517bf8100e5af6ed23f7a6e3d0f44` | 220 / 216 | PidNotVisible; OpenProcess retorna sin handle, Win32 87 | NO llamado; BLOCKED_NOT_ATTEMPTED |
+
+En cross-prefix la creación esperada era `134352994887417860`; no hubo imagen/tiempo observados porque OpenProcess falló. Win32 87 corresponde a ERROR_INVALID_PARAMETER; `PidNotVisible` es la clasificación del harness para ese fallo sobre este PID esperado, no una afirmación de imposibilidad universal. [Códigos Microsoft](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-). **UPSTREAM VERIFIED** para el nombre del código, **LOCAL OBSERVED** para la llamada fallida.
+
+Conclusión limitada: el target creado en prefix A no pudo ser direccionado inequívocamente desde el runner B probado. No hubo resultado de upstream Inject entre prefixes. No se abrió ningún proceso del juego, ni otro PID por fallback.
+
+## Separación de fronteras
+
+| Evidencia | Same prefix | Different prefixes | Alcance |
+|---|---|---|---|
+| Filesystem marker | Verified | Verified | 0.8.5.1, ambos contextos leen nonce mediante mapping observado Z |
+| Named event | Verified | No visible | Histórico 0.8.4, no se repite |
+| Named pipe | Verified | No visible, Win32 2 | Histórico 0.8.5, deja de ser requisito de binding |
+| PID numérico | PID local | COLLISION 220/220 observada previamente | No identidad global; test fake cubre colisión con runner |
+| Process identity query | Verified | PidNotVisible, Win32 87 | Preflight protocol 2 |
+| Direct Inject | Verified | BLOCKED_NOT_ATTEMPTED | Solo fixture propio, no game compatibility |
+
+Wine mantiene IDs Windows en la tabla de su server; el PID Linux es distinto. El source Wine fijado abajo y la colisión previa apoyan la interpretación de IDs dependientes del contexto. No se demuestra el endpoint wineserver exacto de estas sesiones. **UNKNOWN**: wineserver identity, requisito universal same-prefix, requisito del loader para ZZZ.
+
+## Modelos / seguridad
+
+CrossPrefixTargetIdentity conserva expected/observed PID, imagen, creación, nonce y resultado. DirectInjectPreflightGate rechaza todos los estados distintos de Verified y también mismatches de campos aun si el estado declarado fuera Verified. El runner aplica el gate antes de cargar el componente y el backend verifica el resultado. No escaneo global, memoria, ptrace, Hook ni caminos de juego. Request limitado a ruta privada de sesión y PID de su fixture.
+
+LoaderContextRequirements mantiene las propiedades generales en NotEstablished: el preflight bloqueado apoya una limitación de la topología probada pero no demuestra un requisito universal. GameContextJoinPlan sigue declarativo, sin executor y con blocker de identificación segura fuera del contexto. LoaderStrategyDecision = NoDecision, Hook guard intacto, GameRuntimePlan.selected = Unknown; gate de juego cerrado. Que el laboratorio cierre no autoriza entrar a compatdata/4162040 ni compatibilidad ZZMI/ZZZ.
+
+## Registro histórico previo
+
+La siguiente sección conserva el estado parcial y las pruebas pipe originales. Sus referencias a versión 0.8.4 y bloqueo pendiente son históricas; quedan reemplazadas por el cierre y preflight descritos arriba.
+
+---
+
 # LXMI 0.8.5 — Direct Inject Context Boundary
 
-**Estado: PARCIAL / BLOCKED.** Mismo prefix comprobado. El control cross-prefix se ejecutó, pero el guard de identidad impidió llamar `Inject`. No se ha demostrado una carga ni un error de esa API entre prefixes. Versión de aplicación conservada en **0.8.4**; no se inicia 0.9.
+**Estado histórico previo a 0.8.5.1: PARCIAL / BLOCKED.** Mismo prefix comprobado. El control cross-prefix se ejecutó, pero el guard de identidad impidió llamar `Inject`. No se ha demostrado una carga ni un error de esa API entre prefixes. Versión de aplicación conservada en **0.8.4**; no se inicia 0.9.
 
 ## Fuentes fijadas — UPSTREAM VERIFIED
 

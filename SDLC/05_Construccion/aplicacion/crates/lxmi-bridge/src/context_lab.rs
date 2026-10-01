@@ -320,6 +320,7 @@ pub(crate) fn invocation(
         timeout: Duration::from_secs(45),
         output_limit: BRIDGE_OUTPUT_LIMIT_BYTES,
         terminate_group_on_timeout: false,
+        ownership: None,
     }
 }
 pub(crate) fn execute(

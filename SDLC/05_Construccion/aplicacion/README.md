@@ -1,6 +1,6 @@
 # LXMI — aplicación
 
-**LXMI 0.8.4 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Una observación nativa de una ejecución manual de ZZZ identificó Proton Experimental para esa sesión, AppID `4162040`, compatdata coincidente y prefix observado. El mapping configurado por AppID no apareció en la fuente inspeccionada; el mapping global sigue separado. `GameRuntimePlan.selected` continúa `Unknown`, estrategia `NoDecision`, readiness `NeedsEvidence` y gate cerrado. Context Lab ejecuta solo peers propios con consentimiento, en prefixes privados de LXMI. No se inicia el juego ni se modifica Steam, ZZZ o su prefix. El observer sigue siendo read-only.
+**LXMI 0.8.5 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Una observación nativa de una ejecución manual de ZZZ identificó Proton Experimental para esa sesión, AppID `4162040`, compatdata coincidente y prefix observado. El mapping configurado por AppID no apareció en la fuente inspeccionada; el mapping global sigue separado. `GameRuntimePlan.selected` continúa `Unknown`, estrategia `NoDecision`, readiness `NeedsEvidence` y gate cerrado. Context Lab ejecuta solo peers propios con consentimiento, en prefixes privados de LXMI. No se inicia el juego ni se modifica Steam, ZZZ o su prefix. El observer sigue siendo read-only.
 
 En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para discovery y planificación de solo lectura. El workspace añadió en 0.5 `lxmi-xxmi`. No usa SQLite ni escribe en Steam, juegos, compatibility tools o prefixes; el import explícito sí conserva paquetes bajo el storage privado de LXMI.
 
@@ -212,3 +212,11 @@ Desde Tauri:
 El staging no sobrescribe un artefacto anterior diferente: informa `HelperHashMismatch` para revisión. Los bins locales de desarrollo pueden cambiar de hash entre builds MinGW por su timestamp PE; una futura actualización de artefactos requerirá un procedimiento explícito. No se alteran paquetes oficiales ni el runtime ZZMI. Las sesiones usan directories nuevos por nonce y permiten inspección posterior; los prefixes de laboratorio son regenerables. No se elimina ni señaliza wineserver globalmente.
 
 Los host tests de `lxmi-bridge/tests/context_host.rs` están ignorados normalmente. Para una ejecución explícita se requieren `LXMI_RUN_CONTEXT_HOST_TEST=YES`, `LXMI_HOST_MANAGED_ROOT`, `LXMI_CONTEXT_BUILD_ROOT`, `LXMI_HOST_PROTON_SCRIPT` y `LXMI_HOST_STEAM_ROOT`. `LXMI_CONTEXT_MODE=different` selecciona el control; sin esa variable usa mismo prefix. `cargo test -p lxmi-bridge --test context_host -- --ignored --nocapture` ejecuta únicamente el fixture elegido; no lo uses con el prefix del juego. [Resultados](../../06_Verificacion/verificacion_0_8_4.md).
+
+## LXMI 0.8.5 — Safe target binding
+
+Advanced → Context Lab mantiene casos same-prefix y cross-prefix separados. Target protocol 2 publica Windows PID, imagen de ruta única por nonce y creación FILETIME; controller correlaciona child propio y runner consulta solo ese PID con query limitada. Solo Verified habilita el Inject oficial sobre la DLL propia, sin pipe requerido entre prefixes.
+
+Same-prefix: identidad Verified, Inject 0, marker PASS. Cross-prefix: PidNotVisible Win32 87, BLOCKED_NOT_ATTEMPTED. Filesystem visible no prueba proceso visible. Loader strategy NoDecision y game gate cerrado; no writes a Steam/ZZZ/4162040 ni Hook.
+
+Los Windows fixtures se compilan con `tools/lxmi-loader-lab/build.sh`; tests normales offline y host opt-in separados. [Verificación 0.8.5](../../06_Verificacion/verificacion_0_8_5.md).

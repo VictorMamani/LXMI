@@ -185,6 +185,7 @@ impl ValidatedLoaderExperimentPlan {
             timeout: Duration::from_secs(self.report.timeout_seconds),
             output_limit: LOADER_OUTPUT_LIMIT,
             terminate_group_on_timeout: true,
+            ownership: None,
         }
     }
 }

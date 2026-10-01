@@ -175,7 +175,7 @@ CERRADO para laboratorio. [Verificación](../06_Verificacion/verificacion_0_8_4.
 
 0.9 permanece sin autorización. Hook bloqueado; Direct Inject fixture no se promueve a compatibilidad ZZMI/ZZZ.
 
-## LXMI 0.8.5 — estado PARCIAL / BLOCKED
+## LXMI 0.8.5 — estado histórico previo a 0.8.5.1: PARCIAL / BLOCKED
 
 - [x] Mismo prefix: Direct Inject real y marker/nonce de fixture propios.
 - [x] Different-prefix: control con los mismos binarios/tool; filesystem visible y pipe identity no visible, resultado explícito.
@@ -188,3 +188,13 @@ CERRADO para laboratorio. [Verificación](../06_Verificacion/verificacion_0_8_4.
 - [ ] Requisitos same-prefix/wineserver del futuro loader siguen NotEstablished. ZZZ compatibility UNKNOWN; LoaderStrategy NoDecision; gate cerrado.
 
 No iniciar 0.9 ni ejecutar helpers en compatdata/4162040. Si se necesita otra estrategia de contexto, primero documentar su identidad y alcance, sin debilitar la regla fixture-only.
+
+## Cierre LXMI 0.8.5 mediante 0.8.5.1
+
+- [x] Protocolo self identity con imagen de sesión y creación; child propio correlacionado sin enumeración.
+- [x] Query limitada de un solo PID y gate estricto backend/runner; fixtures collision, image/time/nonce mismatch, denied/exited/not-visible.
+- [x] HOST TEST same-prefix Verified + Inject PASS y cross-prefix PidNotVisible Win32 87, BLOCKED_NOT_ATTEMPTED concluyente. La API cross-prefix no se intenta, no queda requisito pendiente para cerrar el lab.
+- [x] Tauri nativo muestra ambas identidades y motivo exacto; calidad y versión producto 0.8.5.
+- [ ] Requisitos universales de prefix/wineserver, loader compatibility y join de contexto real siguen UNKNOWN/NotEstablished; NoDecision y gate cerrado.
+
+No se inicia 0.8.6 ni 0.9; ningún helper ejecutado en 4162040. [Verificación final](../06_Verificacion/verificacion_0_8_5.md).

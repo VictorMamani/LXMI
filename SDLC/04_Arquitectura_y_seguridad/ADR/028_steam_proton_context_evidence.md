@@ -59,3 +59,9 @@ El wineserver se mantiene Unknown como identidad/endpoint: UID y WINEPREFIX coin
 ### Seguimiento 0.8.5 — PID y contexto no se colapsan
 
 La identidad de tool, compatdata, prefix, mapping, wineserver y PID sigue independiente. Un PID Windows observado en un prefix no es una identidad global reutilizable en otro: el control tuvo PID 220 para target y runner simultáneamente en contexts distintos. El handshake de pipe precede cualquier acceso query-only al target y la llamada upstream. La DLL se verificó únicamente en el fixture same-prefix; no se usó el prefix del juego. GameContextJoinPlan incorpora evidencia del fixture como dato declarativo, con guard y blockers intactos. Cross-prefix Inject permanece **NO COMPROBADO**.
+
+### Extensión 0.8.5.1 — binding explícito, sin join real
+
+El pipe dejó de ser requisito de identidad: self report de fixture propio con nonce/ruta por sesión/Windows PID/FILETIME se correlaciona con el child Linux del launcher y se consulta ese único PID desde el runner con query limitada. Same-prefix verifica imagen y creación y permite Inject; en cross-prefix OpenProcess falla Win32 87 sin handle y se bloquea antes de cargar upstream. Esto reduce incertidumbre de la topología fixture; no prueba imposibilidad universal ni endpoint wineserver.
+
+Se preserva PID 220 simultáneo de contexts separados como evidencia histórica y regresión de colisión. Windows PID y Linux launcher PID siguen distintos. La consulta no enumera ni descubre procesos, y no sustituye observación de Steam por selección del planner. Requisitos generales quedan NotEstablished, GameContextJoinPlan declarativo, ADR-027 NoDecision y gate del juego cerrado. [Cierre verificado](../../06_Verificacion/verificacion_0_8_5.md).

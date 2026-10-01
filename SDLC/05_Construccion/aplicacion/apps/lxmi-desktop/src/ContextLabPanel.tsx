@@ -33,12 +33,25 @@ type InjectResult = {
   outcome: string;
   nonce: string;
   marker_verified: boolean;
+  target_launcher_identity: {
+    pid: number;
+    start_time_ticks: number | null;
+  } | null;
   target: { pid: number; path_readable: boolean; wine_prefix: string };
   injector: {
     pid: number;
     target_pid: number;
     path_readable: boolean;
     identity_bound: boolean;
+    target_identity: {
+      result: string;
+      expected_windows_pid: number;
+      observed_windows_pid: number;
+      expected_image: string;
+      observed_image: string;
+      expected_creation_time: string;
+      observed_creation_time: string;
+    };
     inject_called: boolean;
     inject_code: number;
     windows_error: number;
@@ -252,7 +265,9 @@ export default function ContextLabPanel() {
         <p>
           Solo ejecuta programas Windows propios de LXMI en prefixes Proton
           aislados. No interactúa con Steam ni juegos. El PID Windows debe
-          verificarse por un pipe con nonce antes de llamar al loader oficial.
+          vincularse con la ruta exacta de esta sesión, su fecha de creación y
+          el nonce antes de llamar al loader oficial. Solo se consulta el PID
+          del target propio; no se enumeran procesos.
         </p>
         <label>
           <input
@@ -321,9 +336,39 @@ export default function ContextLabPanel() {
                     <div>
                       <dt>Identidad antes de Inject</dt>
                       <dd>
+                        {result.injector.target_identity.result} ·{" "}
                         {result.injector.identity_bound
-                          ? "Verificada por pipe y PID del servidor"
-                          : "BLOCKED · target no verificable en este contexto"}
+                          ? "VERIFIED"
+                          : "BLOCKED_NOT_ATTEMPTED"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Imagen exacta · esperada / consultada</dt>
+                      <dd className="path-value">
+                        {result.injector.target_identity.expected_image}
+                      </dd>
+                      <dd className="path-value">
+                        {result.injector.target_identity.observed_image ||
+                          "No disponible"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Creación FILETIME · esperada / consultada</dt>
+                      <dd>
+                        {result.injector.target_identity.expected_creation_time}{" "}
+                        /{" "}
+                        {result.injector.target_identity.observed_creation_time}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>
+                        Child Linux del launcher Proton · distinto del PID
+                        Windows
+                      </dt>
+                      <dd>
+                        {result.target_launcher_identity
+                          ? `${result.target_launcher_identity.pid} · start ticks ${result.target_launcher_identity.start_time_ticks ?? "UNKNOWN"}`
+                          : "UNKNOWN"}
                       </dd>
                     </div>
                     <div>
@@ -357,10 +402,16 @@ export default function ContextLabPanel() {
                     ))}
                   </ul>
                   <p>Nonce: {result.nonce}</p>
+                  {!result.injector.inject_called && (
+                    <p>
+                      Injection was not attempted because the Windows PID could
+                      not be bound unambiguously to LXMI's test target from this
+                      Wine context.
+                    </p>
+                  )}
                   <p>
-                    Un handshake inaccesible bloquea Inject; no es un error
-                    observado de la API upstream. Filesystem compartido no
-                    demuestra acceso al proceso.
+                    Filesystem compartido no demuestra acceso al proceso. Un
+                    bloqueo de identidad no es un fallo observado de Inject.
                   </p>
                 </>
               )}

@@ -1,6 +1,68 @@
+# Verificación final 0.8.5.1 — cierre del producto 0.8.5
+
+**COMPROBADO: 0.8.5 CERRADO para el experimento fixture.** Cross-prefix **BLOCKED_NOT_ATTEMPTED**, resultado concluyente y seguro admitido por 0.8.5.1. No se afirma compatibilidad ZZZ ni fallo upstream Inject. Versión producto 0.8.5.
+
+## HOST TEST
+
+Tool explícita Proton Experimental `1790244902 experimental-11.0-20260924-x86_64`, MinGW-w64, protocol 2 del target/runner, protocol 1 del marker DLL. Dos prefixes privados, sin Steam/game prefix. Resultados CLI detallados en [investigación](../01_Descubrimiento/direct_inject_context_boundary_0_8_5.md).
+
+- Same-prefix nonce `30c291a7a26fc2d28ddce86250c6a91b`: target 216 / runner 232; consulta image/time/PID Verified; Inject 0; marker + nonce verified.
+- Cross-prefix nonce `21d517bf8100e5af6ed23f7a6e3d0f44`: target 220 / runner 216; OpenProcess query-only falla Win32 87; PidNotVisible; API no llamada y loader no cargado. No fallback.
+- Ambos leen filesystem marker con nonce. Wineserver identity UNKNOWN; no se enumera procesos para resolverla.
+
+## Native Tauri — COMPROBADO
+
+Ventana real `lxmi-desktop` iniciada por `npm run tauri:dev`; controles nativos por AT-SPI, no browser Vite. Scan Steam read-only, Context Lab, elegir Proton explícito, aceptar fixture y ejecutar ambos botones. Resultados retenidos simultáneamente y warning exacto visible.
+
+- Same-prefix UI nonce `776711a951e92548113186b901834b2c`: Windows target 224 / runner 240; imagen completa coincide, FILETIME `134352995965900130` esperado y consultado; identidad Verified; Inject 0; marker PASS. Linux child launcher 836907, start ticks 8650454 (no PID Unix del target).
+- Cross-prefix UI nonce `7939a1259c697a06a43b6b9139ec0c23`: target 216 / runner 220; PidNotVisible; Win32 87; no imagen/tiempo consultados; **BLOCKED_NOT_ATTEMPTED**, no Inject. Linux launcher 837639, start ticks 8651794.
+- UI expone rutas exactas, creación, Windows PID, Linux launcher y motivo de no intento; filesystem legible en ambos, wineserver UNKNOWN. Readiness evaluado declarativamente: NotReady/gate not_ready, juego no lanzado, Proton selected Unknown, loader NoDecision, Hook blocked. Input de packages nulo en ese panel representa managed_runtime Missing en la evaluación, no ausencia probada en disco.
+
+## FIXTURE / tests offline
+
+254 passed, 0 failed, 10 ignored. Siete tests adicionales respecto al checkpoint: gate con PID/image/time correctos, wrong image/session path, creación distinta, nonce distinto, todos los estados no Verified (incluidos collision/denied/exited/not-visible), FILETIME inválido y parser de start ticks propio. Fake cross-prefix modela PID 220 simultáneo para target y runner con imagen del runner; no llama Inject. Regresiones bridge, loader/context labs y observer siguen verdes. Tests normales sin red ni /proc real para estos escenarios; host ignorados opt-in ejecutados separadamente.
+
+## Binarios de este preflight
+
+| Componente PE x86-64 | SHA-256 |
+|---|---|
+| Target | `0e8b13fe6425c9592b76143b1a8a18fec4cf3271a7c0e49275bcc422fc6901f8` |
+| Context runner | `b8f33a8503d564c423a57917bfcd716d056ff77d6ffe9ddf93c13b5a141cb6da` |
+| Test DLL | `295bc16b4198c8ac1afdfd3dcf779f3d655bba90d9d64171deb934bab0701d43` |
+| 3dmloader.dll oficial | `44965ee51786db44fb4252671f356426ca7d879e6f7e8436b27d68e13237b0cf` |
+
+Componente upstream de XXMI Libraries v1.1.7, release ID 387957029, commit 6bf6a746a198c82fb34dbd336cac7ad8e0f4ddc9; package/component signatures revalidadas por servicio existente antes del staging. Hash propio es integridad, no autenticidad upstream. No se redistribuyen bins oficiales en Git.
+
+## Quality / seguridad — COMPROBADO
+
+Rust fmt/check/Clippy -D warnings/tests workspace, frontend typecheck/lint/format:check/build, Windows fixture build MinGW y bridge helper cross-build release. Diff check y revisión final de versión se realizan al cerrar. No SYNCHRONIZE/VM permissions en preflight, process enumeration, Hook, debugger, Steam launch, acceso al PID ZZZ, game-prefix execution o custom injector. Query exclusiva del PID fixture.
+
+Baseline antes/después: size/mtime_ns/inode de EXE ZZZ, directorio pfx4162040, system.reg, user.reg, config.vdf **sin cambios**. No hash del juego entero. Packages/managed runtime originales solo se leen y se revalidan; únicamente nuevo staging/tests privados recibe writes. Proton escribe sus prefixes aislados y puede dejar wineserver temporal; no se mata wineserver. Cierre de Tauri/Vite propio tras validación, juego no controlado.
+
+## UNKNOWN / NO COMPROBADO
+
+Cross-prefix operación Inject (deliberadamente no autorizada por gate fallido); endpoint wineserver exacto; requisito universal del loader; compatibilidad ZZMI/ZZZ; join del prefix real. No se inicia 0.8.6/0.9. Branch main, checkpoint 16f0c56 conservado; cambios de este incremento sin commit ni push.
+
+## Confirmación con versión final 0.8.5
+
+La repetición tras el bump ejecutó ambos controles en la ventana nativa y re-evaluó readiness sin ejecutar el juego:
+
+| Caso | Nonce | Windows PID target / runner | Identidad | API |
+|---|---|---|---|---|
+| Same-prefix | `218c7e91f6fa0774307c6c8f7fba17b4` | 220 / 236 | Verified; FILETIME `134352998381247030` e imagen exacta coinciden | Inject 0, marker + nonce PASS |
+| Cross-prefix | `4b7fd74cdecc7b630c90734d28cace7b` | 220 / 216 | PidNotVisible; Win32 87; imagen/creación consultadas no disponibles | BLOCKED_NOT_ATTEMPTED |
+
+Tauri/Vite propios cerrados después de la revisión. Baseline protegido volvió a coincidir. Todos los quality gates pasaron sobre metadata producto 0.8.5, incluido `git diff --check`. Rust `rustc 1.98.1 (48a229cea 2026-09-01)`, MinGW `x86_64-w64-mingw32-gcc (GCC) 13-win32`; fixtures compilados con `-O2 -Wall -Wextra -Werror`, Windows x86-64. Helper Rust release target `x86_64-pc-windows-gnu` enlazado con MinGW. No commit/push.
+
+## Registro histórico del estado parcial
+
+Las secciones siguientes documentan la implementación previa por pipe; el estado parcial y versión 0.8.4 son históricos, reemplazados por el cierre de arriba.
+
+---
+
 # Verificación LXMI 0.8.5 — Direct Inject Context Boundary
 
-**Estado: PARCIAL / BLOCKED**, producto conserva versión **0.8.4**. No se declara cerrado ni se inicia 0.9.
+**Estado histórico previo a 0.8.5.1: PARCIAL / BLOCKED**, producto conserva versión **0.8.4**. No se declara cerrado ni se inicia 0.9.
 
 ## COMPROBADO — implementación
 
