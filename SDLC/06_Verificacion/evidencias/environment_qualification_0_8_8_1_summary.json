@@ -1,0 +1,62 @@
+{
+  "current_environment": {
+    "runtime_kind": "direct_proton",
+    "steam_linux_runtime": null,
+    "pressure_vessel": null,
+    "proton_tool": "1790244902 experimental-11.0-20260924-x86_64",
+    "environment": {},
+    "mounts": [
+      "Direct executor uses host Linux environment, without Steam Runtime container"
+    ],
+    "provenance": [
+      "Current implemented real-prefix executor is DirectProton; its font mutations remain unqualified",
+      "Environment values are intentionally not reconstructed from a fixture or copied from Steam/ZZZ; concrete private-fixture allowlist is recorded in the linked matrix."
+    ],
+    "request_transport": "stdin",
+    "qualification": "unqualified"
+  },
+  "fixtures": [
+    {
+      "strategy": "direct",
+      "qualification": "unqualified",
+      "helper_successful_runs": 2,
+      "pending_sections": [],
+      "font_differences": [
+        "Run 1: +135 entries and 368 path rewrites per font table; ENVIRONMENT SPECIFIC",
+        "Run 2: font tables stable"
+      ]
+    },
+    {
+      "strategy": "container",
+      "qualification": "steam_runtime_qualified",
+      "helper_successful_runs": 2,
+      "pending_sections": [],
+      "font_differences": [
+        "Runs 1 / 2: font tables stable relative to controlled initial prefix"
+      ]
+    },
+    {
+      "strategy": "container_run_wrapper",
+      "qualification": "steam_runtime_qualified",
+      "helper_successful_runs": 2,
+      "pending_sections": [],
+      "font_differences": [
+        "Runs 1 / 2: font tables stable relative to controlled initial prefix"
+      ]
+    }
+  ],
+  "evidence_sha256": "0797a5ed44ea490ad53b5ac582d80aa77360f57cfe3d25a9ac2e81c15e509403",
+  "evidence_source": "environment_qualification_0_8_8_1.json · private fixtures only · historical host evidence",
+  "real_prefix_entry": "blocked",
+  "blocker": "linux_runtime_environment_unqualified",
+  "limitations": [
+    "Qualified matrix uses a full integrity-verified private Proton mirror, not the installed script: locks/caches stay in LXMI storage. Installed tool selected metadata remained unchanged during all six fixture runs.",
+    "SteamRuntimeQualified applies to the tested private harmless-helper recipe and pinned build; it does not prove historical ZZZ environment equality or game compatibility.",
+    "The real-prefix executor remains DirectProton. Container execution is restricted by backend to fresh LXMI fixture roots; a qualification receipt is not real-prefix authorization.",
+    "Any future real entry requires a separate approved container integration, immediate inactive/build/identity/backup checks and fresh native Tauri consent.",
+    "NetworkCards saved-hive omission is explained by upstream volatile NDIS children and registry serialization; live-key disappearance was not tested.",
+    "ContainerId changes are device/PnP volatility, not Linux container-session IDs. No functional harmlessness or wineserver-lifetime guarantee.",
+    "Selected metadata/hives/mappings and selected mounts only; no whole-prefix after-inventory or complete Steam environment copied.",
+    "Font classification recognizes host fonts, TeX fonts under /usr/share/texmf/fonts, and doubled Windows separators. Exact unknown fields remain blocking."
+  ]
+}

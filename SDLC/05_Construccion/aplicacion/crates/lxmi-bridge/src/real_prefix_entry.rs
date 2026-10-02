@@ -20,13 +20,13 @@ pub enum RealPrefixEntryState {
 }
 
 pub const HARMLESS_ENTRY_ENVIRONMENT_BLOCKER: &str =
-    "Linux environment is not qualified for another real-prefix entry. The fixture reproduced font-table changes when switching between Steam Linux Runtime and direct Proton, and device ContainerId changes also occurred on repeated execution. No automatic retry or restore; the original UnexpectedMutation remains unchanged.";
+    "The implemented real-prefix executor uses direct Proton and remains unqualified after the stopped UnexpectedMutation. Steam Runtime qualification applies only to private fixture recipes; no approved real-prefix container executor is available. No automatic retry or restore; fresh consent or baseline does not bypass this guard.";
 
 /// The only implemented real-prefix executor is direct Proton. Its Linux environment
 /// and mutation policy have not been qualified after the stopped host experiment.
 /// Neither fresh consent nor a new baseline approves that environment.
 pub fn require_qualified_harmless_entry_environment() -> Result<(), RealPrefixEntryState> {
-    Err(RealPrefixEntryState::LinuxEnvironmentUnqualified)
+    require_qualified_environment(EnvironmentQualification::Unqualified)
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

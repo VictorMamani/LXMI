@@ -287,3 +287,16 @@ Source pinned97d626e (stable/package2.5.1); ZZMI usa hook, no prueba Direct Inje
 - [ ] Demostrar equivalencia suficiente del entorno propuesto y preservar consentimiento fresco independiente. No ejecutar 0.8.9 mientras0.8.8 siga BLOCKED; versión0.8.7.
 
 Ver ../01_Descubrimiento/entorno_linux_fixture_0_8_8.md. No loader/game execution, restore real, commit ni push en este diagnóstico.
+
+## LXMI 0.8.8.1 — calificación del entorno Linux
+
+- [x] Modelar Proton directo, Steam Runtime container y wrapper `run` soportado; no reconstruir/copiar environment de Steam o ZZZ.
+- [x] Dos runs por estrategia desde clones privados completos de estado inicial idéntico, verificado. Helper/nonce/marker/hash/exit PASS, sin loader.
+- [x] Usar Proton privado verificado: locks dentro de LXMI, bytecode desactivado; rechazar ejecutar tool instalado en este harness. Conservar evidencia preliminar y límites históricos.
+- [x] Clasificar Fonts/TeX, Device ContainerId, NetworkCards omitido del hive y claves Wow6432Node RunServices/RunServicesOnce vacías. UNKNOWN permanece bloqueante, sin wildcards de subtree.
+- [x] Transport request privado 0600/fresh nonce/hash/schema/age/no-symlink/bounds/one-shot descriptor/cleanup, sin más poder para el helper.
+- [x] Ambas recetas container: SteamRuntimeQualified solo para fixture privado/build/payload/cobertura fijados; DirectProton: Unqualified.
+- [x] Mantener backend real bloqueado, exact code `linux_runtime_environment_unqualified`, UI con evidencia histórica, límites y Run deshabilitado.
+- [ ] Integrar de forma revisable un executor real con receta calificada; el actual sigue DirectProton. No se habilita por un receipt privado ni frontend override.
+- [ ] Tras aprobación de esa integración, preflight inmediato y consentimiento nativo fresco para UNA entry inocua real con ZZZ cerrado; clasificar before/after sin retry ni restore automático.
+- [ ] Cerrar 0.8.8 y versionar solo si ese resultado real pasa. 0.8.9/0.9 no iniciados ni autorizados por este subincremento.

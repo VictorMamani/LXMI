@@ -1,6 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+type EnvironmentPanel = {
+  current_environment: { qualification: string; runtime_kind: string };
+  fixtures: {
+    strategy: string;
+    qualification: string;
+    helper_successful_runs: number;
+    font_differences: string[];
+    pending_sections: string[];
+  }[];
+  evidence_sha256: string;
+  evidence_source: string;
+  real_prefix_entry: string;
+  blocker: string;
+  limitations: string[];
+};
 type Review = {
   review_token: string;
   consent_text: string;
@@ -40,6 +55,24 @@ type Result = {
   warnings: string[];
 };
 export default function RealPrefixEntryPanel() {
+  const [environment, setEnvironment] = useState<EnvironmentPanel | null>(null);
+  const [environmentError, setEnvironmentError] = useState<string | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    void invoke<EnvironmentPanel>("inspect_linux_environment_qualification")
+      .then((value) => {
+        if (mounted) setEnvironment(value);
+      })
+      .catch((cause: unknown) => {
+        if (mounted) setEnvironmentError(String(cause));
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  // Read-only qualification evidence never grants execution; backend also enforces this.
+  const environmentBlocked =
+    environment?.real_prefix_entry !== "eligible_for_review";
   const [review, setReview] = useState<Review | null>(null);
   const [consent, setConsent] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
@@ -92,6 +125,67 @@ export default function RealPrefixEntryPanel() {
         LXMI y lee un marker externo; no ejecuta el juego ni un loader. La
         restauración del prefix real no está probada.
       </p>
+      <h4>Linux runtime environment</h4>
+      <p role="status">
+        Current: {environment?.current_environment.qualification ?? "UNKNOWN"} ·
+        Real prefix entry: Blocked
+      </p>
+      <p>
+        La calificación se basa en fixtures privados. Este panel no ejecuta
+        Proton ni revalida el prefix real.
+      </p>
+      {environmentError && (
+        <p role="alert">
+          No se pudo leer la evidencia de calificación. La prueba real sigue
+          bloqueada: {environmentError}
+        </p>
+      )}
+      {environment ? (
+        <>
+          <p>Reason: {environment.blocker}</p>
+          {environment.fixtures.map((fixture) => (
+            <div key={fixture.strategy}>
+              <h5>{fixture.strategy}</h5>
+              <p>
+                {fixture.qualification} · Helper:{" "}
+                {fixture.helper_successful_runs} successful fixture runs
+              </p>
+              <ul>
+                {fixture.font_differences.map((value) => (
+                  <li key={value}>{value}</li>
+                ))}
+              </ul>
+              <p>Pending differences:</p>
+              {fixture.pending_sections.length ? (
+                <ul>
+                  {fixture.pending_sections.map((section) => (
+                    <li key={section}>{section} · UNKNOWN</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>
+                  No unclassified registry sections in these runs; other
+                  coverage limits still apply.
+                </p>
+              )}
+            </div>
+          ))}
+          <p>
+            Evidence: {environment.evidence_source} · SHA-256{" "}
+            {environment.evidence_sha256}
+          </p>
+          <ul>
+            {environment.limitations.map((value) => (
+              <li key={value}>{value}</li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p>
+          Consultando evidencia de fixtures; la entrada real permanece
+          bloqueada.
+        </p>
+      )}
       <button disabled={busy || attempted} onClick={() => void prepare()}>
         Review Harmless Prefix Entry
       </button>
@@ -105,6 +199,7 @@ export default function RealPrefixEntryPanel() {
             : "Helper: Not run · consent required"}
       </p>
       {error && <p role="alert">{error}</p>}
+      {!review && <button disabled>Run Harmless Prefix Entry Test</button>}
       {review && (
         <>
           <dl>
@@ -148,7 +243,7 @@ export default function RealPrefixEntryPanel() {
           </label>
           <div className="actions">
             <button
-              disabled={busy || !consent || attempted}
+              disabled={busy || !consent || attempted || environmentBlocked}
               onClick={() => void run()}
             >
               Run Harmless Prefix Entry Test

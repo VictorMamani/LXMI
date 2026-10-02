@@ -460,3 +460,11 @@ Source pinned97d626e (stable/package2.5.1); ZZMI usa hook, no prueba Direct Inje
 - Corrige transporte del ensayo: pressure-vessel descarta stdin; solicitud privada hash-verificada y shim Linux con argv fijo, mismo helper/protocolo y executor. Límite de captura y timeout explícitos, sin shell, PID ni path input de frontend.
 - Añade guard LinuxEnvironmentUnqualified al dominio y Tauri Review/Run: no nueva entrada real por simple restart/baseline/consent. UI nativa muestra código y motivo. Mantiene STOP original y NoDecision.
 - Evidencia redactada durable y discovery entorno_linux_fixture_0_8_8.md; 304 tests PASS/11ignored y todos los quality gates PASS. Aplicación0.8.7; fase0.8.8 BLOCKED, no0.8.9/0.9. Sin commit/push.
+
+## LXMI 0.8.8.1 — Linux Runtime Environment Qualification (2026-10-02)
+
+- **COMPROBADO:** modelos DirectProton/container, calificación explícita, clasificación estrecha de registry/metadata, transporte privado one-shot, clones equivalentes y guards de paths/env/tool. Se reutilizan helper/executor y copia por descriptores; sin dependencias nuevas ni versión nueva.
+- **HOST TEST:** seis helpers correctos desde tres clones privados equivalentes, con Proton privado verificado. Ambos wrappers Steam Runtime conservan Fonts; Direct introduce fuentes host/TeX y reescribe rutas. Device ContainerId clasificado como volatilidad PnP; NetworkCards como omisión de parent vacío en hive; secciones adicionales identificadas: Wow6432Node RunServices/RunServicesOnce creadas vacías.
+- **QUALIFIED:** receta container privada fijada, no compatibilidad de juego ni autorización de prefix real. Matrices preliminares con tool instalado quedan preservadas y no calificadas tras identificar escrituras de `dist.lock`; el harness final rechaza ese uso.
+- **BLOCKED:** versión 0.8.7; 0.8.8 PARTIAL. Executor real DirectProton mantiene `linux_runtime_environment_unqualified`. Panel nativo presenta estado/código/evidencia sin botón para bypass. No nueva entrada real, loader, restore,0.8.9/0.9, commit ni push.
+- Ver [investigación](../01_Descubrimiento/entorno_linux_fixture_0_8_8.md) y [verificación](../06_Verificacion/verificacion_0_8_8.md) para matriz, fuentes y validaciones finales.

@@ -7,6 +7,8 @@ mod context_lab;
 mod context_reentry;
 mod direct_context;
 mod fixture_environment;
+mod linux_environment;
+pub use linux_environment::*;
 mod game_prefix;
 pub use fixture_environment::*;
 mod registry_diagnosis;

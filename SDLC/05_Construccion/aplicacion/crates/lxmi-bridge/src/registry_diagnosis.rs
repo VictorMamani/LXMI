@@ -254,6 +254,127 @@ pub fn diagnose_registry_change(
     Ok(report)
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct FixtureRegistrySectionMutation {
+    pub section: String,
+    pub changed_fields: Vec<String>,
+    pub before_sha256: Option<String>,
+    pub after_sha256: Option<String>,
+    pub classification: super::PrefixMutationClassification,
+    pub evidence: String,
+}
+/// Fixture diagnostics only: concrete section/field names, hashes instead of values.
+/// Unknown fields within known sections remain Unknown; no section-wide exclusion.
+pub fn diagnose_fixture_registry_sections(
+    before: &[u8],
+    after: &[u8],
+) -> Result<Vec<FixtureRegistrySectionMutation>, RegistryDiagnosisError> {
+    use super::PrefixMutationClassification as C;
+    let old = parse(before)?;
+    let new = parse(after)?;
+    let mut report = Vec::new();
+    for key in old.keys().chain(new.keys()).collect::<BTreeSet<_>>() {
+        let a = old.get(key);
+        let b = new.get(key);
+        if a == b {
+            continue;
+        }
+        let empty = Values::new();
+        let fields: Vec<String> = a
+            .unwrap_or(&empty)
+            .keys()
+            .chain(b.unwrap_or(&empty).keys())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .filter(|n| a.and_then(|v| v.get(*n)) != b.and_then(|v| v.get(*n)))
+            .cloned()
+            .collect();
+        let (classification, evidence) = if is_fonts(key)
+            && !fields.is_empty()
+            && fields.iter().all(|field| {
+                [a.and_then(|v| v.get(field)), b.and_then(|v| v.get(field))]
+                    .into_iter()
+                    .flatten()
+                    .all(|v| supported_font_path(v))
+            }) {
+            (C::EnvironmentSpecific, "Wine win32u/font.c and pressure-vessel host font mounts; verify against controlled fixture counts")
+        } else if is_device(key)
+            && a.is_some()
+            && b.is_some()
+            && fields == ["\"ContainerId\""]
+            && [a.unwrap(), b.unwrap()].iter().all(|v| {
+                v.get("\"ContainerId\"")
+                    .and_then(|s| string_value(s))
+                    .is_some_and(|s| valid_guid(&s))
+            })
+        {
+            (C::VolatileExpected, "Wine adea6cba winebus.sys/main.c make_unique_container_id uses QueryPerformanceCounter; ntoskrnl PnP writes SPDRP_BASE_CONTAINERID. Fixture scope only; no functional harmlessness claim")
+        } else if a.is_none()
+            && b.is_some_and(Values::is_empty)
+            && matches!(
+                key.as_str(),
+                "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\RunServices"
+                    | "Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce"
+            )
+        {
+            (C::StableExpected, "Wine adea6cba wineboot ProcessRunKeys/process_run_key creates the exact empty 32-bit keys; only absent-to-empty creation, never values, is classified")
+        } else if key == "Software\\Microsoft\\Windows NT\\CurrentVersion\\NetworkCards"
+            && a.is_some_and(Values::is_empty)
+            && b.is_none()
+        {
+            (C::StableExpected, "DERIVED: Wine adea6cba NDIS add_key creates volatile children; server save_subkeys omits an empty parent with children then skips volatile children. Saved-hive omission does not prove live registry removal. Only this exact empty-key removal is classified")
+        } else {
+            (C::Unknown, "No reviewed per-field mutation rule; exact section retained and blocks qualification")
+        };
+        let hash = |v: Option<&Values>| {
+            v.map(|v| {
+                format!(
+                    "{:x}",
+                    Sha256::digest(serde_json::to_vec(v).expect("string map"))
+                )
+            })
+        };
+        report.push(FixtureRegistrySectionMutation {
+            section: key.clone(),
+            changed_fields: fields,
+            before_sha256: hash(a),
+            after_sha256: hash(b),
+            classification,
+            evidence: evidence.into(),
+        });
+    }
+    Ok(report)
+}
+fn supported_font_path(value: &str) -> bool {
+    string_value(value).is_some_and(|path| {
+        // Wine/fontconfig serialized paths can contain doubled Windows separators.
+        let path = path.replace("\\\\", "\\");
+        (path.starts_with("Z:\\run\\host\\fonts\\")
+            || path.starts_with("Z:\\run\\host\\local-fonts\\")
+            || path.starts_with("Z:\\usr\\share\\fonts\\")
+            || path.starts_with("Z:\\usr\\local\\share\\fonts\\")
+            || path.starts_with("Z:\\usr\\share\\texmf\\fonts\\"))
+            && path.rsplit('.').next().is_some_and(|ext| {
+                matches!(
+                    ext.to_ascii_lowercase().as_str(),
+                    "ttf" | "ttc" | "otf" | "fon" | "pfb" | "pfa"
+                )
+            })
+    })
+}
+fn valid_guid(s: &str) -> bool {
+    let Some(s) = s.strip_prefix('{').and_then(|s| s.strip_suffix('}')) else {
+        return false;
+    };
+    s.len() == 36
+        && s.bytes().enumerate().all(|(i, b)| {
+            if [8, 13, 18, 23].contains(&i) {
+                b == b'-'
+            } else {
+                b.is_ascii_hexdigit()
+            }
+        })
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,6 +385,86 @@ mod tests {
             &format!("{:x}", Sha256::digest(a)),
             &format!("{:x}", Sha256::digest(b)),
         )
+    }
+
+    #[test]
+    fn exact_tex_font_paths_and_doubled_separators_are_environment_specific() {
+        use super::super::PrefixMutationClassification as C;
+        let empty = b"WINE REGISTRY Version 2\n";
+        let changed = br#"WINE REGISTRY Version 2
+[Software\\Wine\\Fonts\\External Fonts] 1
+"TeX"="Z:\\\\usr\\\\share\\\\texmf\\\\fonts\\\\opentype\\\\fixture.otf"
+"Regular"="Z:\\usr\\share\\fonts\\fixture.ttf"
+"#;
+        assert_eq!(
+            diagnose_fixture_registry_sections(empty, changed).unwrap()[0].classification,
+            C::EnvironmentSpecific
+        );
+        let unknown = String::from_utf8(changed.to_vec())
+            .unwrap()
+            .replace("texmf", "unrelated");
+        assert_eq!(
+            diagnose_fixture_registry_sections(empty, unknown.as_bytes()).unwrap()[0]
+                .classification,
+            C::Unknown
+        );
+    }
+    #[test]
+    fn empty_run_services_initialization_does_not_allow_commands_or_unknown_font_fields() {
+        let empty = b"WINE REGISTRY Version 2\n";
+        let created=b"WINE REGISTRY Version 2\n[Software\\\\Wow6432Node\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\RunServices] 1\n";
+        assert_eq!(
+            diagnose_fixture_registry_sections(empty, created).unwrap()[0].classification,
+            super::super::PrefixMutationClassification::StableExpected
+        );
+        let nonempty = [created.as_slice(), b"\"command\"=\"never execute\"\n"].concat();
+        assert_eq!(
+            diagnose_fixture_registry_sections(empty, &nonempty).unwrap()[0].classification,
+            super::super::PrefixMutationClassification::Unknown
+        );
+        let font=b"WINE REGISTRY Version 2\n[Software\\\\Wine\\\\Fonts\\\\External Fonts] 1\n\"Unexpected\"=dword:00000001\n";
+        assert_eq!(
+            diagnose_fixture_registry_sections(empty, font).unwrap()[0].classification,
+            super::super::PrefixMutationClassification::Unknown
+        );
+    }
+    #[test]
+    fn nonempty_networkcards_removal_is_not_the_empty_serialization_rule() {
+        let before=b"WINE REGISTRY Version 2\n[Software\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\NetworkCards] 1\n\"data\"=\"important\"\n";
+        assert_eq!(
+            diagnose_fixture_registry_sections(before, b"WINE REGISTRY Version 2\n").unwrap()[0]
+                .classification,
+            super::super::PrefixMutationClassification::Unknown
+        );
+    }
+    #[test]
+    fn exact_device_guid_change_is_volatile_but_additional_field_stays_unknown() {
+        let a="WINE REGISTRY Version 2\n[System\\\\ControlSet001\\\\Enum\\\\WINEBUS\\\\id\\\\instance] 1\n\"ContainerId\"=\"{12345678-1234-1234-1234-123456789012}\"\n";
+        let b = a.replace("123456789012", "123456789013");
+        let r = diagnose_fixture_registry_sections(a.as_bytes(), b.as_bytes()).unwrap();
+        assert_eq!(
+            r[0].classification,
+            super::super::PrefixMutationClassification::VolatileExpected
+        );
+        assert!(r[0].before_sha256.is_some());
+        let b = format!("{b}\"NewField\"=\"unexpected\"\n");
+        assert_eq!(
+            diagnose_fixture_registry_sections(a.as_bytes(), b.as_bytes()).unwrap()[0]
+                .classification,
+            super::super::PrefixMutationClassification::Unknown
+        );
+    }
+    #[test]
+    fn network_cards_empty_saved_key_omission_is_narrow_and_evidenced() {
+        let a="WINE REGISTRY Version 2\n[Software\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\NetworkCards] 1\n";
+        let r =
+            diagnose_fixture_registry_sections(a.as_bytes(), b"WINE REGISTRY Version 2\n").unwrap();
+        assert!(r[0].section.ends_with("NetworkCards"));
+        assert_eq!(
+            r[0].classification,
+            super::super::PrefixMutationClassification::StableExpected
+        );
+        assert!(r[0].after_sha256.is_none());
     }
     #[test]
     fn font_mount_rewrite_is_diagnostic_never_authorization() {

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "date": "2026-10-02",
+  "application_version": "0.8.7",
+  "validation": "native Tauri window, read-only AT-SPI controls and text/state assertions",
+  "actions": [
+    "Scan Steam",
+    "Advanced \u00b7 ZZZ Prefix Preflight",
+    "Review Harmless Prefix Entry (backend blocked before host execution)"
+  ],
+  "assertions": {
+    "exact_blocker_visible": true,
+    "two_qualified_private_recipes_visible": true,
+    "reviewed_matrix_sha_visible": true,
+    "private_mirror_limitation_visible": true,
+    "real_executor_direct_unqualified_reason_visible": true,
+    "real_entry_button_disabled": true
+  },
+  "consent_accepted": false,
+  "real_run_invoked": false,
+  "runtime_fixture_invoked_from_ui": false,
+  "tauri_vite_owned_session_closed": true,
+  "extracted_ui_text_sha256": "33f8aa31a3fb0065511337bdb0c5716ca33d1769719c8401fcdea9f98711aa53",
+  "coverage": "Native current-user LXMI window only; no browser substitute; no game or runtime execution during UI validation"
+}

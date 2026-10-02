@@ -450,6 +450,28 @@ fn scan(root: &File, started: Instant) -> io::Result<Tree> {
         .sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
     Ok(tree)
 }
+/// Reuse the descriptor-anchored recovery engine for controlled lab clones only.
+pub(crate) fn clone_private_tree(source: &Path, destination: &Path) -> io::Result<String> {
+    let started = Instant::now();
+    let source = absolute_directory(source)?;
+    let before = scan(&source, started)?;
+    let parent = absolute_directory(destination.parent().ok_or_else(|| err("missing_parent"))?)?;
+    disk_gate(before.size.apparent_bytes, free_bytes(&parent)?)?;
+    fs::DirBuilder::new().mode(0o700).create(destination)?;
+    let destination = absolute_directory(destination)?;
+    copy_tree(&source, &destination, &before.entries, started)?;
+    let copied = scan(&destination, started)?;
+    if verify_tree(&before.entries, &copied).state != RecoveryVerificationState::Verified
+        || !same_source(&before, &scan(&source, started)?)
+    {
+        return Err(err("fixture_clone_integrity_or_source_changed"));
+    }
+    Ok(format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(&before.entries)?)
+    ))
+}
+
 fn same_source(a: &Tree, b: &Tree) -> bool {
     a.entries == b.entries && a.stamps == b.stamps
 }

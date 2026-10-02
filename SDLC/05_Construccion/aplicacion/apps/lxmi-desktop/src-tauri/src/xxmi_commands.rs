@@ -8,6 +8,16 @@ use lxmi_xxmi::{
 };
 
 #[tauri::command]
+pub fn inspect_linux_environment_qualification(
+) -> std::result::Result<lxmi_bridge::LinuxEnvironmentQualificationPanel, BridgeServiceError> {
+    lxmi_bridge::linux_environment_qualification_panel().map_err(|detail| BridgeServiceError {
+        code: "environment_evidence_unavailable".into(),
+        detail,
+        stderr: None,
+    })
+}
+
+#[tauri::command]
 pub async fn inspect_zzz_prefix_preflight(
     capture_baseline: bool,
 ) -> std::result::Result<crate::prefix_recovery_service::PrefixRecoveryPanel, BridgeServiceError> {
