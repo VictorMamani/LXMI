@@ -422,3 +422,41 @@ NEEDS EVIDENCE: rollback MetadataOnly no satisface backup requerido por GamePref
 - Restore privado2445 entradas VERIFIED OFF-TARGET; real-prefix restore NOT TESTED ON REAL PREFIX y sin executor. Rollback RecoverableBackupVerifiedOffTarget, suficiente para revisión futura, no garantía real.
 - Tauri nativo Create/Verify/Test Restore/Reevaluate muestra EligibleForReview; evidencia persistida se revalida en reapertura. App0.8.7, 280 tests PASS/11 ignored y gates Rust/frontend/diff.
 - Nuevo ADR-030 y documentación detallada. No Proton/Wine/ZZZ/helper/loader ni escritura/restauración sobre fuente. NoDecision/selected Unknown/game gate cerrado intactos. No 0.8.8/0.8.9/0.9 iniciados.
+
+## LXMI0.8.8 — preparación, no cerrado
+
+- Capability interna para helper inocuo y real prefix aprobado; protocolo/argv/executor0.6 reutilizados; general bridge y loader labs conservan guards fixture-only.
+- Preflight/recovery/identidad/build revalidados; consentimiento nativo one-shot pendiente del usuario, baseline y marker privados, snapshots/diffs y gate conservador.
+- Tauri nativo muestra EligibleForReview y consentimiento no aceptado. No helper/Proton ejecutado; versión conserva0.8.7. 285 tests offline PASS/11ignored y quality gates.
+- 0.8.9 no iniciado: depende de conclusión real0.8.8; 0.9 no autorizado.
+
+## LXMI0.8.8 — conclusión del intento nativo: BLOCKED / ProtectedPathChanged
+
+- Usuario aceptó consentimiento y pulsó el botón. El preflight inmediato detectó1 cambio protegido en Steam userdata1416423935/config/localconfig.vdf (hash/mtime/inode), manteniendo identidad/inventario selectivo prefix.
+- Guard bloqueó antes de staging/capability/Proton/helper; ejecución real NO COMPROBADA. No retry/restore ni modificación de backup. Causa del cambio UNKNOWN, no atribuida a helper.
+- Documentación y evidencia existente comparadas read-only; Tauri/Vite cerrados; producto0.8.7, 0.8.9/0.9 no iniciados y sin checkpoint de fase cerrada.
+
+## Investigación read-only estabilidad localconfig — sin nuevo incremento/entry
+
+- LOCAL OBSERVED:90s de probe con parser existente,1 cambio semántico fuera de rama ZZZ; branch/hash estable y LaunchOptions actual ausente. No rawconfig persistida ni autoría inferida de hashes.
+- Diagnóstico protected_path_changed muestra archivo/campos, sin valores. Guard full-file y bloqueo sin retry intactos.
+- Fuente/proceso host solo leído; no Tauri nuevo, Proton/helper/loader/game. Producto0.8.7;0.8.9/0.9 no iniciados.
+
+### Seguimiento read-only del bloqueo0.8.8
+
+Dos ventanas240s solapadas confirmaron una escritura semántica en un leaf de primer nivel de localconfig fuera de Software/ZZZ; rama4162040 estable. Nombre exacto/escritor/causa históricos UNKNOWN. No se deduce inocuidad ni se exceptúa localconfig. Guard intacto; helper no reintentado,0.8.9 no iniciado, producto0.8.7. Se repitieron quality Rust/frontend con resultado PASS. Véase estabilidad_localconfig_preflight_0_8_8.md.
+
+## 2026-10-01 local /2026-10-02 UTC —0.8.8 HOST TEST, BLOCKED por mutaciones
+
+Nuevo intento consentido en Tauri: helper externo ejecutado vía Proton runinprefix, nonce/hash/protocol1/exit0, identidad/build/backup y9 protected records intactos. Resultado global UnexpectedMutation por contenido de system.reg/user.reg y metadata de root/dosdevices; userdef.reg solo metadata/content hash igual. Recibos y resultado/diff nativo preservados. STOP aplicado sin retry, restore, cambio de backup, version bump ni fases0.8.9/0.9. Producto0.8.7. Texto NotRun compartido corresponde a antes de ejecución; UI actual sí muestra resultado, no se rediseña.
+
+### Investigación Twintail y blocker0.8.8
+
+Source pinned97d626e (stable/package2.5.1); ZZMI usa hook, no prueba Direct Inject. Diff registry exacto valida backup-before/current-after; Fonts +ContainerId+empty NetworkCards explican categorías observadas. Rewrites de fonts entre run/host y usr/share apuntan a diferencia de entorno Linux/container, sin prueba de causalidad completa. Diagnóstico puro/fixed-case read-only añadido; no guard debilitado, no runtime/helper ejecutado. Próximo trabajo requerido: calificar entorno equivalente usando únicamente fixture privado antes de revisar otra entrada real.0.8.8 BLOCKED, producto0.8.7,0.8.9/0.9 no iniciados. Véase twintail_y_mutaciones_prefix_0_8_8.md.
+
+## Diagnóstico fixture de entorno Linux para 0.8.8 — 2026-10-02
+
+- HOST TEST: comparación de 5 ejecuciones del helper0.6 con Proton Experimental fijado; contenedor/directo/repetición/retorno en prefix nuevo privado. Reproduce exactamente los cambios de Fonts del intento real y demuestra que no ocurren en las repeticiones del mismo entorno. No prueba aceptabilidad de ContainerId/NetworkCards ni compatibilidad del juego.
+- Corrige transporte del ensayo: pressure-vessel descarta stdin; solicitud privada hash-verificada y shim Linux con argv fijo, mismo helper/protocolo y executor. Límite de captura y timeout explícitos, sin shell, PID ni path input de frontend.
+- Añade guard LinuxEnvironmentUnqualified al dominio y Tauri Review/Run: no nueva entrada real por simple restart/baseline/consent. UI nativa muestra código y motivo. Mantiene STOP original y NoDecision.
+- Evidencia redactada durable y discovery entorno_linux_fixture_0_8_8.md; 304 tests PASS/11ignored y todos los quality gates PASS. Aplicación0.8.7; fase0.8.8 BLOCKED, no0.8.9/0.9. Sin commit/push.

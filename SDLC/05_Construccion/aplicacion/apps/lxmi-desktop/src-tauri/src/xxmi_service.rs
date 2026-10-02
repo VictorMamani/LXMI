@@ -1924,3 +1924,29 @@ mod reentry_host_tests {
         }
     }
 }
+
+/// Discovery only: approved observed tool, never a frontend-selected path.
+pub(crate) fn harmless_entry_runtime(
+) -> std::result::Result<(lxmi_bridge::ExplicitBridgeRuntime, PathBuf), BridgeServiceError> {
+    let discovery = SteamDiscoveryScanner::from_environment().scan();
+    let tools = resolved_bridge_runtimes(&discovery)
+        .into_iter()
+        .filter(|r| r.option.display_name == "Proton - Experimental")
+        .collect::<Vec<_>>();
+    if tools.len() != 1 {
+        return Err(BridgeServiceError {
+            code: "runtime_changed".into(),
+            detail: "Unique observed Proton tool required; no substitution".into(),
+            stderr: None,
+        });
+    }
+    let tool = &tools[0];
+    Ok((
+        lxmi_bridge::ExplicitBridgeRuntime {
+            display_name: tool.option.display_name.clone(),
+            version: tool.option.version.clone(),
+            proton_script: tool.proton_script.clone(),
+        },
+        tool.steam_root.clone(),
+    ))
+}

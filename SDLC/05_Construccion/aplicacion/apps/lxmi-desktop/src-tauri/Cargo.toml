@@ -19,10 +19,13 @@ lxmi-core = { path = "../../../crates/lxmi-core" }
 lxmi-proton = { path = "../../../crates/lxmi-proton" }
 lxmi-runtime = { path = "../../../crates/lxmi-runtime" }
 lxmi-steam = { path = "../../../crates/lxmi-steam" }
+getrandom = "0.3"
+libc = "0.2"
+sha2 = "0.10"
+serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "2", features = [] }
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", features = ["json"] }
 
 [dev-dependencies]
-serde_json = "1"

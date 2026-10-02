@@ -1,0 +1,421 @@
+{
+  "fixture_root": "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4",
+  "game_entry_authorized": false,
+  "original_game_entry_result": "UnexpectedMutation",
+  "protected_state_before": {
+    "prefix_identity": {
+      "canonical_path": "/home/university/.local/share/Steam/steamapps/compatdata/4162040/pfx",
+      "device": 66306,
+      "inode": 11538172,
+      "uid": 1000
+    },
+    "selected_paths": {
+      "/home/university/.local/share/Steam/config/config.vdf": {
+        "dev": 66306,
+        "ino": 10879912,
+        "mtime": 1790852727,
+        "mtime_ns": 993464739,
+        "sha256": "b69ced69a04f3a2fe810a5428642941e53ccd9f47b8e1347f7a0195eaa3bd1c7",
+        "size": 29573
+      },
+      "/home/university/.local/share/Steam/steamapps/appmanifest_4162040.acf": {
+        "dev": 66306,
+        "ino": 10879892,
+        "mtime": 1790816076,
+        "mtime_ns": 928145052,
+        "sha256": "2f44fa4977d6ba2d1fce432889484fee189fa4e2f8270e2e2af5f50f7e91ec31",
+        "size": 779
+      },
+      "/home/university/.local/share/Steam/steamapps/common/Zenless Zone Zero/games/ZenlessZoneZero Game/ZenlessZoneZero.exe": {
+        "dev": 66306,
+        "ino": 11034024,
+        "mtime": 1790572400,
+        "mtime_ns": 873192598,
+        "sha256": null,
+        "size": 10394416
+      },
+      "/home/university/.local/share/Steam/steamapps/compatdata/4162040/pfx/system.reg": {
+        "dev": 66306,
+        "ino": 11552500,
+        "mtime": 1790909912,
+        "mtime_ns": 70979877,
+        "sha256": "c39a454cf90dcc033af5cc68a6b7d8b5defef22d3c4d48a12466127b97de08a5",
+        "size": 4027760
+      },
+      "/home/university/.local/share/Steam/steamapps/compatdata/4162040/pfx/user.reg": {
+        "dev": 66306,
+        "ino": 11552502,
+        "mtime": 1790909912,
+        "mtime_ns": 81980005,
+        "sha256": "3b49f379e52e1d4c751e260ef5252647568f10a582f10281764567ab742134ea",
+        "size": 516931
+      },
+      "/home/university/.local/share/Steam/steamapps/compatdata/4162040/pfx/userdef.reg": {
+        "dev": 66306,
+        "ino": 11552501,
+        "mtime": 1790909912,
+        "mtime_ns": 75979935,
+        "sha256": "93ce91cd3164ae39c6a2b7a32f3245a30806152daa36623d7f23e18f471558f4",
+        "size": 4190
+      },
+      "/home/university/.local/share/Steam/userdata/1416344634/config/localconfig.vdf": {
+        "dev": 66306,
+        "ino": 11538029,
+        "mtime": 1786646843,
+        "mtime_ns": 173766393,
+        "sha256": "657d34dbfb294eeaf12aedf5d0c087ff8d0af5d9dac53bf45158712a3ef2e9e2",
+        "size": 39907
+      },
+      "/home/university/.local/share/Steam/userdata/1416423935/config/localconfig.vdf": {
+        "dev": 66306,
+        "ino": 10879903,
+        "mtime": 1790852728,
+        "mtime_ns": 839383368,
+        "sha256": "a3570c17697303b91924405d72361f52f0110ec2eda8b8328e0b8717b0da68f4",
+        "size": 59838
+      }
+    }
+  },
+  "protected_state_unchanged": true,
+  "proton_version": "1790244902 experimental-11.0-20260924-x86_64",
+  "schema": 1,
+  "steps": [
+    {
+      "diagnosis": {},
+      "entry_point_sha256": "caa39b5cde8ea955288b574b49b3416fd16e7be3f53a17249d673f5ecfdce2c1",
+      "environment": "steam_runtime4",
+      "exit_code": 0,
+      "handshake": "succeeded",
+      "helper_sha256": "2a1939728e18bd3190b8dbb102d943bd5d65fa509617dbe42d48c45d02463fd2",
+      "marker_hash_match": true,
+      "nonce_verified": true,
+      "outer_arguments": [
+        "--verb=run",
+        "--",
+        "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/fixture-container-transport"
+      ],
+      "outer_executable": "/home/university/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/_v2-entry-point",
+      "prefix_identity": {
+        "canonical_path": "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/test-prefixes/bridge-v1/compatdata/pfx",
+        "device": 66306,
+        "inode": 29397625,
+        "uid": 1000
+      },
+      "private_variable_directory": "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/runtime-variable",
+      "registry_hashes": {
+        "system.reg": "fa0da835de95c71c14335b1ce48140cc6e64d6005a90555e2178f14f081dffe1",
+        "user.reg": "d070ba4b2c071fbe2891f7878a0a60644d6cf1d0c2c290e2b6e50d42fca4bddb",
+        "userdef.reg": "3f68c75dea8a7c8f69365bb742491d1ea699efc19a2d925aadf6c452dc7e4751"
+      },
+      "runtime_versions": "#Name\tVersion\t\tRuntime\tRuntime_Version\tComment\ndepot\t4.0.20260805.254769\t\t\t# Overall version number\npressure-vessel\t0.20260805.0\t\t\t\npressure-vessel-arm64\t0.20260805.0\t\t\t\nscripts\t0.20260805.0\t\t\t# from steam-runtime-tools\nsteamrt4\t4.0.20260805.254769\tsteamrt4\t4.0.20260805.254769\t# steamrt4_platform_4.0.20260805.254769/\n",
+      "runtime_versions_sha256": "ef61e9bce47d60d02707661d116c8048ffa39291b84acee687a1ed4e430af6be",
+      "step": "container_initialize"
+    },
+    {
+      "diagnosis": {
+        "system.reg": {
+          "changed_sections": 7,
+          "content_changed": true,
+          "device_container_id_sections": 4,
+          "empty_network_cards_key_removed": true,
+          "execution_authorized": false,
+          "font_sections": 0,
+          "font_values_added": 0,
+          "font_values_modified": 0,
+          "font_values_removed": 0,
+          "native_to_run_host_font_paths": 0,
+          "rewritten_font_filename_matches": 0,
+          "run_host_to_native_font_paths": 0,
+          "unknown_sections": 2
+        },
+        "user.reg": {
+          "changed_sections": 0,
+          "content_changed": true,
+          "device_container_id_sections": 0,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 0,
+          "font_values_added": 0,
+          "font_values_modified": 0,
+          "font_values_removed": 0,
+          "native_to_run_host_font_paths": 0,
+          "rewritten_font_filename_matches": 0,
+          "run_host_to_native_font_paths": 0,
+          "unknown_sections": 0
+        },
+        "userdef.reg": {
+          "changed_sections": 0,
+          "content_changed": false,
+          "device_container_id_sections": 0,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 0,
+          "font_values_added": 0,
+          "font_values_modified": 0,
+          "font_values_removed": 0,
+          "native_to_run_host_font_paths": 0,
+          "rewritten_font_filename_matches": 0,
+          "run_host_to_native_font_paths": 0,
+          "unknown_sections": 0
+        }
+      },
+      "entry_point_sha256": "caa39b5cde8ea955288b574b49b3416fd16e7be3f53a17249d673f5ecfdce2c1",
+      "environment": "steam_runtime4",
+      "exit_code": 0,
+      "handshake": "succeeded",
+      "helper_sha256": "2a1939728e18bd3190b8dbb102d943bd5d65fa509617dbe42d48c45d02463fd2",
+      "marker_hash_match": true,
+      "nonce_verified": true,
+      "outer_arguments": [
+        "--verb=run",
+        "--",
+        "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/fixture-container-transport"
+      ],
+      "outer_executable": "/home/university/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/_v2-entry-point",
+      "prefix_identity": {
+        "canonical_path": "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/test-prefixes/bridge-v1/compatdata/pfx",
+        "device": 66306,
+        "inode": 29397625,
+        "uid": 1000
+      },
+      "private_variable_directory": "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/runtime-variable",
+      "registry_hashes": {
+        "system.reg": "1a4416cc2f76e8aaadc419898b1e897cf6ff5dd02196a666782a855ecca425f3",
+        "user.reg": "07071d812c28f61b21bc194943543eb57f72a62c66a406b97de778bdab6ffdfa",
+        "userdef.reg": "3f68c75dea8a7c8f69365bb742491d1ea699efc19a2d925aadf6c452dc7e4751"
+      },
+      "runtime_versions": "#Name\tVersion\t\tRuntime\tRuntime_Version\tComment\ndepot\t4.0.20260805.254769\t\t\t# Overall version number\npressure-vessel\t0.20260805.0\t\t\t\npressure-vessel-arm64\t0.20260805.0\t\t\t\nscripts\t0.20260805.0\t\t\t# from steam-runtime-tools\nsteamrt4\t4.0.20260805.254769\tsteamrt4\t4.0.20260805.254769\t# steamrt4_platform_4.0.20260805.254769/\n",
+      "runtime_versions_sha256": "ef61e9bce47d60d02707661d116c8048ffa39291b84acee687a1ed4e430af6be",
+      "step": "container_repeat"
+    },
+    {
+      "diagnosis": {
+        "system.reg": {
+          "changed_sections": 6,
+          "content_changed": true,
+          "device_container_id_sections": 4,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 2,
+          "font_values_added": 270,
+          "font_values_modified": 736,
+          "font_values_removed": 0,
+          "native_to_run_host_font_paths": 0,
+          "rewritten_font_filename_matches": 736,
+          "run_host_to_native_font_paths": 736,
+          "unknown_sections": 0
+        },
+        "user.reg": {
+          "changed_sections": 1,
+          "content_changed": true,
+          "device_container_id_sections": 0,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 1,
+          "font_values_added": 135,
+          "font_values_modified": 368,
+          "font_values_removed": 0,
+          "native_to_run_host_font_paths": 0,
+          "rewritten_font_filename_matches": 368,
+          "run_host_to_native_font_paths": 368,
+          "unknown_sections": 0
+        },
+        "userdef.reg": {
+          "changed_sections": 0,
+          "content_changed": false,
+          "device_container_id_sections": 0,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 0,
+          "font_values_added": 0,
+          "font_values_modified": 0,
+          "font_values_removed": 0,
+          "native_to_run_host_font_paths": 0,
+          "rewritten_font_filename_matches": 0,
+          "run_host_to_native_font_paths": 0,
+          "unknown_sections": 0
+        }
+      },
+      "entry_point_sha256": null,
+      "environment": "direct",
+      "exit_code": 0,
+      "handshake": "succeeded",
+      "helper_sha256": "2a1939728e18bd3190b8dbb102d943bd5d65fa509617dbe42d48c45d02463fd2",
+      "marker_hash_match": true,
+      "nonce_verified": true,
+      "outer_arguments": [
+        "runinprefix",
+        "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/helpers/lxmi-bridge-helper.exe"
+      ],
+      "outer_executable": "/home/university/.local/share/Steam/steamapps/common/Proton - Experimental/proton",
+      "prefix_identity": {
+        "canonical_path": "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/test-prefixes/bridge-v1/compatdata/pfx",
+        "device": 66306,
+        "inode": 29397625,
+        "uid": 1000
+      },
+      "private_variable_directory": null,
+      "registry_hashes": {
+        "system.reg": "f029e6c1df8f10d5240d887051c3759bb5058e234d754c642511217e72472c73",
+        "user.reg": "8e54547fada9ea1718396a6fcd8d2db14bc6b51561b05b432914f480be3e99d7",
+        "userdef.reg": "3f68c75dea8a7c8f69365bb742491d1ea699efc19a2d925aadf6c452dc7e4751"
+      },
+      "runtime_versions": null,
+      "runtime_versions_sha256": null,
+      "step": "container_to_direct"
+    },
+    {
+      "diagnosis": {
+        "system.reg": {
+          "changed_sections": 4,
+          "content_changed": true,
+          "device_container_id_sections": 4,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 0,
+          "font_values_added": 0,
+          "font_values_modified": 0,
+          "font_values_removed": 0,
+          "native_to_run_host_font_paths": 0,
+          "rewritten_font_filename_matches": 0,
+          "run_host_to_native_font_paths": 0,
+          "unknown_sections": 0
+        },
+        "user.reg": {
+          "changed_sections": 0,
+          "content_changed": true,
+          "device_container_id_sections": 0,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 0,
+          "font_values_added": 0,
+          "font_values_modified": 0,
+          "font_values_removed": 0,
+          "native_to_run_host_font_paths": 0,
+          "rewritten_font_filename_matches": 0,
+          "run_host_to_native_font_paths": 0,
+          "unknown_sections": 0
+        },
+        "userdef.reg": {
+          "changed_sections": 0,
+          "content_changed": false,
+          "device_container_id_sections": 0,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 0,
+          "font_values_added": 0,
+          "font_values_modified": 0,
+          "font_values_removed": 0,
+          "native_to_run_host_font_paths": 0,
+          "rewritten_font_filename_matches": 0,
+          "run_host_to_native_font_paths": 0,
+          "unknown_sections": 0
+        }
+      },
+      "entry_point_sha256": null,
+      "environment": "direct",
+      "exit_code": 0,
+      "handshake": "succeeded",
+      "helper_sha256": "2a1939728e18bd3190b8dbb102d943bd5d65fa509617dbe42d48c45d02463fd2",
+      "marker_hash_match": true,
+      "nonce_verified": true,
+      "outer_arguments": [
+        "runinprefix",
+        "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/helpers/lxmi-bridge-helper.exe"
+      ],
+      "outer_executable": "/home/university/.local/share/Steam/steamapps/common/Proton - Experimental/proton",
+      "prefix_identity": {
+        "canonical_path": "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/test-prefixes/bridge-v1/compatdata/pfx",
+        "device": 66306,
+        "inode": 29397625,
+        "uid": 1000
+      },
+      "private_variable_directory": null,
+      "registry_hashes": {
+        "system.reg": "3c4ab06e824b8acc23a958a6b7cabb389f4f67dc906f92a8a09ee3acbb3185a5",
+        "user.reg": "5d9e5094f113754477d510a0b495eca1d4f6148d4c25810c094b303d1e542cf5",
+        "userdef.reg": "3f68c75dea8a7c8f69365bb742491d1ea699efc19a2d925aadf6c452dc7e4751"
+      },
+      "runtime_versions": null,
+      "runtime_versions_sha256": null,
+      "step": "direct_repeat"
+    },
+    {
+      "diagnosis": {
+        "system.reg": {
+          "changed_sections": 6,
+          "content_changed": true,
+          "device_container_id_sections": 4,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 2,
+          "font_values_added": 0,
+          "font_values_modified": 736,
+          "font_values_removed": 270,
+          "native_to_run_host_font_paths": 736,
+          "rewritten_font_filename_matches": 736,
+          "run_host_to_native_font_paths": 0,
+          "unknown_sections": 0
+        },
+        "user.reg": {
+          "changed_sections": 1,
+          "content_changed": true,
+          "device_container_id_sections": 0,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 1,
+          "font_values_added": 0,
+          "font_values_modified": 368,
+          "font_values_removed": 135,
+          "native_to_run_host_font_paths": 368,
+          "rewritten_font_filename_matches": 368,
+          "run_host_to_native_font_paths": 0,
+          "unknown_sections": 0
+        },
+        "userdef.reg": {
+          "changed_sections": 0,
+          "content_changed": false,
+          "device_container_id_sections": 0,
+          "empty_network_cards_key_removed": false,
+          "execution_authorized": false,
+          "font_sections": 0,
+          "font_values_added": 0,
+          "font_values_modified": 0,
+          "font_values_removed": 0,
+          "native_to_run_host_font_paths": 0,
+          "rewritten_font_filename_matches": 0,
+          "run_host_to_native_font_paths": 0,
+          "unknown_sections": 0
+        }
+      },
+      "entry_point_sha256": "caa39b5cde8ea955288b574b49b3416fd16e7be3f53a17249d673f5ecfdce2c1",
+      "environment": "steam_runtime4",
+      "exit_code": 0,
+      "handshake": "succeeded",
+      "helper_sha256": "2a1939728e18bd3190b8dbb102d943bd5d65fa509617dbe42d48c45d02463fd2",
+      "marker_hash_match": true,
+      "nonce_verified": true,
+      "outer_arguments": [
+        "--verb=run",
+        "--",
+        "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/fixture-container-transport"
+      ],
+      "outer_executable": "/home/university/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/_v2-entry-point",
+      "prefix_identity": {
+        "canonical_path": "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/test-prefixes/bridge-v1/compatdata/pfx",
+        "device": 66306,
+        "inode": 29397625,
+        "uid": 1000
+      },
+      "private_variable_directory": "/tmp/lxmi-environment-fixture-b8b55aadbda6ecadb0c2bf483824d3a4/runtime-variable",
+      "registry_hashes": {
+        "system.reg": "2f40b5c4521e1c78893448d0de5340a8e118c206123ebf23750405f47a882f0f",
+        "user.reg": "a298161d0963c80bde5bcc7fd29d0afbfb148c52f1131db9acaddd586b0d0c84",
+        "userdef.reg": "3f68c75dea8a7c8f69365bb742491d1ea699efc19a2d925aadf6c452dc7e4751"
+      },
+      "runtime_versions": "#Name\tVersion\t\tRuntime\tRuntime_Version\tComment\ndepot\t4.0.20260805.254769\t\t\t# Overall version number\npressure-vessel\t0.20260805.0\t\t\t\npressure-vessel-arm64\t0.20260805.0\t\t\t\nscripts\t0.20260805.0\t\t\t# from steam-runtime-tools\nsteamrt4\t4.0.20260805.254769\tsteamrt4\t4.0.20260805.254769\t# steamrt4_platform_4.0.20260805.254769/\n",
+      "runtime_versions_sha256": "ef61e9bce47d60d02707661d116c8048ffa39291b84acee687a1ed4e430af6be",
+      "step": "direct_to_container"
+    }
+  ]
+}

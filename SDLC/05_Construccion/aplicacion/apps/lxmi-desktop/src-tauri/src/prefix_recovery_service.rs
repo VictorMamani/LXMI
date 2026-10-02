@@ -164,3 +164,241 @@ pub fn run(action: RecoveryAction) -> Result<PrefixRecoveryPanel, BridgeServiceE
         recovery: review.recovery.clone(),
     })
 }
+
+struct EntryReview {
+    token: String,
+    created: std::time::Instant,
+    before: GamePrefixEntryPreflight,
+    recovery: PrefixRecoveryQualification,
+    runtime: ExplicitBridgeRuntime,
+    steam_root: std::path::PathBuf,
+    consumed: bool,
+}
+static ENTRY: Mutex<Option<EntryReview>> = Mutex::new(None);
+#[derive(Serialize)]
+pub struct HarmlessEntryReviewPanel {
+    pub review_token: String,
+    pub preflight: GamePrefixEntryPreflight,
+    pub recovery: PrefixRecoveryQualification,
+    pub runtime: ExplicitBridgeRuntime,
+    pub consent_text: &'static str,
+}
+const CONSENT: &str = "LXMI will run a harmless Windows helper using the compatibility prefix associated with Zenless Zone Zero. Proton/Wine may update metadata inside that prefix. LXMI will not launch the game, load ZZMI, inject DLLs, install mods, or modify Steam launch options. Consent applies only to this experiment.";
+pub fn prepare_entry() -> Result<HarmlessEntryReviewPanel, BridgeServiceError> {
+    qualified_entry_environment()?;
+    // Read-only for Steam/prefix; fresh baseline is stored only under LXMI.
+    let panel = inspect(true)?;
+    if panel.preflight.result != PrefixPreflightState::EligibleForReview {
+        return Err(error(format!(
+            "entry_preflight_not_eligible: {:?}",
+            panel.preflight.blockers
+        )));
+    }
+    let recovery = panel.recovery.ok_or_else(|| error("backup_invalid"))?;
+    let (runtime, steam_root) = xxmi_service::harmless_entry_runtime()?;
+    let mut state = ENTRY.try_lock().map_err(|_| error("entry_busy"))?;
+    if state.as_ref().is_some_and(|r| r.consumed) {
+        return Err(error("entry_already_attempted_no_retry"));
+    }
+    let mut bytes = [0u8; 16];
+    getrandom::fill(&mut bytes).map_err(error)?;
+    let token = bytes.iter().map(|b| format!("{b:02x}")).collect::<String>();
+    *state = Some(EntryReview {
+        token: token.clone(),
+        created: std::time::Instant::now(),
+        before: panel.preflight.clone(),
+        recovery: recovery.clone(),
+        runtime: runtime.clone(),
+        steam_root,
+        consumed: false,
+    });
+    Ok(HarmlessEntryReviewPanel {
+        review_token: token,
+        preflight: panel.preflight,
+        recovery,
+        runtime,
+        consent_text: CONSENT,
+    })
+}
+pub fn run_entry(
+    review_token: String,
+    consent_accepted: bool,
+) -> Result<RealPrefixEntryResult, BridgeServiceError> {
+    if !consent_accepted {
+        return Err(entry_error("consent_missing"));
+    }
+    qualified_entry_environment()?;
+    let mut state = ENTRY.try_lock().map_err(|_| error("entry_busy"))?;
+    let entry = state
+        .as_mut()
+        .ok_or_else(|| entry_error("entry_review_required"))?;
+    if entry.consumed
+        || entry.token != review_token
+        || entry.created.elapsed() > std::time::Duration::from_secs(600)
+    {
+        return Err(entry_error("entry_review_expired_or_consumed"));
+    }
+    // Hold the shared recovery lock through execution: no concurrent backup/restore operation.
+    let _review = REVIEW.try_lock().map_err(|_| error("prefix_review_busy"))?;
+    entry.consumed = true;
+    let root = xxmi_service::prefix_recovery_storage()?;
+    verify_prefix_recovery(&root, &mut entry.recovery).map_err(error)?;
+    verify_prefix_restore(&root, &mut entry.recovery).map_err(error)?;
+    if !recovery_source_matches(&root, &entry.recovery).map_err(error)? {
+        return Err(entry_error("backup_invalid"));
+    }
+    let mut before = xxmi_service::inspect_zzz_prefix_preflight_raw(true)?;
+    if before.prefix_identity != entry.before.prefix_identity {
+        return Err(entry_error("prefix_identity_changed"));
+    }
+    if before.baseline.protected_paths != entry.before.baseline.protected_paths {
+        return Err(BridgeServiceError {
+            code: "protected_path_changed".into(),
+            detail: describe_protected_path_changes(&entry.before.baseline, &before.baseline),
+            stderr: None,
+        });
+    }
+    inactive(&before.compatdata).map_err(error)?;
+    apply_prefix_recovery(&mut before, &entry.recovery);
+    // Storage check before marker/environment staging.
+    let storage_path =
+        std::ffi::CString::new(root.as_os_str().as_encoded_bytes()).map_err(error)?;
+    let mut stats = std::mem::MaybeUninit::<libc::statvfs>::uninit();
+    if unsafe { libc::statvfs(storage_path.as_ptr(), stats.as_mut_ptr()) } != 0 {
+        return Err(error(io::Error::last_os_error()));
+    }
+    let stats = unsafe { stats.assume_init() };
+    if (stats.f_bavail as u128) * (stats.f_frsize as u128) < 256 * 1024 * 1024 {
+        return Err(entry_error("insufficient_storage"));
+    }
+    let plan = validate_harmless_prefix_entry(
+        &root,
+        entry.runtime.clone(),
+        entry.steam_root.clone(),
+        &before,
+        &entry.recovery,
+        true,
+        &entry.token,
+    )
+    .map_err(|s| entry_error(&format!("{s:?}")))?;
+    let mut result=RealPrefixEntryResult{schema:1,session_nonce:entry.token.clone(),result:RealPrefixEntryState::Blocked,consent_accepted:true,helper_attempted:false,helper:None,helper_error:None,before,after:None,mutations:vec![],backup_id:entry.recovery.backup_id.clone(),backup_manifest_sha256:entry.recovery.manifest_sha256.clone(),backup_verified_after:false,prefix_identity_unchanged:false,protected_paths_unchanged:false,runtime_unchanged:false,game_context_inactive_after:false,evidence_receipt:None,warnings:vec!["Point-in-time inactivity checks are not an atomic prefix lock. Source paths are never restored automatically.".into(),"Snapshot coverage is selective; no whole-installation claim. Timeout kills only the owned launcher, never global wineserver; unresolved activity blocks the gate.".into()]};
+    save_entry_evidence(&root, &result, "before")?;
+    // Final same-UID activity and identity check after all costly integrity work.
+    inactive(&result.before.compatdata).map_err(error)?;
+    if prefix_file_identity(&result.before.compatdata.join("pfx")) != result.before.prefix_identity
+    {
+        return Err(entry_error("prefix_identity_changed"));
+    }
+    result.helper_attempted = true;
+    match execute_harmless_prefix_entry(plan) {
+        Ok(value) => result.helper = Some(value),
+        Err(e) => result.helper_error = Some(e),
+    }
+    // No Wine cleanup command or signals. Allow natural metadata flushes to settle.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        if inactive(&result.before.compatdata).is_ok() {
+            result.game_context_inactive_after = true;
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(500));
+    }
+    match xxmi_service::inspect_zzz_prefix_preflight_raw(false) {
+        Ok(after) => {
+            result.prefix_identity_unchanged =
+                after.prefix_identity == result.before.prefix_identity;
+            result.runtime_unchanged = after.runtime_drift == RuntimeBuildDrift::SameBuild
+                && after.installed_build == result.before.installed_build;
+            result.mutations = compare_prefix_entry(&result.before.baseline, &after.baseline);
+            result.protected_paths_unchanged =
+                after.baseline.protected_paths == result.before.baseline.protected_paths;
+            result.after = Some(after);
+        }
+        Err(e) => result
+            .warnings
+            .push(format!("after_snapshot_unavailable: {}", e.detail)),
+    }
+    if verify_prefix_recovery(&root, &mut entry.recovery).is_ok()
+        && entry.recovery.integrity.state == RecoveryVerificationState::Verified
+    {
+        result.backup_verified_after = true;
+    }
+    result.result = classify_prefix_entry(&result);
+    result.evidence_receipt = Some(save_entry_evidence(&root, &result, "after")?);
+    Ok(result)
+}
+fn qualified_entry_environment() -> Result<(), BridgeServiceError> {
+    require_qualified_harmless_entry_environment().map_err(|_| BridgeServiceError {
+        code: "linux_runtime_environment_unqualified".into(),
+        detail: HARMLESS_ENTRY_ENVIRONMENT_BLOCKER.into(),
+        stderr: None,
+    })
+}
+fn save_entry_evidence(
+    root: &std::path::Path,
+    result: &RealPrefixEntryResult,
+    phase: &str,
+) -> Result<BaselineReceipt, BridgeServiceError> {
+    use sha2::{Digest, Sha256};
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let directory = root.join("snapshots");
+    let meta = std::fs::symlink_metadata(&directory).map_err(error)?;
+    if !meta.is_dir() || meta.file_type().is_symlink() {
+        return Err(error("unsafe_snapshot_directory"));
+    }
+    let bytes = serde_json::to_vec_pretty(result).map_err(error)?;
+    let sha256 = format!("{:x}", Sha256::digest(&bytes));
+    let manifest_path = directory.join(format!(
+        "real-prefix-entry-{}-{phase}.json",
+        result.session_nonce
+    ));
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(&manifest_path)
+        .map_err(error)?;
+    file.write_all(&bytes)
+        .and_then(|()| file.sync_all())
+        .map_err(error)?;
+    Ok(BaselineReceipt {
+        manifest_path,
+        sha256,
+    })
+}
+
+fn entry_error(code: &str) -> BridgeServiceError {
+    BridgeServiceError {
+        code: code.into(),
+        detail:
+            "Harmless entry blocked; no automatic retry or restore. Inspect the reviewed evidence."
+                .into(),
+        stderr: None,
+    }
+}
+
+#[cfg(test)]
+mod environment_guard_tests {
+    use super::*;
+    #[test]
+    fn unqualified_environment_blocks_commands_before_host_inspection() {
+        let error = match prepare_entry() {
+            Err(e) => e,
+            Ok(_) => panic!("unqualified real entry review must not pass"),
+        };
+        assert_eq!(error.code, "linux_runtime_environment_unqualified");
+        let error = run_entry("ignored_fixture_token".into(), true).unwrap_err();
+        assert_eq!(error.code, "linux_runtime_environment_unqualified");
+        assert_eq!(
+            run_entry("ignored_fixture_token".into(), false)
+                .unwrap_err()
+                .code,
+            "consent_missing"
+        );
+    }
+}

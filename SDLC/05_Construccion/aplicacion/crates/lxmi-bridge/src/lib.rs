@@ -6,7 +6,13 @@
 mod context_lab;
 mod context_reentry;
 mod direct_context;
+mod fixture_environment;
 mod game_prefix;
+pub use fixture_environment::*;
+mod registry_diagnosis;
+pub use registry_diagnosis::*;
+mod real_prefix_entry;
+pub use real_prefix_entry::*;
 mod prefix_recovery;
 pub use context_reentry::*;
 pub use direct_context::*;
@@ -50,6 +56,7 @@ const PREFIX_MARKER_FILE: &str = "lxmi-bridge-prefix.json";
 #[serde(rename_all = "snake_case")]
 pub enum PrefixMode {
     IsolatedTemporaryPrefix,
+    ApprovedHarmlessGamePrefix,
     ExistingGameCompatdataReadOnlyContext,
 }
 
@@ -705,6 +712,20 @@ fn run_bridge_test_with_executor(
             "bridge execution is restricted to the LXMI-owned isolated test prefix; game compatdata is never accepted",
         ));
     }
+    run_helper_bridge(config, executor, None)
+}
+
+/// Internal capability, created only by the reviewed harmless-entry path.
+struct RealPrefixInvocation {
+    compatdata: PathBuf,
+    working_directory: PathBuf,
+    nonce: String,
+}
+fn run_helper_bridge(
+    config: &BridgeTestConfig,
+    executor: &dyn BridgeProcessExecutor,
+    real: Option<&RealPrefixInvocation>,
+) -> Result<BridgeTestResult, BridgeError> {
     let managed_root = config.managed_root.canonicalize().map_err(|error| {
         BridgeError::new(
             BridgeErrorCode::RuntimeNotFound,
@@ -768,7 +789,10 @@ fn run_bridge_test_with_executor(
         ));
     }
 
-    let compatdata_path = prepare_isolated_test_context(&managed_root)?;
+    let compatdata_path = match real {
+        Some(approved) => approved.compatdata.clone(),
+        None => prepare_isolated_test_context(&managed_root)?,
+    };
     let runtime_relative_path = runtime_root
         .strip_prefix(&managed_root)
         .map_err(|_| BridgeError::new(BridgeErrorCode::UnsafePath, "runtime escaped managed root"))?
@@ -797,7 +821,10 @@ fn run_bridge_test_with_executor(
     let expected_runtime_manifest_sha256 =
         sha256_file(&marker_path, RESPONSE_LIMIT_BYTES as u64)
             .map_err(|error| BridgeError::new(BridgeErrorCode::Io, error.to_string()))?;
-    let nonce = random_nonce()?;
+    let nonce = match real {
+        Some(approved) => approved.nonce.clone(),
+        None => random_nonce()?,
+    };
     let request = BridgeRequest {
         protocol_version: PROTOCOL_VERSION,
         operation: lxmi_bridge_protocol::BridgeOperation::InspectManagedRuntime,
@@ -813,9 +840,12 @@ fn run_bridge_test_with_executor(
         ));
     }
 
-    let context_root = compatdata_path.parent().ok_or_else(|| {
-        BridgeError::new(BridgeErrorCode::UnsafePath, "test context has no parent")
-    })?;
+    let context_root = real
+        .map(|r| r.working_directory.as_path())
+        .or_else(|| compatdata_path.parent())
+        .ok_or_else(|| {
+            BridgeError::new(BridgeErrorCode::UnsafePath, "test context has no parent")
+        })?;
     let mut environment = BTreeMap::new();
     if let Some(path) = env::var_os("PATH") {
         environment.insert(OsString::from("PATH"), path);
@@ -864,7 +894,8 @@ fn run_bridge_test_with_executor(
         input,
         timeout: BRIDGE_TEST_TIMEOUT,
         output_limit: BRIDGE_OUTPUT_LIMIT_BYTES,
-        terminate_group_on_timeout: true,
+        // A real prefix must never use group cleanup that could signal wineserver.
+        terminate_group_on_timeout: real.is_none(),
         ownership: None,
     };
     info!(runtime = %config.explicit_runtime.display_name, "Explicit bridge test runtime selected");
@@ -876,7 +907,7 @@ fn run_bridge_test_with_executor(
                 BridgeErrorCode::Timeout,
                 format!(
                     "bridge helper exceeded {} seconds",
-                    BRIDGE_TEST_TIMEOUT.as_secs()
+                    invocation.timeout.as_secs()
                 ),
             )
             .with_stderr(String::from_utf8_lossy(&output.stderr).into_owned()),
@@ -1008,7 +1039,7 @@ fn run_bridge_test_with_executor(
     let mut warnings = vec![
         "Este runtime fue seleccionado solo para la prueba; GameRuntimePlan.selected permanece Unknown.".into(),
         "El nonce correlaciona request/response y no autentica al helper.".into(),
-        "Proton crea o actualiza el prefix exclusivo de LXMI. Nunca se utiliza compatdata de ZZZ.".into(),
+        if real.is_some() { "Harmless helper only: real ZZZ prefix may receive normal Wine metadata writes; game/loader not executed.".into() } else { "Proton crea o actualiza el prefix exclusivo de LXMI. Nunca se utiliza compatdata de ZZZ.".into() },
     ];
     if !stderr.trim().is_empty() {
         warnings.push(
@@ -1408,6 +1439,53 @@ mod tests {
     ) -> BridgeTestResult {
         let executor = successful_fake(config, manifest);
         run_bridge_test_with_executor(config, &executor).unwrap()
+    }
+
+    #[test]
+    fn real_entry_uses_existing_context_only_through_internal_capability() {
+        let (_temp, mut config, manifest) = configured_fixture();
+        config.prefix_mode = PrefixMode::ApprovedHarmlessGamePrefix;
+        let fake = successful_fake(&config, &manifest);
+        assert_eq!(
+            run_bridge_test_with_executor(&config, &fake)
+                .unwrap_err()
+                .code,
+            BridgeErrorCode::UnsafePrefixContext
+        );
+        let real = RealPrefixInvocation {
+            compatdata: config
+                .steam_client_install_path
+                .join("steamapps/compatdata/4162040"),
+            working_directory: config.managed_root.clone(),
+            nonce: "0123456789abcdef0123456789abcdef".into(),
+        };
+        let result = run_helper_bridge(&config, &fake, Some(&real)).unwrap();
+        assert_eq!(result.compatdata_path, real.compatdata);
+        assert_eq!(result.prefix_mode, PrefixMode::ApprovedHarmlessGamePrefix);
+        let invocation = fake.invocation.lock().unwrap().clone().unwrap();
+        assert!(!invocation.terminate_group_on_timeout);
+        assert_eq!(invocation.args.len(), 2);
+        assert_eq!(invocation.args[0], "runinprefix");
+        assert!(invocation.args[1]
+            .to_string_lossy()
+            .ends_with(BRIDGE_HELPER_FILE));
+        assert_eq!(
+            invocation.environment[std::ffi::OsStr::new("STEAM_COMPAT_DATA_PATH")],
+            real.compatdata.as_os_str()
+        );
+        let request: BridgeRequest = serde_json::from_slice(&invocation.input).unwrap();
+        assert_eq!(request.nonce, real.nonce);
+        for key in [
+            "WINEDLLOVERRIDES",
+            "SteamAppId",
+            "SteamGameId",
+            "PROTON_REMOTE_DEBUG_CMD",
+            "WINESERVER",
+        ] {
+            assert!(!invocation
+                .environment
+                .contains_key(std::ffi::OsStr::new(key)));
+        }
     }
 
     #[test]

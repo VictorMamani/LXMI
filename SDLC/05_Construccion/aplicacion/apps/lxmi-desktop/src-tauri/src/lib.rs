@@ -20,6 +20,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             xxmi_commands::xxmi_status,
             xxmi_commands::inspect_zzz_prefix_preflight,
             xxmi_commands::run_zzz_prefix_recovery,
+            xxmi_commands::prepare_zzz_harmless_prefix_entry,
+            xxmi_commands::run_zzz_harmless_prefix_entry,
             xxmi_commands::xxmi_check_official_releases,
             xxmi_commands::xxmi_download_official_package,
             xxmi_commands::import_xxmi_directory,

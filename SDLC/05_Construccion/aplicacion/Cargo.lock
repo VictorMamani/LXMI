@@ -2052,6 +2052,8 @@ version = "0.1.0"
 name = "lxmi-desktop"
 version = "0.8.7"
 dependencies = [
+ "getrandom 0.3.4",
+ "libc",
  "lxmi-bridge",
  "lxmi-core",
  "lxmi-proton",
@@ -2060,6 +2062,7 @@ dependencies = [
  "lxmi-xxmi",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tracing",

@@ -189,3 +189,20 @@ pub async fn run_context_reentry_test(
     })
     .await
 }
+
+#[tauri::command]
+pub async fn prepare_zzz_harmless_prefix_entry(
+) -> std::result::Result<crate::prefix_recovery_service::HarmlessEntryReviewPanel, BridgeServiceError>
+{
+    blocking_bridge(crate::prefix_recovery_service::prepare_entry).await
+}
+#[tauri::command]
+pub async fn run_zzz_harmless_prefix_entry(
+    review_token: String,
+    consent_accepted: bool,
+) -> std::result::Result<lxmi_bridge::RealPrefixEntryResult, BridgeServiceError> {
+    blocking_bridge(move || {
+        crate::prefix_recovery_service::run_entry(review_token, consent_accepted)
+    })
+    .await
+}

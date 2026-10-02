@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useState } from "react";
+import RealPrefixEntryPanel from "./RealPrefixEntryPanel";
 
 type Preflight = {
   result: string;
@@ -127,8 +128,9 @@ export default function PrefixPreflightPanel() {
       <summary>Advanced · ZZZ Prefix Preflight</summary>
       <p>
         Inspección de solo lectura del prefix de ZZZ. El baseline se guarda en
-        almacenamiento LXMI; no contiene un backup recuperable. Este panel no
-        ejecuta Proton, helpers ni el juego.
+        almacenamiento LXMI; no contiene un backup recuperable. Esta inspección
+        no ejecuta Proton ni el juego. La prueba de entry separada requiere
+        consentimiento explícito.
       </p>
       <div className="actions">
         <button disabled={busy} onClick={() => void inspect(false)}>
@@ -242,6 +244,7 @@ export default function PrefixPreflightPanel() {
           before creating a backup.
         </p>
       )}
+      <RealPrefixEntryPanel />
       {report && (
         <div>
           <dl>
