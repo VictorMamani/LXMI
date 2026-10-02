@@ -1,12 +1,14 @@
 //! One-shot harmless helper entry. No game executable, loader or PID is accepted.
 use super::*;
-use std::os::unix::fs::{MetadataExt, PermissionsExt};
+use std::os::unix::fs::MetadataExt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RealPrefixEntryState {
     Verified,
     VerifiedWithExpectedMutations,
+    VerifiedWithQualifiedVolatileMutations,
+    GameBecameActive,
     ConsentMissing,
     ActiveContext,
     RuntimeChanged,
@@ -19,14 +21,10 @@ pub enum RealPrefixEntryState {
     Blocked,
 }
 
-pub const HARMLESS_ENTRY_ENVIRONMENT_BLOCKER: &str =
-    "The implemented real-prefix executor uses direct Proton and remains unqualified after the stopped UnexpectedMutation. Steam Runtime qualification applies only to private fixture recipes; no approved real-prefix container executor is available. No automatic retry or restore; fresh consent or baseline does not bypass this guard.";
-
-/// The only implemented real-prefix executor is direct Proton. Its Linux environment
-/// and mutation policy have not been qualified after the stopped host experiment.
-/// Neither fresh consent nor a new baseline approves that environment.
+pub const HARMLESS_ENTRY_ENVIRONMENT_BLOCKER: &str = "Qualified container executor requires a successful current-session private self-test and unchanged recipe identity. No DirectProton fallback; prior UnexpectedMutation is preserved.";
+/// An unbound caller has no execution capability. Real execution needs a verified recipe.
 pub fn require_qualified_harmless_entry_environment() -> Result<(), RealPrefixEntryState> {
-    require_qualified_environment(EnvironmentQualification::Unqualified)
+    Err(RealPrefixEntryState::LinuxEnvironmentUnqualified)
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -49,6 +47,12 @@ pub struct RealPrefixEntryResult {
     pub result: RealPrefixEntryState,
     pub consent_accepted: bool,
     pub helper_attempted: bool,
+    #[serde(default)]
+    pub executor_qualified: bool,
+    #[serde(default)]
+    pub game_became_active: bool,
+    #[serde(default)]
+    pub executor_recipe_fingerprint: Option<String>,
     pub helper: Option<BridgeTestResult>,
     pub helper_error: Option<BridgeError>,
     pub before: GamePrefixEntryPreflight,
@@ -68,8 +72,12 @@ impl RealPrefixEntryResult {
     pub fn gate_passed(&self) -> bool {
         matches!(
             self.result,
-            RealPrefixEntryState::Verified | RealPrefixEntryState::VerifiedWithExpectedMutations
-        ) && self.consent_accepted
+            RealPrefixEntryState::Verified
+                | RealPrefixEntryState::VerifiedWithExpectedMutations
+                | RealPrefixEntryState::VerifiedWithQualifiedVolatileMutations
+        ) && self.executor_qualified
+            && !self.game_became_active
+            && self.consent_accepted
             && self.helper.is_some()
             && self.backup_verified_after
             && self.prefix_identity_unchanged
@@ -82,10 +90,11 @@ impl RealPrefixEntryResult {
 pub struct ApprovedHarmlessPrefixEntry {
     config: BridgeTestConfig,
     capability: RealPrefixInvocation,
+    recipe: QualifiedLinuxRuntimeRecipe,
 }
 pub fn validate_harmless_prefix_entry(
     root: &Path,
-    runtime: ExplicitBridgeRuntime,
+    recipe: &QualifiedLinuxRuntimeRecipe,
     steam_root: PathBuf,
     before: &GamePrefixEntryPreflight,
     recovery: &PrefixRecoveryQualification,
@@ -98,7 +107,9 @@ pub fn validate_harmless_prefix_entry(
     if before.active_processes != 0 || before.unresolved_processes != 0 {
         return Err(RealPrefixEntryState::ActiveContext);
     }
-    require_qualified_harmless_entry_environment()?;
+    recipe
+        .require_qualified()
+        .map_err(|_| RealPrefixEntryState::LinuxEnvironmentUnqualified)?;
     if before.runtime_drift != RuntimeBuildDrift::SameBuild
         || before.installed_build.as_deref() != Some(ZZZ_OBSERVED_BUILD)
     {
@@ -108,7 +119,8 @@ pub fn validate_harmless_prefix_entry(
         .prefix_identity
         .as_ref()
         .ok_or(RealPrefixEntryState::PrefixIdentityChanged)?;
-    if before.app_id != 4162040
+    if identity.uid != unsafe { libc::getuid() }
+        || before.app_id != 4162040
         || !before.compatdata.ends_with("steamapps/compatdata/4162040")
         || before.compatdata.canonicalize().ok().as_ref() != Some(&before.compatdata)
         || identity.canonical_path != before.compatdata.join("pfx")
@@ -152,22 +164,6 @@ pub fn validate_harmless_prefix_entry(
         || root.components().any(|c| matches!(c,Component::Normal(n) if n=="Steam" || n=="steamapps" || n=="4162040" || n=="Zenless Zone Zero")) {
         return Err(RealPrefixEntryState::Blocked);
     }
-    let script = validate_proton_script(&runtime.proton_script)
-        .map_err(|_| RealPrefixEntryState::RuntimeChanged)?;
-    let tool_root = script
-        .parent()
-        .ok_or(RealPrefixEntryState::RuntimeChanged)?;
-    if fs::read_to_string(tool_root.join("version"))
-        .ok()
-        .as_deref()
-        .map(str::trim)
-        != Some(ZZZ_OBSERVED_BUILD)
-        || tool_root
-            .file_name()
-            .is_none_or(|n| n != "Proton - Experimental")
-    {
-        return Err(RealPrefixEntryState::RuntimeChanged);
-    }
     match inspect_bridge_options(&root, None).helper {
         HelperState::Available {
             integrity_matches: true,
@@ -175,50 +171,37 @@ pub fn validate_harmless_prefix_entry(
         } => {}
         _ => return Err(RealPrefixEntryState::HelperFailed),
     }
-    // New files are only under LXMI, never in the prefix or managed runtime.
-    let session = root.join("tests/real-prefix-entry-v1").join(nonce);
-    ensure_controlled_directory(&root, &session).map_err(|_| RealPrefixEntryState::Blocked)?;
-    fs::set_permissions(&session, fs::Permissions::from_mode(0o700))
-        .map_err(|_| RealPrefixEntryState::Blocked)?;
-    for dir in ["home", "config", "cache", "data", "marker"] {
-        ensure_controlled_directory(&root, &session.join(dir))
-            .map_err(|_| RealPrefixEntryState::Blocked)?;
-    }
+    let session = recipe
+        .new_entry_session(&root)
+        .map_err(|_| RealPrefixEntryState::LinuxEnvironmentUnqualified)?;
     let marker = serde_json::to_vec(&serde_json::json!({"schema":1,"operation":"harmless_real_prefix_entry","nonce":nonce,"created_at_unix_seconds":before.baseline.timestamp_unix_seconds})).map_err(|_|RealPrefixEntryState::Blocked)?;
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(session.join("marker").join(MARKER_FILE))
-        .map_err(|_| RealPrefixEntryState::Blocked)?;
-    file.write_all(&marker)
-        .and_then(|()| file.sync_all())
+    // The prepared fixture marker is replaced in LXMI storage only.
+    fs::write(session.join("marker").join(MARKER_FILE), marker)
         .map_err(|_| RealPrefixEntryState::Blocked)?;
     Ok(ApprovedHarmlessPrefixEntry {
         config: BridgeTestConfig {
-            managed_root: root,
+            managed_root: session.clone(),
             runtime_root: session.join("marker"),
-            explicit_runtime: runtime,
+            explicit_runtime: recipe.runtime(),
             steam_client_install_path: steam_root,
             prefix_mode: PrefixMode::ApprovedHarmlessGamePrefix,
         },
         capability: RealPrefixInvocation {
             compatdata: before.compatdata.clone(),
-            working_directory: session,
+            working_directory: session.join("test-prefixes/bridge-v1"),
             nonce: nonce.into(),
         },
+        recipe: recipe.clone(),
     })
 }
 /// Reuses the 0.6 protocol/executor; this capability cannot choose any executable.
 pub fn execute_harmless_prefix_entry(
     plan: ApprovedHarmlessPrefixEntry,
+    final_check: &dyn Fn() -> Result<(), BridgeError>,
 ) -> Result<BridgeTestResult, BridgeError> {
-    require_qualified_harmless_entry_environment().map_err(|_| {
-        BridgeError::new(
-            BridgeErrorCode::UnsafePrefixContext,
-            HARMLESS_ENTRY_ENVIRONMENT_BLOCKER,
-        )
-    })?;
-    run_helper_bridge(&plan.config, &NativeProcessExecutor, Some(&plan.capability))
+    plan.recipe.require_qualified()?;
+    plan.recipe
+        .execute(&plan.config, &plan.capability, true, Some(final_check))
 }
 
 pub fn compare_prefix_entry(
@@ -276,6 +259,76 @@ pub fn compare_prefix_entry(
     }
     changes
 }
+/// Same narrow per-section and selected-metadata rules as the integrated private self-test.
+pub fn compare_qualified_prefix_entry(
+    before: &GamePrefixBaseline,
+    after: &GamePrefixBaseline,
+    sections: &[FixtureRegistrySectionMutation],
+    metadata_matches: bool,
+) -> Vec<PrefixMutation> {
+    let mut changes = compare_prefix_entry(before, after);
+    let known_sections = sections.iter().all(|s| {
+        matches!(
+            s.classification,
+            PrefixMutationClassification::StableExpected
+                | PrefixMutationClassification::VolatileExpected
+        )
+    });
+    for change in &mut changes {
+        let root = before
+            .prefix_identity
+            .as_ref()
+            .map(|p| p.canonical_path.as_path());
+        let exact_mutable = root.is_some_and(|root| {
+            change.path == root
+                || change.path == root.join("dosdevices")
+                || ["system.reg", "user.reg", "userdef.reg"]
+                    .iter()
+                    .any(|name| change.path == root.join(name))
+        });
+        if change.kind != PrefixMutationKind::ProtectedPathMutation
+            && exact_mutable
+            && metadata_matches
+            && known_sections
+        {
+            change.kind = PrefixMutationKind::ExpectedWineMutation;
+            change.reason="Qualified selected metadata/registry changes; exact section rules validated, no subtree wildcard".into();
+        }
+    }
+    for section in sections {
+        changes.push(PrefixMutation {
+            path: section.section.clone().into(),
+            kind: if matches!(
+                section.classification,
+                PrefixMutationClassification::StableExpected
+                    | PrefixMutationClassification::VolatileExpected
+            ) {
+                PrefixMutationKind::ExpectedWineMutation
+            } else {
+                PrefixMutationKind::Unknown
+            },
+            reason: format!(
+                "{:?}: {} · before {:?} · after {:?}",
+                section.classification,
+                section.evidence,
+                section.before_sha256,
+                section.after_sha256
+            ),
+        });
+    }
+    if !metadata_matches {
+        changes.push(PrefixMutation {
+            path: before
+                .prefix_identity
+                .as_ref()
+                .map(|p| p.canonical_path.clone())
+                .unwrap_or_default(),
+            kind: PrefixMutationKind::Unknown,
+            reason: "Selected metadata/mapping differs outside the qualified private policy".into(),
+        });
+    }
+    changes
+}
 /// Safe diagnostic: path/field names only, never configuration contents or values.
 pub fn describe_protected_path_changes(
     before: &GamePrefixBaseline,
@@ -320,6 +373,12 @@ pub fn describe_protected_path_changes(
 }
 
 pub fn classify_prefix_entry(result: &RealPrefixEntryResult) -> RealPrefixEntryState {
+    if result.game_became_active {
+        return RealPrefixEntryState::GameBecameActive;
+    }
+    if !result.executor_qualified {
+        return RealPrefixEntryState::LinuxEnvironmentUnqualified;
+    }
     if !result.consent_accepted {
         return RealPrefixEntryState::ConsentMissing;
     }
@@ -356,7 +415,7 @@ pub fn classify_prefix_entry(result: &RealPrefixEntryResult) -> RealPrefixEntryS
     if result.mutations.is_empty() {
         RealPrefixEntryState::Verified
     } else {
-        RealPrefixEntryState::VerifiedWithExpectedMutations
+        RealPrefixEntryState::VerifiedWithQualifiedVolatileMutations
     }
 }
 #[cfg(test)]
@@ -455,6 +514,9 @@ mod tests {
             result: RealPrefixEntryState::Blocked,
             consent_accepted: true,
             helper_attempted: false,
+            executor_qualified: true,
+            game_became_active: false,
+            executor_recipe_fingerprint: None,
             helper: None,
             helper_error: None,
             before,
@@ -536,15 +598,11 @@ mod tests {
         let recovery:PrefixRecoveryQualification=serde_json::from_value(serde_json::json!({
             "protected_paths_unchanged":true,"backup_id":"fixture","backup_path":"/not-created","manifest_sha256":"fixture","source_identity":{"canonical_path":"/not-created","device":0,"inode":0,"uid":0},"proton_build":"fixture","strategy":"fixture","source_size":{"apparent_bytes":0,"allocated_bytes":0,"files":0,"directories":0,"symlinks":0},"backup_size":{"apparent_bytes":0,"allocated_bytes":0,"files":0,"directories":0,"symlinks":0},"available_bytes_before":0,"available_bytes_after":0,"integrity":{"state":"verified","matching_files":0,"matching_entries":0,"mismatches":[],"unsupported_metadata":[]},"source_unchanged_during_capture":true,"restore_path":null,"restore_verification":null,"real_prefix_restore":"not_tested","rollback":"metadata_only","restore_plan":{"destination":"/not-created","game_closed_required":true,"inactive_context_required":true,"identity_revalidation_required":true,"verified_backup_required":true,"explicit_confirmation_required":true,"protected_paths_required":true,"real_target_executor_available":false},"retention_policy":"fixture"
         })).unwrap();
-        let runtime = ExplicitBridgeRuntime {
-            display_name: "fixture".into(),
-            version: None,
-            proton_script: "/never-executed".into(),
-        };
+        let recipe = QualifiedLinuxRuntimeRecipe::unqualified_test_recipe();
         assert!(matches!(
             validate_harmless_prefix_entry(
                 Path::new("/never-created"),
-                runtime.clone(),
+                &recipe,
                 "/steam".into(),
                 &r.before,
                 &recovery,
@@ -557,7 +615,7 @@ mod tests {
         assert!(matches!(
             validate_harmless_prefix_entry(
                 Path::new("/never-created"),
-                runtime,
+                &recipe,
                 "/steam".into(),
                 &r.before,
                 &recovery,
@@ -580,5 +638,55 @@ mod tests {
         assert!(!message.contains("private-hash-not-for-diagnostic"));
         b.protected_paths.clear();
         assert!(describe_protected_path_changes(&a, &b).contains("protected path set"));
+    }
+    #[test]
+    fn real_result_requires_qualified_executor_and_rejects_game_activity() {
+        let mut r = result_fixture();
+        r.executor_qualified = false;
+        assert_eq!(
+            classify_prefix_entry(&r),
+            RealPrefixEntryState::LinuxEnvironmentUnqualified
+        );
+        r.executor_qualified = true;
+        r.game_became_active = true;
+        assert_eq!(
+            classify_prefix_entry(&r),
+            RealPrefixEntryState::GameBecameActive
+        );
+        assert!(!r.gate_passed());
+    }
+    #[test]
+    fn qualified_comparison_preserves_protected_and_unknown_mutations() {
+        let mut a = baseline();
+        a.prefix_identity = Some(PrefixFileIdentity {
+            canonical_path: "/fixture".into(),
+            device: 1,
+            inode: 1,
+            uid: 1000,
+        });
+        let mut b = a.clone();
+        b.selected_prefix_paths[0].sha256 = Some("changed".into());
+        let known = FixtureRegistrySectionMutation {
+            section: "system.reg:known".into(),
+            changed_fields: vec![],
+            before_sha256: None,
+            after_sha256: None,
+            classification: PrefixMutationClassification::VolatileExpected,
+            evidence: "synthetic exact rule".into(),
+        };
+        let changes = compare_qualified_prefix_entry(&a, &b, std::slice::from_ref(&known), true);
+        assert!(changes
+            .iter()
+            .all(|c| c.kind == PrefixMutationKind::ExpectedWineMutation));
+        let mut unknown = known;
+        unknown.classification = PrefixMutationClassification::Unknown;
+        assert!(compare_qualified_prefix_entry(&a, &b, &[unknown], true)
+            .iter()
+            .any(|c| c.kind == PrefixMutationKind::Unknown));
+        a.protected_paths = a.selected_prefix_paths.clone();
+        b.protected_paths = b.selected_prefix_paths.clone();
+        assert!(compare_qualified_prefix_entry(&a, &b, &[], true)
+            .iter()
+            .any(|c| c.kind == PrefixMutationKind::ProtectedPathMutation));
     }
 }

@@ -211,3 +211,55 @@ El contador agregado histórico `unknown_sections=2` se conserva en `diagnosis`;
 **COMPROBADO — Tauri nativo:** `npm run tauri:dev` abrió LXMI 0.8.7. Validación read-only mediante AT-SPI: Scan Steam, Advanced Prefix Preflight y Review; se verificaron dos recetas privadas `steam_runtime_qualified`, SHA del artefacto final, executor actual `unqualified`, el motivo concreto de falta de integración real-container y botón Run deshabilitado. No consentimiento ni Run, no browser-only. Tauri/Vite propios cerrados después; no control de Steam/Wine/juego. Recibo mínimo en `environment_qualification_0_8_8_1_native.json`; no se guarda el texto completo de otras aplicaciones.
 
 **BLOCKED:** 0.8.8 sigue parcial, versión 0.8.7. La mutación real original sigue preservada, sin retry ni restore. El subincremento califica recetas privadas y mantiene separado el executor real todavía no calificado. Sin commit/push ni inicio de 0.8.9/0.9.
+
+## LXMI 0.8.8.2 — integración del executor calificado (2026-10-02)
+
+Esta sección sustituye el estado del executor descrito al cerrar 0.8.8.1; conserva la investigación y el intento real previo. **0.8.8 sigue PARTIAL / BLOCKED, versión 0.8.7.** No se inició 0.8.9/0.9.
+
+### Una receta y una frontera de autorización
+
+**COMPROBADO:** `QualifiedLinuxRuntimeRecipe` comparte `RuntimeFixtureExecutor`, el wrapper documentado `run`, el transporte privado y el bridge 0.6 entre self-test y futura entry real. `run` llama `_v2-entry-point` internamente; no se ejecutan ambos wrappers consecutivamente. El transporte Linux es un ELF mínimo del crate bridge, sin dependencias GUI; el helper Windows permanece idéntico. Los comandos usan argv fijo, sin shell ni argumentos/path/PID aceptados desde frontend.
+
+La identidad incluye schema, SHA-256 de VERSIONS del runtime, pressure-vessel-wrap, `_v2-entry-point`, `run`, build Proton, manifest completo de copia Proton, versiones de política environment/transporte/context binding y SHA de la matriz 0.8.8.1. Fingerprint: `6ff2ca659cd2db24d246c4cfa321fba1788203e4c956cebddbe161d50c841aed`. Los pins no son una medición criptográfica de todos los archivos del Steam Linux Runtime; fijan metadata y componentes concretos. La copia completa de Proton sí se verifica mediante su inventario de contenido/metadata.
+
+**COMPROBADO:** el estado serializado `QualifiedExecutorPanel` es informativo. Solo una capacidad privada, no deserializable, producida por el self-test en la sesión nativa concede calificación. Reiniciar LXMI la invalida. No existe fallback DirectProton. Cambiar pins, transporte, fuente/build o copia invalida el executor. La copia instalada no se actualiza ni ejecuta; la copia privada debe coincidir con el manifest de 0.8.8.1 `9d0bb73e241bac979afeda526b589fce6f26ee2d5e8822b7aadc710b179421bb`. Durante ejecución solo se permite variar metadata del archivo exacto `dist.lock`, vacío y con UID/GID/mode conservados; no se ignora todo el árbol.
+
+El environment usa la allowlist previa y paths HOME/XDG privados; añade únicamente el digest generado por backend `LXMI_QUALIFIED_CONTEXT_SHA256`. No se copia environment Steam/ZZZ/LXMI completo. La request conserva 0600, nonce, hash, schema, bounded size, edad, rechazo de symlink, consumo del mismo descriptor y cleanup. El contexto privado/real se vincula mediante manifest separado 0600, hash, expiración, nonce real e identidad del prefix. En modo real solo se acepta la ruta AppID 4162040 derivada del Steam root verificado; no un path del usuario.
+
+### Calificación integrada y límites
+
+El self-test crea una sesión nueva en `$XDG_DATA_HOME/lxmi/tests/qualified-entry-v1/<nonce>/`, copia y verifica Proton con el mecanismo descriptor-anchored existente, inicializa un prefix privado y ejecuta dos repeticiones medidas. Reutiliza exactamente el código de ejecución que atendería la entry real; solo cambian contexto autorizado y request. Conserva recibos de mounts/environment propios vinculados al nonce: container `pressure-vessel`, `/usr`, `/run/host/usr`, `/run/host/fonts`, `/run/host/local-fonts` read-only. No se persiste environment completo.
+
+Cada repetición compara los tres hives semánticamente, identidad raíz, metadata y entradas seleccionadas, mappings y directories de fuentes. Solo acepta reglas exactas `StableExpected` / `VolatileExpected` de 0.8.8.1. Fonts `EnvironmentSpecific`, secciones UNKNOWN, nuevos campos/metadatos, mappings distintos o recibos inválidos impiden Qualified. No hay comparación completa del árbol posterior ni prueba de equivalencia universal con Steam. El self-test integrado complementa la matriz anterior con clones equivalentes; no reemplaza esa matriz por una comparación DirectProton contaminada.
+
+Una prueba preliminar nativa pasó antes de añadir comprobaciones finales de mounts y metadata. Se conserva separada en `executor_qualification_0_8_8_2_initial.json`; no acredita por sí sola el código final.
+
+### Gate real: nueva evidencia read-only
+
+**READ-ONLY HOST:** el backup `f3551122468ed68b825a0182922f3be2` conserva integridad **VERIFIED** y restore **VERIFIED OFF-TARGET**. Sin embargo, la comparación completa del source actual con ese backup falla: `recovery_source_current_mismatch`. Esto distingue backup válido de source actual cubierto por ese estado de recuperación. No se atribuye el writer ni se elimina evidencia del intento UnexpectedMutation anterior.
+
+El preflight actual devuelve `NeedsEvidence`, junto con `baseline_not_captured` y `rollback_insufficient_metadata_only` en la evaluación sin promover recuperación. Prefix UID 1000, device 66306, inode 11538172 y build `1790244902 experimental-11.0-20260924-x86_64` permanecen los esperados. Actividad puntual: 0 coincidencias, 0 procesos sin resolver. No es un lock atómico.
+
+**BLOCKED:** no se solicitó/recogió consentimiento, no se abrió una review ejecutable, no se capturó un baseline para normalizar el fallo y no se creó/reemplazó el backup. No hubo helper/Proton/Wine contra el prefix real ni restore. El guard exige simultáneamente executor Qualified, preflight EligibleForReview, recuperación válida, inactividad/build/identidad/protected paths, storage y consentimiento fresco. La UI deshabilita Review/Run con el código de blocker; el backend sigue imponiéndolo independientemente de la UI.
+
+La futura operación cuenta con token de review de 600 s, consumo único y reserva persistente create-new antes de invocar el launcher. Revalida identidad/build/protected paths e inactividad después de la verificación costosa de la copia. Observación de actividad del juego, solo metadata same-UID, marca `GameBecameActive` sin señales al juego. No hay reintento ni restore automático. Estas defensas se verifican offline; la operación real integrada permanece **NO COMPROBADO** por el gate actual.
+
+### HOST TEST final del executor integrado
+
+**QUALIFIED / HOST TEST:** sesión privada `99c0fa4ebb3c178a451622ea98f0886f`. Seed PASS y dos ejecuciones medidas PASS con helper v0.6 inalterado, protocolo 1, nonce/hash/exit correctos, copia Proton validada después, request/context temporales eliminados y recibos correlacionados del container. El código final exige mounts RO y comparación de metadata; esta ejecución sustituye la preliminar para calificar el executor.
+
+| Evidencia medida | Run 1 | Run 2 |
+| --- | --- | --- |
+| Helper / nonce / hash / exit | PASS | PASS |
+| Fonts | 0 cambios semánticos | 0 cambios semánticos |
+| Cuatro device ContainerId | VolatileExpected | VolatileExpected |
+| NetworkCards parent vacío | StableExpected: omisión de serialización | Sin nueva diferencia |
+| Wow6432Node RunServices / RunServicesOnce | StableExpected: creación vacía | Sin nueva diferencia |
+| Metadata seleccionada / mappings / identidad raíz | Política calificada satisfecha | Política calificada satisfecha |
+| UNKNOWN / EnvironmentSpecific | 0 | 0 |
+
+Artefacto final: [executor_qualification_0_8_8_2.json](../06_Verificacion/evidencias/executor_qualification_0_8_8_2.json), SHA-256 `35aaf59e5cf992faf7ed67d94423c3ef043adf463258c7c4d7215f6c116c0dd8`. [Tres recibos de container](../06_Verificacion/evidencias/executor_container_receipts_0_8_8_2.json) conservan solo environment/mounts allowlisted, sin secretos. El root y los artefactos privados permanecen en almacenamiento LXMI para revisión y limpieza manual; no se borró ni reemplazó el backup real.
+
+**COMPROBADO:** build del transporte con `cargo build -p lxmi-bridge --example qualified_runtime_transport`; staging de ese ELF fijo con permisos 0700 en `$XDG_DATA_HOME/lxmi/helpers/qualified-runtime-transport`. Cada sesión copia y verifica ese transporte; modificarlo requiere un nuevo self-test. No se modifica ni reconstruye el helper Windows.
+
+**COMPROBADO — Tauri nativo:** Scan Steam, calificación privada final, consulta read-only del prefix y lectura de resultados. Executor Qualified / 2 measured runs, private Proton, runtime/wrapper/pressure-vessel/hash visibles. Preflight NeedsEvidence con los tres blockers concretos; Review y Run disabled/sensitive=false verificados por AT-SPI. Historia DirectProton preservada. Sin checkbox/consentimiento ni Run reales; sin browser-only. [Recibo nativo mínimo](../06_Verificacion/evidencias/executor_qualification_0_8_8_2_native.json). Tauri/Vite propios cerrados después; no control de Steam/Wine/juego. No commit/push ni bump de fase completada.

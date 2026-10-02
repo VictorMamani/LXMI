@@ -3,6 +3,16 @@ import { useEffect, useState } from "react";
 
 type EnvironmentPanel = {
   current_environment: { qualification: string; runtime_kind: string };
+  executor: {
+    qualification: string;
+    fingerprint: string;
+    wrapper: string;
+    runtime_root: string;
+    private_proton: string;
+    fixture_runs: number;
+    real_execution: string;
+    identity: { proton_build: string; pressure_vessel_sha256: string };
+  } | null;
   fixtures: {
     strategy: string;
     qualification: string;
@@ -54,7 +64,13 @@ type Result = {
   evidence_receipt: { manifest_path: string; sha256: string } | null;
   warnings: string[];
 };
-export default function RealPrefixEntryPanel() {
+export default function RealPrefixEntryPanel({
+  preflightEligible = false,
+  preflightBlockers = [],
+}: {
+  preflightEligible?: boolean;
+  preflightBlockers?: string[];
+}) {
   const [environment, setEnvironment] = useState<EnvironmentPanel | null>(null);
   const [environmentError, setEnvironmentError] = useState<string | null>(null);
   useEffect(() => {
@@ -72,7 +88,7 @@ export default function RealPrefixEntryPanel() {
   }, []);
   // Read-only qualification evidence never grants execution; backend also enforces this.
   const environmentBlocked =
-    environment?.real_prefix_entry !== "eligible_for_review";
+    environment?.executor?.qualification !== "qualified";
   const [review, setReview] = useState<Review | null>(null);
   const [consent, setConsent] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
@@ -84,6 +100,26 @@ export default function RealPrefixEntryPanel() {
     setError(
       `${value.code ?? "prefix_entry_failed"}: ${value.detail ?? String(cause)}`,
     );
+  }
+  async function qualifyExecutor() {
+    setBusy(true);
+    setEnvironmentError(null);
+    setReview(null);
+    setConsent(false);
+    try {
+      await invoke("qualify_zzz_prefix_executor");
+      setEnvironment(
+        await invoke<EnvironmentPanel>(
+          "inspect_linux_environment_qualification",
+        ),
+      );
+    } catch (cause) {
+      setEnvironmentError(
+        String((cause as { detail?: string }).detail ?? cause),
+      );
+    } finally {
+      setBusy(false);
+    }
   }
   async function prepare() {
     setBusy(true);
@@ -128,12 +164,66 @@ export default function RealPrefixEntryPanel() {
       <h4>Linux runtime environment</h4>
       <p role="status">
         Current: {environment?.current_environment.qualification ?? "UNKNOWN"} ·
-        Real prefix entry: Blocked
+        Real prefix entry:{" "}
+        {environmentBlocked || !preflightEligible
+          ? "Blocked · executor / prefix preflight requirements"
+          : "Not run · fresh consent required"}
       </p>
       <p>
-        La calificación se basa en fixtures privados. Este panel no ejecuta
-        Proton ni revalida el prefix real.
+        Consultar evidencia no ejecuta Proton. El self-test de calificación
+        ejecuta el helper en un prefix privado LXMI y puede tardar varios
+        minutos al copiar y verificar Proton. No usa el prefix real.
       </p>
+      {!preflightEligible && (
+        <p role="status">
+          Prefix preflight blocks real review:{" "}
+          {preflightBlockers.length
+            ? preflightBlockers.join(" · ")
+            : "Fresh eligible prefix preflight required"}
+        </p>
+      )}
+      <p>
+        Previous attempt: DirectProton · UnexpectedMutation / blocked. Its
+        evidence remains preserved.
+      </p>
+      <button
+        disabled={busy || attempted}
+        onClick={() => void qualifyExecutor()}
+      >
+        Qualify Executor Using Private Prefix
+      </button>
+      {environment?.executor && (
+        <dl>
+          <dt>Executor fixture self-test</dt>
+          <dd>
+            {environment.executor.qualification} ·{" "}
+            {environment.executor.fixture_runs} measured runs
+          </dd>
+          <dt>Execution strategy</dt>
+          <dd>Steam Runtime Container</dd>
+          <dt>Steam Runtime</dt>
+          <dd>{environment.executor.runtime_root}</dd>
+          <dt>pressure-vessel</dt>
+          <dd>
+            {environment.executor.runtime_root}
+            /pressure-vessel/bin/pressure-vessel-wrap
+            {" · SHA-256 "}
+            {environment.executor.identity.pressure_vessel_sha256}
+          </dd>
+          <dt>Wrapper</dt>
+          <dd>{environment.executor.wrapper}</dd>
+          <dt>Proton</dt>
+          <dd>Private verified copy · {environment.executor.private_proton}</dd>
+          <dt>Build</dt>
+          <dd>{environment.executor.identity.proton_build}</dd>
+          <dt>Recipe identity</dt>
+          <dd>{environment.executor.fingerprint}</dd>
+          <dt>Request transport</dt>
+          <dd>Private file · hash / nonce / consume-once verified</dd>
+          <dt>Real execution</dt>
+          <dd>Not run · fresh consent required</dd>
+        </dl>
+      )}
       {environmentError && (
         <p role="alert">
           No se pudo leer la evidencia de calificación. La prueba real sigue
@@ -186,12 +276,15 @@ export default function RealPrefixEntryPanel() {
           bloqueada.
         </p>
       )}
-      <button disabled={busy || attempted} onClick={() => void prepare()}>
+      <button
+        disabled={busy || attempted || environmentBlocked || !preflightEligible}
+        onClick={() => void prepare()}
+      >
         Review Harmless Prefix Entry
       </button>
       <p role="status">
         {busy
-          ? "Revalidando evidencia / ejecutando la prueba autorizada. El helper tiene un timeout de 20 s; no cierres LXMI durante la comparación."
+          ? "Operación en curso. Copiar y verificar Proton puede tardar varios minutos; cada helper tiene un timeout de 60 s. No cierres LXMI durante la comparación."
           : attempted
             ? result
               ? `Result: ${result.result}`

@@ -21,6 +21,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             xxmi_commands::inspect_zzz_prefix_preflight,
             xxmi_commands::run_zzz_prefix_recovery,
             xxmi_commands::inspect_linux_environment_qualification,
+            xxmi_commands::qualify_zzz_prefix_executor,
             xxmi_commands::prepare_zzz_harmless_prefix_entry,
             xxmi_commands::run_zzz_harmless_prefix_entry,
             xxmi_commands::xxmi_check_official_releases,

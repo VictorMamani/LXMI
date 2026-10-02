@@ -195,6 +195,8 @@ pub struct LinuxEnvironmentQualificationPanel {
     pub real_prefix_entry: String,
     pub blocker: String,
     pub limitations: Vec<String>,
+    #[serde(default)]
+    pub executor: Option<super::QualifiedExecutorPanel>,
 }
 /// Reviewed fixture evidence, not a current-host revalidation or an execution capability.
 pub fn linux_environment_qualification_panel() -> Result<LinuxEnvironmentQualificationPanel, String>

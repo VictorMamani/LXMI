@@ -468,3 +468,12 @@ Source pinned97d626e (stable/package2.5.1); ZZMI usa hook, no prueba Direct Inje
 - **QUALIFIED:** receta container privada fijada, no compatibilidad de juego ni autorización de prefix real. Matrices preliminares con tool instalado quedan preservadas y no calificadas tras identificar escrituras de `dist.lock`; el harness final rechaza ese uso.
 - **BLOCKED:** versión 0.8.7; 0.8.8 PARTIAL. Executor real DirectProton mantiene `linux_runtime_environment_unqualified`. Panel nativo presenta estado/código/evidencia sin botón para bypass. No nueva entrada real, loader, restore,0.8.9/0.9, commit ni push.
 - Ver [investigación](../01_Descubrimiento/entorno_linux_fixture_0_8_8.md) y [verificación](../06_Verificacion/verificacion_0_8_8.md) para matriz, fuentes y validaciones finales.
+
+## LXMI 0.8.8.2 — executor container integrado (2026-10-02, parcial)
+
+- Receta tipada compartida, pins/fingerprint, capacidad de sesión, private Proton copy íntegra, wrapper `run` y transporte privado; sin fallback directo.
+- Self-test integrado solo en storage/prefix LXMI; semántica registry, metadata/mappings, fonts y recibos de container/mounts bajo política exacta.
+- UI Advanced distingue historia DirectProton UnexpectedMutation, executor actual y gate real; consentimiento fresco, token único y reserva persistente, sin restore real.
+- Preflight real read-only detecta `recovery_source_current_mismatch`: backup Verified no implica source actual coincidente. Detenido antes de consentimiento/entry; versión 0.8.7, 0.8.8 BLOCKED, sin 0.8.9/0.9.
+
+HOST TEST integrado: seed + dos runs medidos PASS, fonts estables, cambios conocidos exactos; metadata/mappings/mounts/request y private Proton verificados. Quality:335 tests PASS/12ignored; frontend y build transporte PASS. Entry real no ejecutada por preflight NeedsEvidence; versión 0.8.7.

@@ -300,3 +300,17 @@ Ver ../01_Descubrimiento/entorno_linux_fixture_0_8_8.md. No loader/game executio
 - [ ] Integrar de forma revisable un executor real con receta calificada; el actual sigue DirectProton. No se habilita por un receipt privado ni frontend override.
 - [ ] Tras aprobación de esa integración, preflight inmediato y consentimiento nativo fresco para UNA entry inocua real con ZZZ cerrado; clasificar before/after sin retry ni restore automático.
 - [ ] Cerrar 0.8.8 y versionar solo si ese resultado real pasa. 0.8.9/0.9 no iniciados ni autorizados por este subincremento.
+
+## LXMI 0.8.8.2 — continuación bloqueada
+
+- [x] Integrar receta container compartida, copia privada/pins/transporte y guard sin fallback DirectProton.
+- [x] Añadir self-test privado del mismo executor y comprobaciones offline de identidad, mutaciones y consentimiento.
+- [x] Conservar historia UnexpectedMutation y distinguir calificación del executor del gate del prefix.
+- [ ] Resolver explícitamente `recovery_source_current_mismatch` sin sustituir backup/baseline ni restaurar automáticamente para conseguir PASS. El backup original sigue Verified; source actual no coincide.
+- [ ] Solo después de un preflight realmente EligibleForReview: nueva review/consentimiento Tauri y UNA entry real calificada. No reutilizar consentimiento anterior.
+- [ ] Cerrar/bump 0.8.8 solo con resultado real aceptable. No iniciar 0.8.9/0.9 en este subincremento.
+
+- [x] HOST TEST final del executor integrado en Tauri: seed + 2 runs medidos PASS, fonts estables, solo reglas exactas conocidas, mounts RO y cleanup; copia Proton validada.
+- [x] Quality Rust:335 PASS /12ignored; frontend typecheck/lint/format/build y transporte ELF compilado.
+
+- [x] Native Tauri: Qualified visible, preflight NeedsEvidence explícito, Review/Run deshabilitados y sin consentimiento/entry real; Tauri/Vite cerrados.

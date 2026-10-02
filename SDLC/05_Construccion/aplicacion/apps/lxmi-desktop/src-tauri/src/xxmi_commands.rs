@@ -8,13 +8,14 @@ use lxmi_xxmi::{
 };
 
 #[tauri::command]
-pub fn inspect_linux_environment_qualification(
+pub async fn inspect_linux_environment_qualification(
 ) -> std::result::Result<lxmi_bridge::LinuxEnvironmentQualificationPanel, BridgeServiceError> {
-    lxmi_bridge::linux_environment_qualification_panel().map_err(|detail| BridgeServiceError {
-        code: "environment_evidence_unavailable".into(),
-        detail,
-        stderr: None,
-    })
+    blocking_bridge(crate::prefix_recovery_service::environment_panel).await
+}
+#[tauri::command]
+pub async fn qualify_zzz_prefix_executor(
+) -> std::result::Result<lxmi_bridge::QualifiedExecutorPanel, BridgeServiceError> {
+    blocking_bridge(crate::prefix_recovery_service::qualify_executor).await
 }
 
 #[tauri::command]

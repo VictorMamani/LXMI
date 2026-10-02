@@ -2,7 +2,7 @@
 use super::*;
 use std::io::{Seek, SeekFrom};
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
-const TRANSPORT_FILE: &str = "fixture-container-transport";
+pub(crate) const TRANSPORT_FILE: &str = "fixture-container-transport";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -58,7 +58,7 @@ pub(crate) fn fixture_root(path: &Path) -> Result<PathBuf, BridgeError> {
     Ok(root)
 }
 
-fn wrap_invocation(
+pub(crate) fn wrap_invocation(
     invocation: &ProcessInvocation,
     entry: &Path,
     variable: &Path,
@@ -101,7 +101,7 @@ fn wrap_invocation(
     }
 }
 
-fn controlled_fixture_invocation(original: &ProcessInvocation) -> ProcessInvocation {
+pub(crate) fn controlled_fixture_invocation(original: &ProcessInvocation) -> ProcessInvocation {
     let mut invocation = original.clone();
     invocation.environment.retain(|key, _| {
         matches!(
@@ -117,6 +117,7 @@ fn controlled_fixture_invocation(original: &ProcessInvocation) -> ProcessInvocat
                     | "STEAM_COMPAT_DATA_PATH"
                     | "LXMI_BRIDGE_TEST_MARKER"
                     | "WINEDEBUG"
+                    | "LXMI_QUALIFIED_CONTEXT_SHA256"
             )
         )
     });
@@ -138,9 +139,9 @@ impl BridgeProcessExecutor for DirectFixtureExecutor {
     }
 }
 
-struct RuntimeFixtureExecutor<'a> {
-    entry: &'a Path,
-    variable: &'a Path,
+pub(crate) struct RuntimeFixtureExecutor<'a> {
+    pub(crate) entry: &'a Path,
+    pub(crate) variable: &'a Path,
 }
 impl BridgeProcessExecutor for RuntimeFixtureExecutor<'_> {
     fn execute(&self, invocation: &ProcessInvocation) -> Result<ProcessOutput, ProcessFailure> {
@@ -202,11 +203,12 @@ pub fn enter_fixture_container_transport() -> Result<(), BridgeError> {
         ));
     }
     let root =
-        fixture_root(executable.parent().ok_or_else(|| {
+        qualified_executor::private_recipe_root(executable.parent().ok_or_else(|| {
             BridgeError::new(BridgeErrorCode::UnsafePath, "transport root missing")
         })?)?;
     let expected_prefix = root.join("test-prefixes/bridge-v1/compatdata");
-    if env::var_os("STEAM_COMPAT_DATA_PATH").as_deref() != Some(expected_prefix.as_os_str()) {
+    let approved_prefix = qualified_executor::transport_context(&root)?.unwrap_or(expected_prefix);
+    if env::var_os("STEAM_COMPAT_DATA_PATH").as_deref() != Some(approved_prefix.as_os_str()) {
         return Err(BridgeError::new(
             BridgeErrorCode::UnsafePrefixContext,
             "transport only accepts its own fixture compatdata",
@@ -304,7 +306,7 @@ impl Drop for RequestCleanup {
     }
 }
 
-fn open_fixture_request(
+pub(crate) fn open_fixture_request(
     root: &Path,
     nonce: &str,
     hash: Option<&str>,
@@ -408,7 +410,7 @@ pub fn stage_fixture_proton_mirror(
     root: &Path,
     steam: &Path,
 ) -> Result<FixtureProtonMirror, BridgeError> {
-    let root = fixture_root(root)?;
+    let root = qualified_executor::private_recipe_root(root)?;
     let source =
         validate_proton_script(&steam.join("steamapps/common/Proton - Experimental/proton"))?;
     let source = source.parent().expect("tool parent");
@@ -428,7 +430,7 @@ pub fn attach_fixture_proton_mirror(
     root: &Path,
     info: &FixtureProtonMirror,
 ) -> Result<(), BridgeError> {
-    let root = fixture_root(root)?;
+    let root = qualified_executor::private_recipe_root(root)?;
     validate_mirror(info)?;
     let bytes = serde_json::to_vec(info)
         .map_err(|e| BridgeError::new(BridgeErrorCode::Io, e.to_string()))?;
@@ -444,7 +446,7 @@ pub fn attach_fixture_proton_mirror(
         .map_err(|e| BridgeError::new(BridgeErrorCode::Io, e.to_string()))
 }
 fn validate_mirror(info: &FixtureProtonMirror) -> Result<PathBuf, BridgeError> {
-    let owner = fixture_root(
+    let owner = qualified_executor::private_recipe_root(
         info.mirror_root
             .parent()
             .ok_or_else(|| BridgeError::new(BridgeErrorCode::UnsafePath, "mirror parent"))?,
@@ -479,7 +481,7 @@ fn validate_mirror(info: &FixtureProtonMirror) -> Result<PathBuf, BridgeError> {
     }
     Ok(script)
 }
-fn fixture_proton(root: &Path) -> Result<PathBuf, BridgeError> {
+pub(crate) fn fixture_proton(root: &Path) -> Result<PathBuf, BridgeError> {
     let bytes = read_bounded_file(
         &safe_existing_file(root, &root.join("proton-mirror.json"))?,
         16384,

@@ -472,6 +472,10 @@ pub(crate) fn clone_private_tree(source: &Path, destination: &Path) -> io::Resul
     ))
 }
 
+pub(crate) fn private_tree_inventory(path: &Path) -> io::Result<Vec<RecoveryEntry>> {
+    Ok(scan(&absolute_directory(path)?, Instant::now())?.entries)
+}
+
 fn same_source(a: &Tree, b: &Tree) -> bool {
     a.entries == b.entries && a.stamps == b.stamps
 }

@@ -244,7 +244,16 @@ export default function PrefixPreflightPanel() {
           before creating a backup.
         </p>
       )}
-      <RealPrefixEntryPanel />
+      <RealPrefixEntryPanel
+        preflightBlockers={report?.blockers ?? []}
+        preflightEligible={
+          report?.result === "eligible_for_review" &&
+          report.runtime_drift === "same_build" &&
+          report.active_processes === 0 &&
+          report.unresolved_processes === 0 &&
+          recovery?.integrity.state === "verified"
+        }
+      />
       {report && (
         <div>
           <dl>

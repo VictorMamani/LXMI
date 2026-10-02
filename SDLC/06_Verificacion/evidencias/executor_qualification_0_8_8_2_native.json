@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "validation": "Native Tauri / AT-SPI LXMI only",
+  "executor_qualified_visible": true,
+  "preflight_needs_evidence_visible": true,
+  "blockers": [
+    "baseline_not_captured",
+    "rollback_insufficient_metadata_only",
+    "recovery_source_current_mismatch"
+  ],
+  "private_proton_visible": true,
+  "wrapper_visible": true,
+  "history_preserved": true,
+  "real_helper_not_run": true,
+  "consent_collected": false,
+  "real_run_action_activated": false,
+  "buttons": {
+    "Qualify Executor Using Private Prefix": {
+      "enabled": true,
+      "sensitive": true
+    },
+    "Review Harmless Prefix Entry": {
+      "enabled": false,
+      "sensitive": false
+    },
+    "Run Harmless Prefix Entry Test": {
+      "enabled": false,
+      "sensitive": false
+    }
+  },
+  "native_text_sha256": "89901c622b6552e0b0810a31c09570238ca65642254b2b6ad35f8aa5bd968e72"
+}
