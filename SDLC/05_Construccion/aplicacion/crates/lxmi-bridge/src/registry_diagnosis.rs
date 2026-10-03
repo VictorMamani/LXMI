@@ -157,6 +157,42 @@ fn is_fonts(key: &str) -> bool {
             | "Software\\Wine\\Fonts\\External Fonts"
     )
 }
+/// Exact hashes of the three selected font tables; never returns registry values.
+/// A stable container fixture is not evidence for a different initial font state.
+pub fn selected_font_state_fingerprints(
+    registry: &BTreeMap<String, Vec<u8>>,
+) -> Result<BTreeMap<String, String>, RegistryDiagnosisError> {
+    let mut out = BTreeMap::new();
+    for (hive, keys) in [
+        (
+            "system.reg",
+            vec![
+                "Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts",
+                "Software\\Microsoft\\Windows\\CurrentVersion\\Fonts",
+            ],
+        ),
+        ("user.reg", vec!["Software\\Wine\\Fonts\\External Fonts"]),
+    ] {
+        let parsed = parse(
+            registry
+                .get(hive)
+                .ok_or(RegistryDiagnosisError::UnsupportedFormat)?,
+        )?;
+        for key in keys {
+            let values = parsed
+                .get(key)
+                .ok_or(RegistryDiagnosisError::UnsupportedFormat)?;
+            out.insert(
+                format!("{hive}:{key}"),
+                format!(
+                    "{:x}",
+                    Sha256::digest(serde_json::to_vec(values).expect("string map"))
+                ),
+            );
+        }
+    }
+    Ok(out)
+}
 fn is_device(key: &str) -> bool {
     let parts: Vec<_> = key.split('\\').collect();
     parts.len() == 6

@@ -54,6 +54,25 @@ pub enum CurrentPrefixStateAssessment {
     ActiveContext,
     IdentityMismatch,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecoveryRefreshDecision {
+    NewGenerationAllowed,
+    UseExistingGeneration,
+    Blocked,
+}
+pub fn recovery_refresh_decision(
+    assessment: CurrentPrefixStateAssessment,
+    historical_verified: bool,
+    current_source_matches: bool,
+) -> RecoveryRefreshDecision {
+    if assessment != CurrentPrefixStateAssessment::UnderstoodAndAcceptable || !historical_verified {
+        RecoveryRefreshDecision::Blocked
+    } else if current_source_matches {
+        RecoveryRefreshDecision::UseExistingGeneration
+    } else {
+        RecoveryRefreshDecision::NewGenerationAllowed
+    }
+}
 #[derive(Debug, Clone, Serialize)]
 pub struct ProtectedStateDrift {
     pub path: PathBuf,
@@ -260,6 +279,37 @@ pub fn assess_current_prefix(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn recovery_refresh_requires_accepted_changed_source_and_verified_history() {
+        use CurrentPrefixStateAssessment::*;
+        use RecoveryRefreshDecision::*;
+        assert_eq!(
+            recovery_refresh_decision(UnderstoodAndAcceptable, true, false),
+            NewGenerationAllowed
+        );
+        assert_eq!(
+            recovery_refresh_decision(UnderstoodAndAcceptable, true, true),
+            UseExistingGeneration
+        );
+        assert_eq!(
+            recovery_refresh_decision(UnderstoodAndAcceptable, false, false),
+            Blocked
+        );
+        for assessment in [
+            UnderstoodButNotAccepted,
+            UnknownDifferences,
+            ProtectedStateChanged,
+            ActiveContext,
+            IdentityMismatch,
+        ] {
+            for source_matches in [false, true] {
+                assert_eq!(
+                    recovery_refresh_decision(assessment, true, source_matches),
+                    Blocked
+                );
+            }
+        }
+    }
     fn entry(path: &str) -> RecoveryEntry {
         RecoveryEntry {
             relative_path: path.into(),

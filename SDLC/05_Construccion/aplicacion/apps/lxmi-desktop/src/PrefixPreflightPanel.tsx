@@ -127,6 +127,8 @@ type Panel = {
   preflight: Preflight;
   recovery: Recovery | null;
   historical_recovery: Recovery | null;
+  recovery_history: Recovery[];
+  current_recovery_matches_source: boolean;
   reconciliation: Reconciliation | null;
   steam_review: SteamReview | null;
   steam_review_receipt: { manifest_path: string; sha256: string } | null;
@@ -154,6 +156,8 @@ export default function PrefixPreflightPanel() {
     null,
   );
   const [steamReview, setSteamReview] = useState<SteamReview | null>(null);
+  const [recoveryHistory, setRecoveryHistory] = useState<Recovery[]>([]);
+  const [currentRecoveryMatches, setCurrentRecoveryMatches] = useState(false);
   const [steamReceipt, setSteamReceipt] =
     useState<Panel["steam_review_receipt"]>(null);
   function accept(panel: Panel) {
@@ -163,6 +167,8 @@ export default function PrefixPreflightPanel() {
     setRecovery(panel.recovery);
     setReconciliation(panel.reconciliation);
     setHistoricalRecovery(panel.historical_recovery);
+    setRecoveryHistory(panel.recovery_history ?? []);
+    setCurrentRecoveryMatches(panel.current_recovery_matches_source);
   }
   function fail(cause: unknown) {
     const detail = cause as { code?: string; detail?: string };
@@ -465,10 +471,7 @@ export default function PrefixPreflightPanel() {
                 busy ||
                 reconciliation.assessment !== "understood_and_acceptable" ||
                 !report?.baseline_receipt ||
-                Boolean(
-                  recovery &&
-                  recovery.backup_id !== reconciliation.old_backup_id,
-                )
+                currentRecoveryMatches
               }
               onClick={() => void recover("create_current_backup")}
             >
@@ -476,6 +479,19 @@ export default function PrefixPreflightPanel() {
             </button>
           </div>
         </>
+      )}
+      {recoveryHistory.length > 0 && (
+        <div>
+          <h5>Previous recovery generations · preserved</h5>
+          <ul>
+            {recoveryHistory.map((r) => (
+              <li key={r.backup_id}>
+                {r.backup_id} · recorded integrity {r.integrity.state} ·
+                historical source
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {historicalRecovery && (
         <p>

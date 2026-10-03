@@ -70,9 +70,16 @@ pub struct QualifiedExecutorPanel {
     pub wrapper: PathBuf,
     pub private_proton: PathBuf,
     pub fixture_runs: usize,
+    pub initial_font_state_sha256: Option<BTreeMap<String, String>>,
+    pub recovery_seed: Option<RecoverySeedBinding>,
     pub recipe_source: String,
     pub real_execution: String,
     pub limitations: Vec<String>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecoverySeedBinding {
+    pub backup_id: String,
+    pub manifest_sha256: String,
 }
 #[derive(Clone)]
 pub struct QualifiedLinuxRuntimeRecipe {
@@ -84,6 +91,8 @@ pub struct QualifiedLinuxRuntimeRecipe {
     transport_hash: String,
     qualification: RealPrefixExecutorQualification,
     fixture_runs: usize,
+    initial_font_state: Option<BTreeMap<String, String>>,
+    recovery_seed: Option<RecoverySeedBinding>,
 }
 fn failure(code: &str) -> BridgeError {
     BridgeError::new(BridgeErrorCode::UnsafePrefixContext, code)
@@ -283,16 +292,71 @@ impl QualifiedLinuxRuntimeRecipe {
             transport_hash: String::new(),
             qualification: RealPrefixExecutorQualification::Unqualified,
             fixture_runs: 0,
+            initial_font_state: None,
+            recovery_seed: None,
         }
     }
     pub fn panel(&self) -> QualifiedExecutorPanel {
-        QualifiedExecutorPanel {qualification:self.qualification,identity:self.identity.clone(),fingerprint:self.identity.fingerprint(),runtime_root:self.wrapper().parent().unwrap().into(),wrapper:self.wrapper(),private_proton:self.mirror.mirror_root.clone(),fixture_runs:self.fixture_runs,recipe_source:MATRIX_HASH.into(),real_execution:"not_run".into(),limitations:vec!["Prior DirectProton UnexpectedMutation preserved; no retry or real restore.".into(),"Private self-test qualification is not real-prefix consent; real execution requires fresh preflight and one-shot review.".into()]}
+        QualifiedExecutorPanel {
+            qualification: self.qualification,
+            identity: self.identity.clone(),
+            fingerprint: self.identity.fingerprint(),
+            runtime_root: self.wrapper().parent().unwrap().into(),
+            wrapper: self.wrapper(),
+            private_proton: self.mirror.mirror_root.clone(),
+            fixture_runs: self.fixture_runs,
+            initial_font_state_sha256: self.initial_font_state.clone(),
+            recovery_seed: self.recovery_seed.clone(),
+            recipe_source: MATRIX_HASH.into(),
+            real_execution: "not_run".into(),
+            limitations: vec![
+                "Prior UnexpectedMutation preserved; no automatic retry or real restore.".into(),
+                "Private self-test qualification is not real-prefix consent.".into(),
+                "Real review requires a self-test cloned from the current verified recovery generation, with matching initial font tables.".into(),
+            ],
+        }
     }
     pub fn require_qualified(&self) -> Result<(), BridgeError> {
         if self.qualification != RealPrefixExecutorQualification::Qualified {
             return Err(failure("linux_runtime_environment_unqualified"));
         }
         self.verify()
+    }
+    pub fn require_initial_prefix_state(
+        &self,
+        registry: &QualifiedRegistryCapture,
+    ) -> Result<(), BridgeError> {
+        if self.qualification != RealPrefixExecutorQualification::Qualified {
+            return Err(failure("linux_runtime_environment_unqualified"));
+        }
+        let observed = selected_font_state_fingerprints(registry)
+            .map_err(|_| failure("initial_prefix_state_unqualified: incomplete font evidence"))?;
+        if self.initial_font_state.as_ref() != Some(&observed) {
+            return Err(failure("initial_prefix_state_unqualified: font tables differ from the measured private self-test"));
+        }
+        Ok(())
+    }
+    pub fn require_recovery_seed(
+        &self,
+        recovery: &PrefixRecoveryQualification,
+    ) -> Result<(), BridgeError> {
+        self.require_recovery_seed_identity(&recovery.backup_id, &recovery.manifest_sha256)
+    }
+    fn require_recovery_seed_identity(
+        &self,
+        backup_id: &str,
+        manifest_sha256: &str,
+    ) -> Result<(), BridgeError> {
+        if self.qualification != RealPrefixExecutorQualification::Qualified
+            || self.recovery_seed.as_ref()
+                != Some(&RecoverySeedBinding {
+                    backup_id: backup_id.into(),
+                    manifest_sha256: manifest_sha256.into(),
+                })
+        {
+            return Err(failure("current_recovery_executor_unqualified"));
+        }
+        Ok(())
     }
     fn verify(&self) -> Result<(), BridgeError> {
         if self.identity != LinuxRuntimeRecipeIdentity::qualified_fixture() {
@@ -365,6 +429,12 @@ impl QualifiedLinuxRuntimeRecipe {
         if real && final_check.is_none() {
             return Err(failure("real entry final preflight callback required"));
         }
+        let guarded_check = || {
+            final_check.ok_or_else(|| failure("real final check required"))?()?;
+            self.require_initial_prefix_state(&qualified_registry_capture(
+                &capability.compatdata.join("pfx"),
+            )?)
+        };
         let root = private_recipe_root(&config.managed_root)?;
         let context = TransportContext {
             schema: 1,
@@ -397,7 +467,11 @@ impl QualifiedLinuxRuntimeRecipe {
                 recipe: self,
                 context_hash: format!("{:x}", Sha256::digest(bytes)),
                 root: root.clone(),
-                final_check,
+                final_check: if real {
+                    Some(&guarded_check)
+                } else {
+                    final_check
+                },
             },
             Some(capability),
         );
@@ -462,6 +536,24 @@ pub fn qualify_integrated_executor(
     storage: &Path,
     steam_root: &Path,
 ) -> Result<QualifiedLinuxRuntimeRecipe, BridgeError> {
+    qualify_executor_with_seed(storage, steam_root, None)
+}
+
+/// Private clone only. A seed is loaded and reverified using the existing recovery engine.
+/// No game-prefix executor or persistent permission is created by this function.
+pub fn qualify_integrated_executor_from_recovery(
+    storage: &Path,
+    steam_root: &Path,
+    recovery: &PrefixRecoveryQualification,
+) -> Result<QualifiedLinuxRuntimeRecipe, BridgeError> {
+    qualify_executor_with_seed(storage, steam_root, Some(recovery))
+}
+
+fn qualify_executor_with_seed(
+    storage: &Path,
+    steam_root: &Path,
+    seed: Option<&PrefixRecoveryQualification>,
+) -> Result<QualifiedLinuxRuntimeRecipe, BridgeError> {
     // No real-prefix discovery or access. All writes and execution are private.
     let root = session(storage)?;
     stage_session(&root, &storage.join("helpers"))?;
@@ -482,6 +574,11 @@ pub fn qualify_integrated_executor(
             .map_err(io_error)?,
         qualification: RealPrefixExecutorQualification::Unqualified,
         fixture_runs: 0,
+        initial_font_state: None,
+        recovery_seed: seed.map(|r| RecoverySeedBinding {
+            backup_id: r.backup_id.clone(),
+            manifest_sha256: r.manifest_sha256.clone(),
+        }),
     };
     let config = BridgeTestConfig {
         managed_root: root.clone(),
@@ -491,7 +588,35 @@ pub fn qualify_integrated_executor(
         prefix_mode: PrefixMode::IsolatedTemporaryPrefix,
     };
     let compatdata = prepare_isolated_test_context(&root)?;
-    ensure_controlled_directory(&root, &compatdata.join("pfx"))?;
+    let seed_inventory = if let Some(recovery) = seed {
+        let mut checked =
+            load_recovery_generation(storage, &recovery.backup_id, &recovery.source_identity)
+                .map_err(io_error)?;
+        if checked.manifest_sha256 != recovery.manifest_sha256
+            || checked.proton_build != BUILD
+            || !checked.source_unchanged_during_capture
+            || checked.protected_paths_unchanged != Some(true)
+        {
+            return Err(failure("recovery seed identity or consistency invalid"));
+        }
+        verify_prefix_recovery(storage, &mut checked).map_err(io_error)?;
+        verify_prefix_restore(storage, &mut checked).map_err(io_error)?;
+        if checked.integrity.state != RecoveryVerificationState::Verified
+            || checked
+                .restore_verification
+                .as_ref()
+                .is_none_or(|v| v.state != RecoveryVerificationState::Verified)
+        {
+            return Err(failure("recovery seed or off-target restore invalid"));
+        }
+        let tree = safe_existing_directory(storage, &checked.backup_path.join("tree"))?;
+        let inventory = prefix_recovery::private_tree_inventory(&tree).map_err(io_error)?;
+        prefix_recovery::clone_private_tree(&tree, &compatdata.join("pfx")).map_err(io_error)?;
+        Some((tree, inventory))
+    } else {
+        ensure_controlled_directory(&root, &compatdata.join("pfx"))?;
+        None
+    };
     let invoke = || -> Result<RealPrefixInvocation, BridgeError> {
         Ok(RealPrefixInvocation {
             compatdata: compatdata.clone(),
@@ -499,9 +624,16 @@ pub fn qualify_integrated_executor(
             nonce: random_nonce()?,
         })
     };
-    recipe.execute(&config, &invoke()?, false, None)?;
-    thread::sleep(Duration::from_secs(7));
+    if seed.is_none() {
+        recipe.execute(&config, &invoke()?, false, None)?;
+        thread::sleep(Duration::from_secs(7));
+    }
+    // A recovery clone is measured before its first helper. Never normalize then hide run 1.
     let baseline = qualified_registry_capture(&compatdata.join("pfx"))?;
+    recipe.initial_font_state = Some(
+        selected_font_state_fingerprints(&baseline)
+            .map_err(|e| io_error(format!("initial font evidence: {e:?}")))?,
+    );
     let before_identity = prefix_file_identity(&compatdata.join("pfx"));
     let mut previous = baseline.clone();
     let mut previous_metadata = qualified_prefix_metadata(&compatdata.join("pfx"))?;
@@ -537,6 +669,11 @@ pub fn qualify_integrated_executor(
         recipe.fixture_runs += 1;
     }
     recipe.verify()?;
+    if let Some((tree, inventory)) = seed_inventory {
+        if prefix_recovery::private_tree_inventory(&tree).map_err(io_error)? != inventory {
+            return Err(failure("recovery seed changed during qualification"));
+        }
+    }
     recipe.qualification = qualify_real_executor_evidence(
         LinuxRuntimeKind::SteamLinuxRuntimeContainer,
         recipe.fixture_runs,
@@ -760,6 +897,95 @@ pub fn qualify_real_executor_evidence(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn qualification_is_bound_to_the_measured_recovery_generation() {
+        let mut recipe = QualifiedLinuxRuntimeRecipe::unqualified_test_recipe();
+        recipe.qualification = RealPrefixExecutorQualification::Qualified;
+        assert!(recipe
+            .require_recovery_seed_identity("first", "hash")
+            .is_err());
+        recipe.recovery_seed = Some(RecoverySeedBinding {
+            backup_id: "first".into(),
+            manifest_sha256: "hash".into(),
+        });
+        assert!(recipe
+            .require_recovery_seed_identity("first", "hash")
+            .is_ok());
+        assert!(recipe
+            .require_recovery_seed_identity("second", "hash")
+            .is_err());
+        assert!(recipe
+            .require_recovery_seed_identity("first", "tampered")
+            .is_err());
+        recipe.qualification = RealPrefixExecutorQualification::Unqualified;
+        assert!(recipe
+            .require_recovery_seed_identity("first", "hash")
+            .is_err());
+    }
+    fn initial_font_registry() -> QualifiedRegistryCapture {
+        BTreeMap::from([
+            (
+                "system.reg".into(),
+                br#"WINE REGISTRY Version 2
+[Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts] 1
+"Test"="Z:\\run\\host\\fonts\\test.ttf"
+[Software\\Microsoft\\Windows\\CurrentVersion\\Fonts] 1
+"Test"="Z:\\run\\host\\fonts\\test.ttf"
+"#
+                .to_vec(),
+            ),
+            (
+                "user.reg".into(),
+                br#"WINE REGISTRY Version 2
+[Software\\Wine\\Fonts\\External Fonts] 1
+"Test"="Z:\\run\\host\\fonts\\test.ttf"
+"#
+                .to_vec(),
+            ),
+        ])
+    }
+    #[test]
+    fn qualified_environment_does_not_authorize_different_initial_font_state() {
+        let registry = initial_font_registry();
+        let mut recipe = QualifiedLinuxRuntimeRecipe::unqualified_test_recipe();
+        recipe.qualification = RealPrefixExecutorQualification::Qualified;
+        recipe.initial_font_state = Some(selected_font_state_fingerprints(&registry).unwrap());
+        assert!(recipe.require_initial_prefix_state(&registry).is_ok());
+        let mut changed = registry.clone();
+        changed.insert(
+            "user.reg".into(),
+            br#"WINE REGISTRY Version 2
+[Software\\Wine\\Fonts\\External Fonts] 1
+"Test"="Z:\\usr\\share\\fonts\\test.ttf"
+"#
+            .to_vec(),
+        );
+        assert!(recipe
+            .require_initial_prefix_state(&changed)
+            .unwrap_err()
+            .to_string()
+            .contains("initial_prefix_state_unqualified"));
+        assert_eq!(
+            recipe.initial_font_state.as_ref().unwrap(),
+            &selected_font_state_fingerprints(&registry).unwrap()
+        );
+    }
+    #[test]
+    fn initial_font_evidence_must_be_complete_and_measured() {
+        let registry = initial_font_registry();
+        let mut recipe = QualifiedLinuxRuntimeRecipe::unqualified_test_recipe();
+        recipe.qualification = RealPrefixExecutorQualification::Qualified;
+        assert!(recipe.require_initial_prefix_state(&registry).is_err());
+        recipe.initial_font_state = Some(selected_font_state_fingerprints(&registry).unwrap());
+        assert!(recipe
+            .require_initial_prefix_state(&BTreeMap::new())
+            .is_err());
+        let mut missing = registry.clone();
+        missing.insert("system.reg".into(), b"WINE REGISTRY Version 2\n".to_vec());
+        assert!(recipe.require_initial_prefix_state(&missing).is_err());
+        recipe.qualification = RealPrefixExecutorQualification::Unqualified;
+        assert!(recipe.require_initial_prefix_state(&registry).is_err());
+    }
     #[test]
     fn recipe_identity_binds_all_policy_components() {
         let expected = LinuxRuntimeRecipeIdentity::qualified_fixture();

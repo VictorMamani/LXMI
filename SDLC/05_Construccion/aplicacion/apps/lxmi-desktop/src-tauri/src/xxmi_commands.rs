@@ -214,6 +214,12 @@ pub async fn run_context_reentry_test(
 }
 
 #[tauri::command]
+pub async fn inspect_zzz_harmless_prefix_entry_history(
+) -> std::result::Result<lxmi_bridge::HarmlessEntryHistory, BridgeServiceError> {
+    blocking_bridge(crate::prefix_recovery_service::entry_history).await
+}
+
+#[tauri::command]
 pub async fn prepare_zzz_harmless_prefix_entry(
 ) -> std::result::Result<crate::prefix_recovery_service::HarmlessEntryReviewPanel, BridgeServiceError>
 {

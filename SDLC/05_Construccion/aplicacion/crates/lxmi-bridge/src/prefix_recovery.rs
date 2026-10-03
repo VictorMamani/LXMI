@@ -502,6 +502,120 @@ pub fn inspect_recovery_source_drift(
     Ok((drift, fingerprint, consistent))
 }
 
+/// A recorded result is diagnostic history, never an execution capability.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HarmlessEntryHistory {
+    pub attempted: bool,
+    pub result: Option<RealPrefixEntryResult>,
+}
+
+/// Display-only history. Reads fixed LXMI artifacts, never the game/prefix or an executor.
+pub fn read_harmless_entry_history(root: &Path) -> io::Result<HarmlessEntryHistory> {
+    fn directory(parent: &File, name: &str) -> io::Result<File> {
+        let dir = descend(parent, name)?;
+        let m = dir.metadata()?;
+        // storage() already requires the enclosing LXMI root to be owned and 0700.
+        // Existing tests/ can be 0775; no other user can traverse its private ancestor.
+        if m.uid() != unsafe { libc::getuid() } {
+            return Err(err("owned_history_directory_required"));
+        }
+        Ok(dir)
+    }
+    fn absent() -> HarmlessEntryHistory {
+        HarmlessEntryHistory {
+            attempted: false,
+            result: None,
+        }
+    }
+    fn bytes(dir: &File, name: &str, limit: u64) -> io::Result<Vec<u8>> {
+        let file = read_file(dir, name)?;
+        let before = file.metadata()?;
+        if before.uid() != unsafe { libc::getuid() }
+            || before.mode() & 0o077 != 0
+            || before.len() > limit
+        {
+            return Err(err("unsafe_entry_history_file"));
+        }
+        let mut content = Vec::new();
+        (&file).take(limit + 1).read_to_end(&mut content)?;
+        let after = file.metadata()?;
+        if content.len() as u64 > limit
+            || before.len() != after.len()
+            || before.mtime() != after.mtime()
+            || before.mtime_nsec() != after.mtime_nsec()
+            || before.ctime() != after.ctime()
+            || before.ctime_nsec() != after.ctime_nsec()
+        {
+            return Err(err("entry_history_changed_during_read"));
+        }
+        Ok(content)
+    }
+    let managed = storage(root)?;
+    let tests = match directory(&managed, "tests") {
+        Ok(dir) => dir,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(absent()),
+        Err(e) => return Err(e),
+    };
+    let reservation = match bytes(&tests, "qualified-real-entry-0_8_8_2-once.json", 4096) {
+        Ok(value) => value,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(absent()),
+        Err(e) => return Err(e),
+    };
+    let reservation: serde_json::Value = serde_json::from_slice(&reservation)?;
+    let nonce = reservation["review_nonce"]
+        .as_str()
+        .ok_or_else(|| err("entry_history_nonce_missing"))?;
+    validate_id(nonce)?;
+    let fingerprint = reservation["recipe"]
+        .as_str()
+        .ok_or_else(|| err("entry_history_recipe_missing"))?;
+    if reservation["schema"] != 1
+        || fingerprint.len() != 64
+        || !fingerprint
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+    {
+        return Err(err("entry_history_reservation_invalid"));
+    }
+    let journal = match directory(&managed, "snapshots") {
+        Ok(dir) => dir,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            return Ok(HarmlessEntryHistory {
+                attempted: true,
+                result: None,
+            })
+        }
+        Err(e) => return Err(e),
+    };
+    let name = format!("real-prefix-entry-{nonce}-after.json");
+    let content = match bytes(&journal, &name, 8 * 1024 * 1024) {
+        Ok(value) => value,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            return Ok(HarmlessEntryHistory {
+                attempted: true,
+                result: None,
+            })
+        }
+        Err(e) => return Err(e),
+    };
+    let mut result: RealPrefixEntryResult = serde_json::from_slice(&content)?;
+    if result.schema != 1
+        || result.session_nonce != nonce
+        || result.before.app_id != 4162040
+        || result.executor_recipe_fingerprint.as_deref() != Some(fingerprint)
+    {
+        return Err(err("entry_history_identity_mismatch"));
+    }
+    result.evidence_receipt = Some(BaselineReceipt {
+        manifest_path: root.join("snapshots").join(name),
+        sha256: format!("{:x}", Sha256::digest(content)),
+    });
+    Ok(HarmlessEntryHistory {
+        attempted: true,
+        result: Some(result),
+    })
+}
+
 /// Hash/descriptor checked historical evidence. Only a single snapshot filename.
 pub fn read_prefix_recovery_evidence(
     root: &Path,
@@ -1114,10 +1228,17 @@ pub fn latest_recovery_qualification(
     root: &Path,
     identity: &PrefixFileIdentity,
 ) -> io::Result<Option<PrefixRecoveryQualification>> {
+    Ok(recovery_generation_history(root, identity)?.pop())
+}
+/// Recorded, manifest-bound generations. Does not assert fresh source equality or restore.
+pub fn recovery_generation_history(
+    root: &Path,
+    identity: &PrefixFileIdentity,
+) -> io::Result<Vec<PrefixRecoveryQualification>> {
     let managed = storage(root)?;
     let journal = match descend(&managed, "snapshots") {
         Ok(dir) => dir,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(e) => return Err(e),
     };
     let mut candidates = Vec::new();
@@ -1137,13 +1258,16 @@ pub fn latest_recovery_qualification(
             return Err(err("qualification_journal_limit"));
         }
         let report: PrefixRecoveryQualification = serde_json::from_slice(&bytes)?;
+        if name != format!("recovery-{}.json", report.backup_id) {
+            return Err(err("recovery_journal_identity_mismatch"));
+        }
         if &report.source_identity == identity {
             let (_, manifest) = load_backup(root, &report)?;
             candidates.push((manifest.created_at_unix_seconds, report));
         }
     }
     candidates.sort_by_key(|(time, _)| *time);
-    Ok(candidates.pop().map(|(_, report)| report))
+    Ok(candidates.into_iter().map(|(_, report)| report).collect())
 }
 
 pub fn load_recovery_generation(
@@ -1235,6 +1359,134 @@ mod tests {
             let _ = fs::remove_dir_all(&self.base);
         }
     }
+    fn history_reservation(f: &Fixture) -> (File, File, String, String) {
+        let managed = storage(&f.storage).unwrap();
+        let tests = private_child(&managed, "tests", false).unwrap();
+        let journal = private_child(&managed, "snapshots", false).unwrap();
+        let nonce = "a".repeat(32);
+        let recipe = "b".repeat(64);
+        write_json(
+            &tests,
+            "qualified-real-entry-0_8_8_2-once.json",
+            &serde_json::json!({
+                "schema":1,"review_nonce":nonce,"recipe":recipe,"real_restore":"not_tested"
+            }),
+        )
+        .unwrap();
+        (tests, journal, nonce, recipe)
+    }
+    #[test]
+    fn history_absent_is_read_only_and_pending_reservation_stays_consumed() {
+        let f = Fixture::new();
+        assert!(!read_harmless_entry_history(&f.storage).unwrap().attempted);
+        assert!(!f.storage.join("tests").exists());
+        assert!(!f.storage.join("snapshots").exists());
+        history_reservation(&f);
+        let history = read_harmless_entry_history(&f.storage).unwrap();
+        assert!(history.attempted);
+        assert!(history.result.is_none());
+    }
+    #[test]
+    fn history_legacy_child_mode_requires_private_ancestor() {
+        let f = Fixture::new();
+        history_reservation(&f);
+        fs::set_permissions(f.storage.join("tests"), fs::Permissions::from_mode(0o775)).unwrap();
+        assert!(read_harmless_entry_history(&f.storage).unwrap().attempted);
+        fs::set_permissions(&f.storage, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(read_harmless_entry_history(&f.storage).is_err());
+    }
+    #[test]
+    fn history_restores_recorded_result_without_granting_execution() {
+        let f = Fixture::new();
+        let (_, journal, nonce, recipe) = history_reservation(&f);
+        let preflight = inspect_game_prefix(GamePrefixPreflightInput {
+            compatdata: f.source.parent().unwrap().into(),
+            proton_root: f.base.join("missing-fixture-proton"),
+            protected_paths: vec![],
+            active_processes: 0,
+            unresolved_processes: 0,
+        });
+        let result = RealPrefixEntryResult {
+            schema: 1,
+            session_nonce: nonce.clone(),
+            result: RealPrefixEntryState::UnexpectedMutation,
+            consent_accepted: true,
+            helper_attempted: true,
+            executor_qualified: true,
+            game_became_active: false,
+            executor_recipe_fingerprint: Some(recipe),
+            helper: None,
+            helper_error: None,
+            before: preflight,
+            after: None,
+            mutations: vec![],
+            backup_id: "fixture".into(),
+            backup_manifest_sha256: "fixture".into(),
+            backup_verified_after: false,
+            prefix_identity_unchanged: false,
+            protected_paths_unchanged: false,
+            runtime_unchanged: false,
+            game_context_inactive_after: false,
+            evidence_receipt: None,
+            warnings: vec![],
+        };
+        let name = format!("real-prefix-entry-{nonce}-after.json");
+        let sha = write_json(&journal, &name, &result).unwrap();
+        let loaded = read_harmless_entry_history(&f.storage).unwrap();
+        assert!(loaded.attempted);
+        let loaded = loaded.result.unwrap();
+        assert_eq!(loaded.result, RealPrefixEntryState::UnexpectedMutation);
+        assert_eq!(loaded.evidence_receipt.unwrap().sha256, sha);
+        assert!(!loaded.before.execution_authorized);
+        assert!(!loaded.before.entry_plan.executor_available);
+        let mut wrong = result;
+        wrong.session_nonce = "c".repeat(32);
+        fs::write(
+            fd_path(&journal).join(&name),
+            serde_json::to_vec(&wrong).unwrap(),
+        )
+        .unwrap();
+        assert!(read_harmless_entry_history(&f.storage).is_err());
+    }
+    #[test]
+    fn history_rejects_traversal_and_symlinks() {
+        let f = Fixture::new();
+        let (tests, journal, nonce, _) = history_reservation(&f);
+        let reservation = fd_path(&tests).join("qualified-real-entry-0_8_8_2-once.json");
+        let original = fs::read(&reservation).unwrap();
+        fs::write(
+            &reservation,
+            br#"{"schema":1,"review_nonce":"../outside","recipe":"bad"}"#,
+        )
+        .unwrap();
+        assert!(read_harmless_entry_history(&f.storage).is_err());
+        fs::write(&reservation, &original).unwrap();
+        let name = format!("real-prefix-entry-{nonce}-after.json");
+        symlink(&reservation, fd_path(&journal).join(&name)).unwrap();
+        assert!(read_harmless_entry_history(&f.storage).is_err());
+        fs::remove_file(&reservation).unwrap();
+        let other = f.base.join("outside.json");
+        fs::write(&other, original).unwrap();
+        symlink(other, &reservation).unwrap();
+        assert!(read_harmless_entry_history(&f.storage).is_err());
+    }
+    #[test]
+    fn history_rejects_oversize_or_public_files() {
+        let f = Fixture::new();
+        let (tests, journal, nonce, _) = history_reservation(&f);
+        let path = fd_path(&journal).join(format!("real-prefix-entry-{nonce}-after.json"));
+        let file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&path)
+            .unwrap();
+        file.set_len(8 * 1024 * 1024 + 1).unwrap();
+        assert!(read_harmless_entry_history(&f.storage).is_err());
+        let reservation = fd_path(&tests).join("qualified-real-entry-0_8_8_2-once.json");
+        fs::set_permissions(reservation, fs::Permissions::from_mode(0o644)).unwrap();
+        assert!(read_harmless_entry_history(&f.storage).is_err());
+    }
     #[test]
     fn full_tree_backup_and_off_target_restore_preserve_policy() {
         let f = Fixture::new();
@@ -1293,6 +1545,7 @@ mod tests {
         fs::write(f.source.join("userdef.reg"), b"fixture default registry\n").unwrap();
         let mut old = f.create();
         let old_manifest = fs::read(old.backup_path.join("manifest.json")).unwrap();
+        save_recovery_qualification(&f.storage, &old).unwrap();
         let proton = f.base.join("proton");
         fs::create_dir(&proton).unwrap();
         fs::write(proton.join("version"), ZZZ_OBSERVED_BUILD).unwrap();
@@ -1329,6 +1582,11 @@ mod tests {
         new.protected_paths_unchanged = Some(true);
         assert_ne!(new.backup_id, old.backup_id);
         test_prefix_restore(&f.storage, &mut new).unwrap();
+        save_recovery_qualification(&f.storage, &new).unwrap();
+        let generations = recovery_generation_history(&f.storage, &old.source_identity).unwrap();
+        assert_eq!(generations.len(), 2);
+        assert!(generations.iter().any(|r| r.backup_id == old.backup_id));
+        assert!(generations.iter().any(|r| r.backup_id == new.backup_id));
         assert!(recovery_source_matches(&f.storage, &new).unwrap());
         assert!(!recovery_source_matches(&f.storage, &old).unwrap());
         assert_eq!(

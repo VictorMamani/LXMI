@@ -10,6 +10,7 @@ type EnvironmentPanel = {
     runtime_root: string;
     private_proton: string;
     fixture_runs: number;
+    recovery_seed: { backup_id: string; manifest_sha256: string } | null;
     real_execution: string;
     identity: { proton_build: string; pressure_vessel_sha256: string };
   } | null;
@@ -46,6 +47,8 @@ type Review = {
 };
 type Result = {
   result: string;
+  executor_qualified: boolean;
+  executor_recipe_fingerprint: string | null;
   helper_attempted: boolean;
   helper: {
     handshake: string;
@@ -95,6 +98,29 @@ export default function RealPrefixEntryPanel({
   const [busy, setBusy] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [historyPending, setHistoryPending] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    void invoke<{ attempted: boolean; result: Result | null }>(
+      "inspect_zzz_harmless_prefix_entry_history",
+    )
+      .then((history) => {
+        if (!mounted) return;
+        setAttempted(history.attempted);
+        setResult(history.result);
+        setHistoryPending(history.attempted && !history.result);
+        setConsent(false);
+        setHistoryLoaded(true);
+      })
+      .catch(() => {
+        if (mounted)
+          setError("Attempt history unavailable; real entry remains blocked.");
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
   function fail(cause: unknown) {
     const value = cause as { code?: string; detail?: string };
     setError(
@@ -153,6 +179,21 @@ export default function RealPrefixEntryPanel({
       setBusy(false);
     }
   }
+  const realExecutionStatus = result
+    ? `Attempt ended · ${result.result} · no retry`
+    : !historyLoaded
+      ? "Checking recorded attempt · real entry blocked"
+      : historyPending
+        ? "Attempt reserved · final evidence unavailable; no retry"
+        : attempted
+          ? busy
+            ? "In progress · one attempt"
+            : "Attempt ended · inspect error; no retry"
+          : review
+            ? consent
+              ? "Reviewed · consent accepted; not run"
+              : "Reviewed · fresh consent required"
+            : "Not run · review and fresh consent required";
   return (
     <section className="runtime-evidence bridge-test-panel">
       <h4>Real Prefix Entry · Harmless helper</h4>
@@ -165,16 +206,17 @@ export default function RealPrefixEntryPanel({
       <p role="status">
         Current: {environment?.current_environment.qualification ?? "UNKNOWN"} ·
         Real prefix entry:{" "}
-        {environmentBlocked || !preflightEligible
+        {!result && !attempted && (environmentBlocked || !preflightEligible)
           ? "Blocked · executor / prefix preflight requirements"
-          : "Not run · fresh consent required"}
+          : realExecutionStatus}
       </p>
       <p>
         Consultar evidencia no ejecuta Proton. El self-test de calificación
-        ejecuta el helper en un prefix privado LXMI y puede tardar varios
-        minutos al copiar y verificar Proton. No usa el prefix real.
+        ejecuta el helper en una copia privada del backup actual aceptado y
+        puede tardar varios minutos al copiar y verificar Proton. No usa el
+        prefix real.
       </p>
-      {!preflightEligible && (
+      {!preflightEligible && !attempted && (
         <p role="status">
           Prefix preflight blocks real review:{" "}
           {preflightBlockers.length
@@ -187,7 +229,7 @@ export default function RealPrefixEntryPanel({
         evidence remains preserved.
       </p>
       <button
-        disabled={busy || attempted}
+        disabled={busy || !historyLoaded || !preflightEligible}
         onClick={() => void qualifyExecutor()}
       >
         Qualify Executor Using Private Prefix
@@ -201,6 +243,12 @@ export default function RealPrefixEntryPanel({
           </dd>
           <dt>Execution strategy</dt>
           <dd>Steam Runtime Container</dd>
+          <dt>Qualification source</dt>
+          <dd>
+            {environment.executor.recovery_seed
+              ? `Current recovery ${environment.executor.recovery_seed.backup_id} · verified clone, measured from its initial state`
+              : "Generic fixture · does not qualify the current recovery source"}
+          </dd>
           <dt>Steam Runtime</dt>
           <dd>{environment.executor.runtime_root}</dd>
           <dt>pressure-vessel</dt>
@@ -221,7 +269,7 @@ export default function RealPrefixEntryPanel({
           <dt>Request transport</dt>
           <dd>Private file · hash / nonce / consume-once verified</dd>
           <dt>Real execution</dt>
-          <dd>Not run · fresh consent required</dd>
+          <dd>{realExecutionStatus}</dd>
         </dl>
       )}
       {environmentError && (
@@ -232,7 +280,7 @@ export default function RealPrefixEntryPanel({
       )}
       {environment ? (
         <>
-          <p>Reason: {environment.blocker}</p>
+          {!attempted && <p>Reason: {environment.blocker}</p>}
           {environment.fixtures.map((fixture) => (
             <div key={fixture.strategy}>
               <h5>{fixture.strategy}</h5>
@@ -277,14 +325,22 @@ export default function RealPrefixEntryPanel({
         </p>
       )}
       <button
-        disabled={busy || attempted || environmentBlocked || !preflightEligible}
+        disabled={
+          busy ||
+          attempted ||
+          !historyLoaded ||
+          environmentBlocked ||
+          !preflightEligible
+        }
         onClick={() => void prepare()}
       >
         Review Harmless Prefix Entry
       </button>
       <p role="status">
         {busy
-          ? "Operación en curso. Copiar y verificar Proton puede tardar varios minutos; cada helper tiene un timeout de 60 s. No cierres LXMI durante la comparación."
+          ? attempted
+            ? "Intento único en curso. Espera el resultado del helper y la comparación before/after; no vuelvas a pulsar Run."
+            : "Operación en curso. Copiar y verificar Proton puede tardar varios minutos; cada helper tiene un timeout de 60 s. No cierres LXMI durante la comparación."
           : attempted
             ? result
               ? `Result: ${result.result}`
@@ -336,7 +392,13 @@ export default function RealPrefixEntryPanel({
           </label>
           <div className="actions">
             <button
-              disabled={busy || !consent || attempted || environmentBlocked}
+              disabled={
+                busy ||
+                !consent ||
+                attempted ||
+                !historyLoaded ||
+                environmentBlocked
+              }
               onClick={() => void run()}
             >
               Run Harmless Prefix Entry Test
@@ -349,6 +411,14 @@ export default function RealPrefixEntryPanel({
           <dl>
             <dt>Result</dt>
             <dd>{result.result}</dd>
+            <dt>Executor used for this attempt</dt>
+            <dd>
+              {result.executor_qualified
+                ? "Qualified container"
+                : "Unqualified"}
+              {" · "}
+              {result.executor_recipe_fingerprint ?? "Identity unavailable"}
+            </dd>
             <dt>Helper</dt>
             <dd>
               {result.helper

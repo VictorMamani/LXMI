@@ -335,3 +335,36 @@ Ver ../01_Descubrimiento/entorno_linux_fixture_0_8_8.md. No loader/game executio
 - [ ] Cerrar/bump0.8.8 solo después de esa ejecución real exitosa y before/after aceptable. Versión0.8.7; 0.8.9/0.9 no iniciados.
 
 Las listas0.8.8.1–0.8.8.3 anteriores conservan el estado histórico de sus checkpoints; esta sección registra los blockers resueltos y el pendiente ACTUAL.
+
+## LXMI 0.8.8 FINAL — resultado ACTUAL del intento único
+
+- [x] Recalificar executor en sesión actual, preflight fresco, baseline/recovery/Steam/identity/build/inactividad verificados.
+- [x] Consentimiento nativo NUEVO y una sola ejecución real por el usuario; helper/nonce/hash/exit0 y transport cleanup PASS. Reserva persistente consumida.
+- [x] Capturar before/after y preservar UnexpectedMutation: tres Fonts sections EnvironmentSpecific; cuatro ContainerId VolatileExpected; NetworkCards/RunServices/Once sin diferencias reportadas. Protected paths, Steam semantics, identidad/build y backup verificados.
+- [x] Correlación artifact-only de tabla NT: reversión exacta de hashes DirectProton a container; otras dos tablas sin match exacto, no inventar conteos ni aceptación universal.
+- [x] Corregir textos de estado/version y cargar resultado guardado tras recarga con API read-only; no reactivar consentimiento/Run. Quality358PASS/12ignored + frontend completo.
+- [ ] Investigar en un futuro ensayo PRIVADO una copia/control que represente estado DirectProton histórico y transición a container. No ejecutar ahora ni ampliar ignores; aceptación de esa transición e impacto funcional aún no establecidos.
+- [ ] Reconciliar evidencia de source post-test antes de cualquier futura revisión: el backup Verified representa PRE-ENTRY, no el nuevo estado. No crear nuevo backup/restore para conseguir PASS en esta sesión.
+- [ ] 0.8.8 permanece BLOCKED, versión0.8.7. Sin nueva entry/consentimiento/retry/restore;0.8.9/0.9 no iniciados. Esta sección sustituye el pendiente de ejecutar la primera entry calificada: ya se ejecutó y no pasó el gate.
+
+## Actualización 2026-10-03 — transición privada desde source pre-entry
+
+- [x] Reproducir en dos clones independientes el estado de fuentes anterior al último intento; dos runs por clone, cuatro helpers PASS.
+- [x] Establecer coincidencia exacta antes/después de las tres tablas con el intento real; primer run cambia fuentes, segundo estable. Backup histórico preservado/verificado.
+- [x] Evitar que steady-state Qualified autorice un estado inicial de fuentes distinto: guard backend antes de Review y del argv real; tests sintéticos, sin probar el branch real.
+- [ ] Revisar un plan de calificación vinculado al estado inicial aceptado y la recuperación posterior al intento. La reproducción no autoriza entry adicional ni reclasifica el fallo como PASS.
+- [ ] Aceptación funcional del cambio histórico y estado real después del intento: requieren revisión/evidencia específica; sin nueva entrada, restore ni consentimiento en esta continuación.
+
+0.8.8 sigue BLOCKED; aplicación 0.8.7. 0.8.9/0.9 no iniciados.
+## Estado actual 2026-10-03 — causa corregida y recuperabilidad actual verificada
+
+- [x] Reconciliar source post-test/Steam, sin material UNKNOWN; UnderstoodAndAcceptable/ReviewedAndAcceptable.
+- [x] Crear nueva recuperación `2b29b84bbc592fa091950bf046b3d668`, Verified/full consistency, restore Verified off-target; preservar f355 y f4 históricos.
+- [x] Calificar el executor desde clone verificado de esa generación y medir primer run sin normalizar: dos helpers PASS, cero cambios font/UNKNOWN, solo ContainerId estrechos. Native Qualified/recovery seed visible.
+- [x] Vincular backend a generation ID/hash/fingerprints y exigir esa capacidad para real entry; calificación genérica no basta. Refresh no duplica source que aún coincide.
+- [x] Native final: baseline fresco `zzz-prefix-64dac842206897b341916bed5974b11e`, preflight EligibleForReview; Review/Run reales deshabilitados por reserva consumida intacta. Quality365PASS/12ignored y frontend PASS.
+- [ ] Obtener autorización explícita para preparar otro experimento inocuo independiente, conservando el fallo original. La instrucción FINAL prohibió retry tras fallo; no eliminar la reserva ni reutilizar consentimiento.
+- [ ] Solo con esa autorización: nueva revisión y consentimiento manual Tauri, preflight fresco, una ejecución consume-once/misma política estricta; detener ante fallo, sin restore automático.
+- [ ] Cerrar/bump0.8.8 únicamente tras una entrada real nueva autorizada y exitosa. Permanece versión0.8.7; no0.8.9/0.9.
+
+Esta sección es el pendiente actual; las listas anteriores conservan sus checkpoints históricos. [Evidencia y propuesta concreta](../01_Descubrimiento/transicion_fuentes_backup_privado_0_8_8.md).

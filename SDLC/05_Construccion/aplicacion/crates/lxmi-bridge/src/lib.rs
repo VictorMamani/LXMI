@@ -3,12 +3,14 @@
 //! This crate never launches a game. Its only accepted executable is an LXMI-managed helper,
 //! and its only accepted prefix is an LXMI-owned isolated test context.
 
+mod backup_transition_probe;
 mod context_lab;
 mod context_reentry;
 mod direct_context;
 mod fixture_environment;
 mod linux_environment;
 mod qualified_executor;
+pub use backup_transition_probe::*;
 pub use linux_environment::*;
 pub use qualified_executor::*;
 mod game_prefix;

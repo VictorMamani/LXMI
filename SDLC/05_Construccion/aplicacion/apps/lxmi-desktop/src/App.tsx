@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
+import { version } from "../package.json";
 import XxmiPanel from "./XxmiPanel";
 
 type SystemInfo = {
@@ -324,7 +325,7 @@ export default function App() {
             escaneo solo lee rutas y metadata.
           </p>
         </div>
-        <span className="version-tag">v0.8.6 · DESARROLLO</span>
+        <span className="version-tag">{`v${version} · DESARROLLO`}</span>
       </header>
 
       <section className="panel" aria-labelledby="system-heading">

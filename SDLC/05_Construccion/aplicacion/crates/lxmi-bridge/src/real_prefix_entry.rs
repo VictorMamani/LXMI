@@ -111,6 +111,9 @@ pub fn validate_harmless_prefix_entry(
     recipe
         .require_qualified()
         .map_err(|_| RealPrefixEntryState::LinuxEnvironmentUnqualified)?;
+    recipe
+        .require_recovery_seed(recovery)
+        .map_err(|_| RealPrefixEntryState::LinuxEnvironmentUnqualified)?;
     if before.runtime_drift != RuntimeBuildDrift::SameBuild
         || before.installed_build.as_deref() != Some(ZZZ_OBSERVED_BUILD)
     {

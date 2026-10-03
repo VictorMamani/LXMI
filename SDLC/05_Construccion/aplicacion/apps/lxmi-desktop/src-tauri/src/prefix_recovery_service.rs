@@ -13,6 +13,8 @@ static REVIEW: Mutex<Review> = Mutex::new(Review {
     accepted_protected: None,
     steam_review: None,
     steam_review_receipt: None,
+    recovery_history: Vec::new(),
+    current_recovery_matches_source: false,
 });
 struct Review {
     preflight: Option<GamePrefixEntryPreflight>,
@@ -22,6 +24,8 @@ struct Review {
     accepted_protected: Option<GamePrefixBaseline>,
     steam_review: Option<lxmi_steam::SteamProtectedStateReview>,
     steam_review_receipt: Option<BaselineReceipt>,
+    recovery_history: Vec<PrefixRecoveryQualification>,
+    current_recovery_matches_source: bool,
 }
 #[derive(Serialize)]
 pub struct PrefixRecoveryPanel {
@@ -31,6 +35,8 @@ pub struct PrefixRecoveryPanel {
     pub reconciliation: Option<RecoverySourceDriftReport>,
     pub steam_review: Option<lxmi_steam::SteamProtectedStateReview>,
     pub steam_review_receipt: Option<BaselineReceipt>,
+    pub recovery_history: Vec<PrefixRecoveryQualification>,
+    pub current_recovery_matches_source: bool,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -312,6 +318,11 @@ pub fn reconcile() -> Result<PrefixRecoveryPanel, BridgeServiceError> {
             .map_err(error)?
             .or(Some(historical));
     }
+    if let Some(current) = review.recovery.as_ref() {
+        review.current_recovery_matches_source =
+            recovery_source_matches(&root, current).map_err(error)?;
+    }
+    refresh_recovery_history(&root, identity, &mut review)?;
     review.preflight = Some(after.clone());
     if assessment != CurrentPrefixStateAssessment::UnderstoodAndAcceptable {
         let p = review.preflight.as_mut().unwrap();
@@ -326,6 +337,8 @@ pub fn reconcile() -> Result<PrefixRecoveryPanel, BridgeServiceError> {
         reconciliation: review.reconciliation.clone(),
         steam_review: review.steam_review.clone(),
         steam_review_receipt: review.steam_review_receipt.clone(),
+        recovery_history: review.recovery_history.clone(),
+        current_recovery_matches_source: review.current_recovery_matches_source,
     })
 }
 
@@ -408,6 +421,7 @@ pub fn inspect(capture: bool) -> Result<PrefixRecoveryPanel, BridgeServiceError>
     if capture && !reconciliation_accepted {
         return Err(error("source_reconciliation_not_accepted"));
     }
+    let mut source_matches = false;
     if let Some(recovery) = review.recovery.as_mut() {
         if recovery.protected_paths_unchanged == Some(false) {
             preflight
@@ -426,7 +440,8 @@ pub fn inspect(capture: bool) -> Result<PrefixRecoveryPanel, BridgeServiceError>
                 .is_some_and(|v| v.state == RecoveryVerificationState::Verified)
         {
             inactive(&preflight.compatdata).map_err(error)?;
-            if recovery_source_matches(&root, recovery).map_err(error)? {
+            source_matches = recovery_source_matches(&root, recovery).map_err(error)?;
+            if source_matches {
                 if capture {
                     capture_game_prefix_baseline(&mut preflight, &root).map_err(error)?;
                 }
@@ -465,6 +480,10 @@ pub fn inspect(capture: bool) -> Result<PrefixRecoveryPanel, BridgeServiceError>
             .push("steam_protected_semantic_review_required".into());
     }
     review.preflight = Some(preflight.clone());
+    review.current_recovery_matches_source = source_matches;
+    if let Some(identity) = preflight.prefix_identity.as_ref() {
+        refresh_recovery_history(&root, identity, &mut review)?;
+    }
     Ok(PrefixRecoveryPanel {
         preflight,
         recovery: review.recovery.clone(),
@@ -472,6 +491,8 @@ pub fn inspect(capture: bool) -> Result<PrefixRecoveryPanel, BridgeServiceError>
         reconciliation: review.reconciliation.clone(),
         steam_review: review.steam_review.clone(),
         steam_review_receipt: review.steam_review_receipt.clone(),
+        recovery_history: review.recovery_history.clone(),
+        current_recovery_matches_source: review.current_recovery_matches_source,
     })
 }
 pub fn run(action: RecoveryAction) -> Result<PrefixRecoveryPanel, BridgeServiceError> {
@@ -495,12 +516,8 @@ pub fn run(action: RecoveryAction) -> Result<PrefixRecoveryPanel, BridgeServiceE
             {
                 return Err(error("capture_accepted_baseline_required_or_changed"));
             }
-            if review
-                .recovery
-                .as_ref()
-                .is_some_and(|r| r.backup_id != OLD_BACKUP_ID)
-            {
-                return Err(error("current_generation_already_created"));
+            if let Some(existing) = review.recovery.as_ref() {
+                verify_current_recovery_refresh(&root, existing)?;
             }
             let identity = fresh
                 .prefix_identity
@@ -516,7 +533,17 @@ pub fn run(action: RecoveryAction) -> Result<PrefixRecoveryPanel, BridgeServiceE
                     && steam_review_valid(&review, &after.baseline)?,
             );
             save_recovery_qualification(&root, &backup).map_err(error)?;
+            if let Some(previous) = review.recovery.take() {
+                if !review
+                    .recovery_history
+                    .iter()
+                    .any(|r| r.backup_id == previous.backup_id)
+                {
+                    review.recovery_history.push(previous);
+                }
+            }
             review.recovery = Some(backup);
+            review.current_recovery_matches_source = true;
         }
         RecoveryAction::CreateBackup => {
             if review.recovery.is_some() {
@@ -595,7 +622,49 @@ pub fn run(action: RecoveryAction) -> Result<PrefixRecoveryPanel, BridgeServiceE
         reconciliation: review.reconciliation.clone(),
         steam_review: review.steam_review.clone(),
         steam_review_receipt: review.steam_review_receipt.clone(),
+        recovery_history: review.recovery_history.clone(),
+        current_recovery_matches_source: review.current_recovery_matches_source,
     })
+}
+
+fn verify_current_recovery_refresh(
+    root: &std::path::Path,
+    existing: &PrefixRecoveryQualification,
+) -> Result<(), BridgeServiceError> {
+    // A generation is immutable, but it does not freeze the source forever.
+    // Fresh accepted reconciliation has already been required by the caller.
+    let mut verified = existing.clone();
+    verify_prefix_recovery(root, &mut verified).map_err(error)?;
+    if verified.integrity.state != RecoveryVerificationState::Verified {
+        return Err(error("historical_recovery_integrity_invalid"));
+    }
+    match recovery_refresh_decision(
+        CurrentPrefixStateAssessment::UnderstoodAndAcceptable,
+        verified.integrity.state == RecoveryVerificationState::Verified,
+        recovery_source_matches(root, &verified).map_err(error)?,
+    ) {
+        RecoveryRefreshDecision::UseExistingGeneration => {
+            return Err(error(
+                "current_recovery_already_covers_source_use_existing_generation",
+            ))
+        }
+        RecoveryRefreshDecision::Blocked => return Err(error("recovery_refresh_not_accepted")),
+        RecoveryRefreshDecision::NewGenerationAllowed => {}
+    }
+    Ok(())
+}
+fn refresh_recovery_history(
+    root: &std::path::Path,
+    identity: &PrefixFileIdentity,
+    review: &mut Review,
+) -> Result<(), BridgeServiceError> {
+    let current_id = review.recovery.as_ref().map(|r| r.backup_id.as_str());
+    review.recovery_history = recovery_generation_history(root, identity)
+        .map_err(error)?
+        .into_iter()
+        .filter(|r| r.backup_id != OLD_BACKUP_ID && Some(r.backup_id.as_str()) != current_id)
+        .collect();
+    Ok(())
 }
 
 struct EntryReview {
@@ -608,6 +677,9 @@ struct EntryReview {
 }
 static ENTRY: Mutex<Option<EntryReview>> = Mutex::new(None);
 static QUALIFIED_EXECUTOR: Mutex<Option<QualifiedLinuxRuntimeRecipe>> = Mutex::new(None);
+pub fn entry_history() -> Result<HarmlessEntryHistory, BridgeServiceError> {
+    read_harmless_entry_history(&xxmi_service::prefix_recovery_storage()?).map_err(error)
+}
 pub fn qualify_executor() -> Result<QualifiedExecutorPanel, BridgeServiceError> {
     let mut state = QUALIFIED_EXECUTOR
         .try_lock()
@@ -615,11 +687,51 @@ pub fn qualify_executor() -> Result<QualifiedExecutorPanel, BridgeServiceError> 
     *state = None;
     let root = xxmi_service::prefix_recovery_storage()?;
     let (_, steam) = xxmi_service::harmless_entry_runtime()?;
-    let recipe = qualify_integrated_executor(&root, &steam).map_err(|e| BridgeServiceError {
-        code: "linux_runtime_environment_unqualified".into(),
-        detail: e.to_string(),
-        stderr: None,
-    })?;
+    let (recovery, protected_before) = {
+        let review = REVIEW.try_lock().map_err(|_| error("prefix_review_busy"))?;
+        let current = validate_reconciliation_fresh(&review)?;
+        let recovery = review
+            .recovery
+            .as_ref()
+            .ok_or_else(|| error("current_recovery_required"))?
+            .clone();
+        if current.prefix_identity.as_ref() != Some(&recovery.source_identity)
+            || !recovery_source_matches(&root, &recovery).map_err(error)?
+        {
+            return Err(error("recovery_source_current_mismatch"));
+        }
+        (recovery, current.baseline)
+    };
+    let recipe =
+        qualify_integrated_executor_from_recovery(&root, &steam, &recovery).map_err(|e| {
+            BridgeServiceError {
+                code: "linux_runtime_environment_unqualified".into(),
+                detail: e.to_string(),
+                stderr: None,
+            }
+        })?;
+    inactive(
+        recovery
+            .source_identity
+            .canonical_path
+            .parent()
+            .ok_or_else(|| error("compatdata_missing"))?,
+    )
+    .map_err(error)?;
+    if !recovery_source_matches(&root, &recovery).map_err(error)? {
+        return Err(error(
+            "accepted_source_changed_during_private_qualification",
+        ));
+    }
+    let after = xxmi_service::inspect_zzz_prefix_preflight_raw(false)?;
+    if after.runtime_drift != RuntimeBuildDrift::SameBuild
+        || after.prefix_identity.as_ref() != Some(&recovery.source_identity)
+        || !protected_baselines_match(&protected_before, &after.baseline)
+    {
+        return Err(error(
+            "protected_identity_or_runtime_changed_during_private_qualification",
+        ));
+    }
     let panel = recipe.panel();
     *state = Some(recipe);
     Ok(panel)
@@ -657,7 +769,7 @@ pub struct HarmlessEntryReviewPanel {
 }
 const CONSENT: &str = "LXMI will run ONE harmless Windows helper using ZZZ's real compatibility prefix through the qualified Steam Runtime container and a verified private Proton copy. Proton/Wine may update prefix metadata. ZZZ must remain closed. LXMI will not launch the game, load ZZMI, inject DLLs, install mods, or modify Steam launch options. Recovery backup exists; real-prefix restore is NOT TESTED. This fresh consent applies only to this reviewed experiment and cannot be reused.";
 pub fn prepare_entry() -> Result<HarmlessEntryReviewPanel, BridgeServiceError> {
-    qualified_entry_environment()?;
+    let recipe = qualified_entry_environment()?;
     let storage = xxmi_service::prefix_recovery_storage()?;
     if storage
         .join("tests/qualified-real-entry-0_8_8_2-once.json")
@@ -673,7 +785,16 @@ pub fn prepare_entry() -> Result<HarmlessEntryReviewPanel, BridgeServiceError> {
             panel.preflight.blockers
         )));
     }
+    // No consent/review token for a source state outside the measured self-test.
+    let registry =
+        qualified_registry_capture(&panel.preflight.compatdata.join("pfx")).map_err(error)?;
+    recipe
+        .require_initial_prefix_state(&registry)
+        .map_err(|_| entry_error("initial_prefix_state_unqualified"))?;
     let recovery = panel.recovery.ok_or_else(|| error("backup_invalid"))?;
+    recipe
+        .require_recovery_seed(&recovery)
+        .map_err(|_| entry_error("current_recovery_executor_unqualified"))?;
     let (runtime, steam_root) = xxmi_service::harmless_entry_runtime()?;
     let mut state = ENTRY.try_lock().map_err(|_| error("entry_busy"))?;
     if state.as_ref().is_some_and(|r| r.consumed) {

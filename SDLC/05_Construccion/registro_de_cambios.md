@@ -493,3 +493,24 @@ HOST TEST integrado: seed + dos runs medidos PASS, fonts estables, cambios conoc
 - Nueva generación baseline schema2 y backup f4ea33c0c047d893319296420fd86784: Verified2445entries/783files, source consistente, restore Verified off-target; backup histórico intacto. Corrige selección exacta de journals recovery para excluir reportes drift.
 - Native Tauri completa review/baseline/backup/verify/restore/reevaluate: EligibleForReview puntual. TTL600s preservado, no consentimiento/helper/Proton/ZZZ ni restore real. Quality353PASS/12ignored y frontend completo PASS.
 - Versión0.8.7, 0.8.8 abierto; stop antes de entry real/0.8.9/0.9. Documentación y JSON seleccionados, sin dumps VDF ni commit/push.
+
+## LXMI 0.8.8 FINAL — único intento calificado, bloqueado (2026-10-03)
+
+- Session executor Qualified: seed+2 runs privados, receta/hash/Proton/build/transporte verificados; fresh preflight EligibleForReview y recovery actual Verified.
+- Usuario aceptó consentimiento NUEVO y pulsó UNA vez Run en Tauri. Helper protocolo1/nonce/marker/hash/exit0 PASS; contenedor calificado y cleanup verificados. Reserva one-shot conservada, no retry/restore.
+- Resultado **UnexpectedMutation / BLOCKED**: tres tablas Fonts EnvironmentSpecific, root/dosdevices metadata/inventory fuera de aceptación final. Tabla NT revierte exactamente hashes DirectProton a container del fixture; otras dos no tienen equivalencia hash exacta y no se atribuye causalidad universal.
+- Protected paths/raw Steam/semántica/ZZZ executable/backup/identidad/build sin cambios observados; juego no observado activo, contexto final inactivo. Backup sigue inmutable pre-entry; no reemplazo para ocultar source drift.
+- Corrige Not run fijo y versión header0.8.6 desfasada; añade lectura segura zero-arg del resultado guardado tras recarga, sin capability ni ejecución, controles disabled por historia/reserva. Cinco tests sintéticos nuevos.
+- Quality358PASS/12ignored + fmt/check/Clippy/frontend/diff PASS. Versión0.8.7, 0.8.8 abierto; sin commit de cierre/push ni0.8.9/0.9. Evidencia y reporte en verificacion_0_8_8.md.
+
+### 2026-10-03 — diagnóstico privado de transición de fuentes (0.8.8 BLOCKED)
+
+- Dos clones íntegros del backup pre-entry, cuatro ejecuciones privadas: transición inicial de fuentes reproducida, segunda ejecución estable; coincidencia exacta de hashes de las tres tablas con el intento real. Backup inmutable verificado antes/después.
+- Guard `initial_prefix_state_unqualified`: estado inicial de fonts debe coincidir con el self-test, antes de Review y de la invocación real. No aceptación automática de la transición histórica ni retry.
+- 363 tests PASS / 12 ignored; calidad Rust/frontend y Tauri historial bloqueado verificados. Versión 0.8.7; no nueva entry real, restore, juego, loader ni 0.8.9/0.9.
+## 2026-10-03 — Recuperación actual y calificación desde su estado inicial (0.8.8 abierta)
+
+- Calificación nativa privada usa una copia completa verificada de la recuperación actual; mide run1 sin normalización y vincula backup ID/hash/fingerprints al gate backend. Sin fallback ni ampliación de reglas de mutación.
+- Refresh de recuperación permitido solo tras reconciliación aceptada y verificación de la generación anterior; reutiliza si todavía cubre el source. Preserva/lista historia; prueba sintética de generaciones y tests de binding/refresh.
+- Tauri: nuevo backup `2b29b84bbc592fa091950bf046b3d668` Verified/restore Verified off-target; dos helpers privados PASS con fonts estables/solo cuatro ContainerId volátiles por run; Qualified y preflight EligibleForReview. Historial real consumido intacto, Review/Run disabled.
+- Quality365PASS/12ignored y frontend completo. Versión0.8.7; sin nueva entry/consentimiento real, restore, loader,0.8.9/0.9. Falta autorización de experimento independiente para superar el límite one-shot anterior y posteriormente consentimiento en Tauri.
