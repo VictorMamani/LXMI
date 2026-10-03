@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "before": {
+    "schema_version": 1,
+    "captured_at": 1790998624,
+    "app_id": 4162040,
+    "config_raw": {
+      "path": "/home/university/.local/share/Steam/config/config.vdf",
+      "sha256": "b69ced69a04f3a2fe810a5428642941e53ccd9f47b8e1347f7a0195eaa3bd1c7",
+      "size": 29573,
+      "modified_seconds": 1790852727,
+      "modified_nanoseconds": 993464739,
+      "device": 66306,
+      "inode": 10879912,
+      "uid": 1000,
+      "mode": 33277
+    },
+    "localconfig_raw": {
+      "path": "/home/university/.local/share/Steam/userdata/1416423935/config/localconfig.vdf",
+      "sha256": "a3570c17697303b91924405d72361f52f0110ec2eda8b8328e0b8717b0da68f4",
+      "size": 59838,
+      "modified_seconds": 1790852728,
+      "modified_nanoseconds": 839383368,
+      "device": 66306,
+      "inode": 10879903,
+      "uid": 1000,
+      "mode": 33277
+    },
+    "config": {
+      "document_kind": "config",
+      "compat_tool_mapping_present": true,
+      "game_mapping_present": false,
+      "global_mapping_present": false,
+      "game_mapping": [],
+      "global_mapping": [],
+      "launch_options": [],
+      "launch_overrides": [],
+      "steam_play": [],
+      "relevant_game_properties": [],
+      "game_nodes": 0,
+      "excluded_categories": [
+        "credentials/tokens/account/friends/chat/cloud: contents excluded",
+        "game usage/recent-play/UI metadata: values excluded",
+        "other games and unrelated client state: contents excluded; direct game references checked outside sensitive sections"
+      ],
+      "issues": [],
+      "fingerprint": "9832809212b52510b38fc97470a9c2467f3840c6be3599b3177a88a70622538c"
+    },
+    "localconfig": {
+      "document_kind": "localconfig",
+      "compat_tool_mapping_present": false,
+      "game_mapping_present": false,
+      "global_mapping_present": false,
+      "game_mapping": [],
+      "global_mapping": [],
+      "launch_options": [],
+      "launch_overrides": [],
+      "steam_play": [],
+      "relevant_game_properties": [
+        {
+          "key": "root/userlocalconfigstore/userappconfig/4162040/internal/language",
+          "state": "selected_literal",
+          "safe_value": "english",
+          "value_sha256": "b6234d2ea0d6022be63db80d7b80e221097fe4a469dc44febcd2a9241effdeba"
+        }
+      ],
+      "game_nodes": 1,
+      "excluded_categories": [
+        "credentials/tokens/account/friends/chat/cloud: contents excluded",
+        "game usage/recent-play/UI metadata: values excluded",
+        "other games and unrelated client state: contents excluded; direct game references checked outside sensitive sections"
+      ],
+      "issues": [],
+      "fingerprint": "9503dc99d0a2d9b059a2cb9cffc7319eaf39b80a7b047514632841a88510eed5"
+    },
+    "semantic_fingerprint": "8677e768e0fc2a42985ea4c67a3cc20bc52b38900bb0a9affbfac6832cde0d70"
+  },
+  "after": {
+    "schema_version": 1,
+    "captured_at": 1790998629,
+    "app_id": 4162040,
+    "config_raw": {
+      "path": "/home/university/.local/share/Steam/config/config.vdf",
+      "sha256": "b69ced69a04f3a2fe810a5428642941e53ccd9f47b8e1347f7a0195eaa3bd1c7",
+      "size": 29573,
+      "modified_seconds": 1790852727,
+      "modified_nanoseconds": 993464739,
+      "device": 66306,
+      "inode": 10879912,
+      "uid": 1000,
+      "mode": 33277
+    },
+    "localconfig_raw": {
+      "path": "/home/university/.local/share/Steam/userdata/1416423935/config/localconfig.vdf",
+      "sha256": "a3570c17697303b91924405d72361f52f0110ec2eda8b8328e0b8717b0da68f4",
+      "size": 59838,
+      "modified_seconds": 1790852728,
+      "modified_nanoseconds": 839383368,
+      "device": 66306,
+      "inode": 10879903,
+      "uid": 1000,
+      "mode": 33277
+    },
+    "config": {
+      "document_kind": "config",
+      "compat_tool_mapping_present": true,
+      "game_mapping_present": false,
+      "global_mapping_present": false,
+      "game_mapping": [],
+      "global_mapping": [],
+      "launch_options": [],
+      "launch_overrides": [],
+      "steam_play": [],
+      "relevant_game_properties": [],
+      "game_nodes": 0,
+      "excluded_categories": [
+        "credentials/tokens/account/friends/chat/cloud: contents excluded",
+        "game usage/recent-play/UI metadata: values excluded",
+        "other games and unrelated client state: contents excluded; direct game references checked outside sensitive sections"
+      ],
+      "issues": [],
+      "fingerprint": "9832809212b52510b38fc97470a9c2467f3840c6be3599b3177a88a70622538c"
+    },
+    "localconfig": {
+      "document_kind": "localconfig",
+      "compat_tool_mapping_present": false,
+      "game_mapping_present": false,
+      "global_mapping_present": false,
+      "game_mapping": [],
+      "global_mapping": [],
+      "launch_options": [],
+      "launch_overrides": [],
+      "steam_play": [],
+      "relevant_game_properties": [
+        {
+          "key": "root/userlocalconfigstore/userappconfig/4162040/internal/language",
+          "state": "selected_literal",
+          "safe_value": "english",
+          "value_sha256": "b6234d2ea0d6022be63db80d7b80e221097fe4a469dc44febcd2a9241effdeba"
+        }
+      ],
+      "game_nodes": 1,
+      "excluded_categories": [
+        "credentials/tokens/account/friends/chat/cloud: contents excluded",
+        "game usage/recent-play/UI metadata: values excluded",
+        "other games and unrelated client state: contents excluded; direct game references checked outside sensitive sections"
+      ],
+      "issues": [],
+      "fingerprint": "9503dc99d0a2d9b059a2cb9cffc7319eaf39b80a7b047514632841a88510eed5"
+    },
+    "semantic_fingerprint": "8677e768e0fc2a42985ea4c67a3cc20bc52b38900bb0a9affbfac6832cde0d70"
+  },
+  "observation_seconds": 5,
+  "stability": "stable",
+  "assessment": "reviewed_and_acceptable",
+  "historical_writer": "UNKNOWN",
+  "historical_exact_diff": "NOT RECONSTRUCTABLE from hash-only historical baselines",
+  "evidence": [
+    "Current selected semantics reviewed, not a reconstructed historical key-level diff.",
+    "Absent static mappings preserve configured selection Unknown; previous observed Proton remains separate.",
+    "Full-file hashes/metadata retained diagnostically; only approved relevant semantics govern these two files. All other protected paths remain strict."
+  ]
+}

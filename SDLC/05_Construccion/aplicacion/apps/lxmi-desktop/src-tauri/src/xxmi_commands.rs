@@ -26,6 +26,18 @@ pub async fn inspect_zzz_prefix_preflight(
 }
 
 #[tauri::command]
+pub async fn review_zzz_steam_protected_state(
+) -> std::result::Result<crate::prefix_recovery_service::PrefixRecoveryPanel, BridgeServiceError> {
+    blocking_bridge(crate::prefix_recovery_service::review_steam_protected).await
+}
+
+#[tauri::command]
+pub async fn reconcile_zzz_prefix_recovery(
+) -> std::result::Result<crate::prefix_recovery_service::PrefixRecoveryPanel, BridgeServiceError> {
+    blocking_bridge(crate::prefix_recovery_service::reconcile).await
+}
+
+#[tauri::command]
 pub async fn run_zzz_prefix_recovery(
     action: crate::prefix_recovery_service::RecoveryAction,
 ) -> std::result::Result<crate::prefix_recovery_service::PrefixRecoveryPanel, BridgeServiceError> {

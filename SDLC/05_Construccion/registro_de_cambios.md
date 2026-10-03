@@ -477,3 +477,19 @@ Source pinned97d626e (stable/package2.5.1); ZZMI usa hook, no prueba Direct Inje
 - Preflight real read-only detecta `recovery_source_current_mismatch`: backup Verified no implica source actual coincidente. Detenido antes de consentimiento/entry; versión 0.8.7, 0.8.8 BLOCKED, sin 0.8.9/0.9.
 
 HOST TEST integrado: seed + dos runs medidos PASS, fonts estables, cambios conocidos exactos; metadata/mappings/mounts/request y private Proton verificados. Quality:335 tests PASS/12ignored; frontend y build transporte PASS. Entry real no ejecutada por preflight NeedsEvidence; versión 0.8.7.
+
+## LXMI 0.8.8.3 — reconciliación del source de recuperación (2026-10-02)
+
+- Scanner de recuperación existente extendido con diff completo, tipos/targets/metadata/content hashes, clasificación y assessment backend; refresh actual condicionado, sin sobrescribir backup/baseline históricos.
+- READ-ONLY HOST:2 archivos modificados/35 metadata-only/0 altas-bajas. Hives actuales idénticos al after histórico DirectProton; fonts persistentes, cuatro GUID y NetworkCards bajo reglas exactas; no cambio RunServices/Once real.
+- Backup histórico Verified, source consistente, identidad/build/fuente Proton iguales. ProtectedStateChanged por config.vdf y localconfig1416423935 respecto0.8.7; autor/semántica UNKNOWN. No nueva recuperación/baseline/restore ni helper real.
+- UI nativa muestra diff y motivos; fresh baseline/new backup/Review/Run deshabilitados. 0.8.8 BLOCKED, versión0.8.7, sin0.8.9/0.9.
+
+## LXMI 0.8.8.4 — estado protegido Steam revisado (2026-10-02 local / 03 UTC)
+
+- Extrae semántica ZZZ con parser KeyValues existente, incluyendo UserAppConfig binario acotado; readings por descriptores, secrets/private state excluidos, raw hashes diagnósticos y fingerprints relevantes para gates.
+- READ-ONLY HOST: mappings 4162040/global0 y launch options/overrides ausentes; language english. Observación5s STABLE, assessment ReviewedAndAcceptable. Autor/diff histórico UNKNOWN/no reconstruible; no atribución ni edición Steam.
+- Integra review backend fresca y bound a raw metadata; mantiene protected paths restantes estrictos, fail closed para Unknown/mappings no aprobados/launch changes. Source reconciliado UnderstoodAndAcceptable, sin normalizar fonts históricos.
+- Nueva generación baseline schema2 y backup f4ea33c0c047d893319296420fd86784: Verified2445entries/783files, source consistente, restore Verified off-target; backup histórico intacto. Corrige selección exacta de journals recovery para excluir reportes drift.
+- Native Tauri completa review/baseline/backup/verify/restore/reevaluate: EligibleForReview puntual. TTL600s preservado, no consentimiento/helper/Proton/ZZZ ni restore real. Quality353PASS/12ignored y frontend completo PASS.
+- Versión0.8.7, 0.8.8 abierto; stop antes de entry real/0.8.9/0.9. Documentación y JSON seleccionados, sin dumps VDF ni commit/push.

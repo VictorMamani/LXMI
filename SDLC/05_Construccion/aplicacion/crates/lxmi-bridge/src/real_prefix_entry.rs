@@ -30,6 +30,7 @@ pub fn require_qualified_harmless_entry_environment() -> Result<(), RealPrefixEn
 #[serde(rename_all = "snake_case")]
 pub enum PrefixMutationKind {
     ExpectedWineMutation,
+    UnrelatedSteamState,
     PossibleWineMutation,
     ProtectedPathMutation,
     Unknown,
@@ -228,7 +229,9 @@ pub fn compare_prefix_entry(
             if a == b {
                 continue;
             }
-            let (kind, reason) = if protected {
+            let (kind, reason) = if protected && steam_path_semantics_match(before, after, &path) {
+                (PrefixMutationKind::UnrelatedSteamState, "Raw Steam evidence changed but bound reviewed relevant semantics match; raw diagnostic evidence retained, writer UNKNOWN")
+            } else if protected {
                 (
                     PrefixMutationKind::ProtectedPathMutation,
                     "Protected evidence changed; attribution is not assumed",
@@ -405,11 +408,12 @@ pub fn classify_prefix_entry(result: &RealPrefixEntryResult) -> RealPrefixEntryS
     if result.helper.is_none() || result.helper_error.is_some() {
         return RealPrefixEntryState::HelperFailed;
     }
-    if result
-        .mutations
-        .iter()
-        .any(|m| m.kind != PrefixMutationKind::ExpectedWineMutation)
-    {
+    if result.mutations.iter().any(|m| {
+        !matches!(
+            m.kind,
+            PrefixMutationKind::ExpectedWineMutation | PrefixMutationKind::UnrelatedSteamState
+        )
+    }) {
         return RealPrefixEntryState::UnexpectedMutation;
     }
     if result.mutations.is_empty() {
@@ -433,6 +437,7 @@ mod tests {
     }
     fn baseline() -> GamePrefixBaseline {
         GamePrefixBaseline {
+            steam_semantic_state: None,
             schema: 1,
             timestamp_unix_seconds: 0,
             prefix_identity: None,

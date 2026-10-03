@@ -314,3 +314,24 @@ Ver ../01_Descubrimiento/entorno_linux_fixture_0_8_8.md. No loader/game executio
 - [x] Quality Rust:335 PASS /12ignored; frontend typecheck/lint/format/build y transporte ELF compilado.
 
 - [x] Native Tauri: Qualified visible, preflight NeedsEvidence explícito, Review/Run deshabilitados y sin consentimiento/entry real; Tauri/Vite cerrados.
+
+## LXMI 0.8.8.3 — resultado de reconciliación
+
+- [x] Re-verificar backup histórico y enumerar árbol source completo sin seguir symlinks; fuente consistente, identidad/build/fuente Proton iguales.
+- [x] Explicar contenido modificado2 hives mediante hashes exactos del before/after DirectProton; mantener fonts ENVIRONMENT SPECIFIC históricas, reglas GUID/NetworkCards y35 cambios metadata-only.
+- [x] Recheck protegido y assessment explícito:ProtectedStateChanged; diff/correlación completa archivados y UI nativa con controles disabled.
+- [x] Tests synthetic de nuevas generaciones preservando historia, restore sandbox y preflight actual, sin Steam real en tests normales.
+- [ ] Resolver `protected_state_needs_review`: config.vdf y localconfig1416423935 difieren del baseline0.8.7; hashes actuales ya eran los del before/after DirectProton, pero claves/autor/semántica desconocidos. No declarar Steam changes benignos por hashes.
+- [ ] Solo con estado protegido aceptado y assessment UnderstoodAndAcceptable: capturar baseline actual nuevo, backup ID nuevo, verificar/restaurar off-target y reevaluar.
+- [ ] Entry real posterior exige executor calificado en esa sesión, fresh checks/consent y una sola ejecución; no realizarla en0.8.8.3. Versión0.8.7, 0.8.8 abierto; no0.8.9/0.9.
+
+## LXMI 0.8.8.4 — recuperación y estado protegido actuales revisados
+
+- [x] Resolver protected_state_needs_review mediante semántica ACTUAL acotada, no reconstrucción inventada de claves históricas. CompatToolMapping presente, mappings4162040/global0 y launch options/overrides ausentes; language english; 5s STABLE. Writer UNKNOWN, sin bloqueo perpetuo por provenance no recuperable.
+- [x] Conservar raw hashes y evidencia histórica; gates usan fingerprints vinculados a metadata y reviewbackend fresca, sin override UI. Otros paths protegidos estrictos, Unknown/launch/mappings nuevos requieren revisión.
+- [x] Assessment source UnderstoodAndAcceptable; nueva baseline schema2, backup inmutable f4ea33c0c047d893319296420fd86784, integridad y source consistency Verified, restore Verified off-target; generación histórica preservada.
+- [x] Native Tauri read-only/recovery: estado y dos generaciones visibles, preflight puntual EligibleForReview. Quality353PASS/12ignored y frontend PASS. No consentimiento/helper/Proton/ZZZ; aplicación propia cerrada.
+- [ ] Próxima continuación: calificar executor en la sesión, preflight inmediato fresco y consentimiento nativo independiente antes de UNA entry inocua con entorno calificado; no ejecutar por esta revisión ni reutilizar proof expirado/consent anterior.
+- [ ] Cerrar/bump0.8.8 solo después de esa ejecución real exitosa y before/after aceptable. Versión0.8.7; 0.8.9/0.9 no iniciados.
+
+Las listas0.8.8.1–0.8.8.3 anteriores conservan el estado histórico de sus checkpoints; esta sección registra los blockers resueltos y el pendiente ACTUAL.

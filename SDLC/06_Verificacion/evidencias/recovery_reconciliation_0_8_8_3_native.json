@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "validation": "Native Tauri / AT-SPI LXMI only",
+  "assessment": "protected_state_changed",
+  "assessment_visible": true,
+  "historical_backup_verified_visible": true,
+  "summary_visible": true,
+  "protected_config_and_localconfig_visible": true,
+  "source_consistent_visible": true,
+  "fresh_baseline_created": false,
+  "new_backup_created": false,
+  "consent_collected": false,
+  "helper_executed": false,
+  "buttons": {
+    "Capture Fresh Accepted Baseline": {
+      "enabled": false,
+      "sensitive": false
+    },
+    "Create Current Recovery Backup": {
+      "enabled": false,
+      "sensitive": false
+    },
+    "Review Harmless Prefix Entry": {
+      "enabled": false,
+      "sensitive": false
+    },
+    "Run Harmless Prefix Entry Test": {
+      "enabled": false,
+      "sensitive": false
+    }
+  },
+  "native_text_sha256": "fe41095a7d4d22a58c2178d14a18d20a14b8775698fe0648ce9ed43d0b11bd4c"
+}

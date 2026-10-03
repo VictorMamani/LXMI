@@ -18,10 +18,12 @@ pub use registry_diagnosis::*;
 mod real_prefix_entry;
 pub use real_prefix_entry::*;
 mod prefix_recovery;
+mod recovery_reconciliation;
 pub use context_reentry::*;
 pub use direct_context::*;
 pub use game_prefix::*;
 pub use prefix_recovery::*;
+pub use recovery_reconciliation::*;
 mod loader_lab;
 pub use context_lab::*;
 
@@ -1722,3 +1724,6 @@ mod tests {
         assert!(output.truncated);
     }
 }
+
+mod steam_protected_policy;
+pub use steam_protected_policy::*;

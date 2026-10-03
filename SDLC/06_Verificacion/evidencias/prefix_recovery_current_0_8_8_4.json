@@ -1,0 +1,59 @@
+{
+  "protected_paths_unchanged": true,
+  "backup_id": "f4ea33c0c047d893319296420fd86784",
+  "backup_path": "/home/university/.local/share/lxmi/backups/zenless-zone-zero/prefix/f4ea33c0c047d893319296420fd86784",
+  "manifest_sha256": "182929afbefb7e08b226cb7e1651a44a66df95e55e12422c58752bf81ed40f80",
+  "source_identity": {
+    "canonical_path": "/home/university/.local/share/Steam/steamapps/compatdata/4162040/pfx",
+    "device": 66306,
+    "inode": 11538172,
+    "uid": 1000
+  },
+  "proton_build": "1790244902 experimental-11.0-20260924-x86_64",
+  "strategy": "descriptor_anchored_recursive_copy",
+  "source_size": {
+    "apparent_bytes": 434363278,
+    "allocated_bytes": 436371456,
+    "files": 783,
+    "directories": 285,
+    "symlinks": 1377
+  },
+  "backup_size": {
+    "apparent_bytes": 434363278,
+    "allocated_bytes": 442916864,
+    "files": 783,
+    "directories": 285,
+    "symlinks": 1377
+  },
+  "available_bytes_before": 28871073792,
+  "available_bytes_after": 27955630080,
+  "integrity": {
+    "state": "verified",
+    "matching_files": 783,
+    "matching_entries": 2445,
+    "mismatches": [],
+    "unsupported_metadata": []
+  },
+  "source_unchanged_during_capture": true,
+  "restore_path": "/home/university/.local/share/lxmi/restore-tests/f4ea33c0c047d893319296420fd86784",
+  "restore_verification": {
+    "state": "verified",
+    "matching_files": 783,
+    "matching_entries": 2445,
+    "mismatches": [],
+    "unsupported_metadata": []
+  },
+  "real_prefix_restore": "not_tested",
+  "rollback": "recoverable_backup_verified_off_target",
+  "restore_plan": {
+    "destination": "/home/university/.local/share/Steam/steamapps/compatdata/4162040/pfx",
+    "game_closed_required": true,
+    "inactive_context_required": true,
+    "identity_revalidation_required": true,
+    "verified_backup_required": true,
+    "explicit_confirmation_required": true,
+    "protected_paths_required": true,
+    "real_target_executor_available": false
+  },
+  "retention_policy": "Future retention: latest 2 plus active qualification; manual cleanup only, no automatic deletion implemented. No overwrite. One backup per review session."
+}

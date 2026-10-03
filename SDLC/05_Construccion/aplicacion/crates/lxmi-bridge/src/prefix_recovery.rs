@@ -476,6 +476,117 @@ pub(crate) fn private_tree_inventory(path: &Path) -> io::Result<Vec<RecoveryEntr
     Ok(scan(&absolute_directory(path)?, Instant::now())?.entries)
 }
 
+/// Read-only full source reconciliation using the same descriptor-anchored scanner.
+/// Old backup validity is independent of current source equality.
+pub fn inspect_recovery_source_drift(
+    root: &Path,
+    report: &mut PrefixRecoveryQualification,
+    require_inactive: impl Fn() -> io::Result<()>,
+) -> io::Result<(Vec<RecoverySourceDriftEntry>, String, bool)> {
+    require_inactive()?;
+    let expected = &report.source_identity;
+    if prefix_file_identity(&expected.canonical_path).as_ref() != Some(expected) {
+        return Err(err("prefix_identity_changed"));
+    }
+    verify_prefix_recovery(root, report)?;
+    let (_, manifest) = load_backup(root, report)?;
+    let source = absolute_directory(&report.source_identity.canonical_path)?;
+    let started = Instant::now();
+    let before = scan(&source, started)?;
+    let drift = compare_recovery_entries(&manifest.entries, &before.entries)?;
+    let fingerprint = format!("{:x}", Sha256::digest(serde_json::to_vec(&before.entries)?));
+    let consistent = same_source(&before, &scan(&source, started)?)
+        && prefix_file_identity(&report.source_identity.canonical_path).as_ref()
+            == Some(&report.source_identity);
+    require_inactive()?;
+    Ok((drift, fingerprint, consistent))
+}
+
+/// Hash/descriptor checked historical evidence. Only a single snapshot filename.
+pub fn read_prefix_recovery_evidence(
+    root: &Path,
+    filename: &str,
+    expected_sha256: &str,
+) -> io::Result<Vec<u8>> {
+    component(filename)?;
+    let dir = descend(&storage(root)?, "snapshots")?;
+    let mut bytes = Vec::new();
+    read_file(&dir, filename)?
+        .take(8 * 1024 * 1024 + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() > 8 * 1024 * 1024 || format!("{:x}", Sha256::digest(&bytes)) != expected_sha256 {
+        return Err(err("historical_evidence_integrity_mismatch"));
+    }
+    Ok(bytes)
+}
+
+/// Only the three bounded registry hives, read without following symlinks.
+pub fn read_reconciliation_registry(
+    root: &Path,
+    backup: &PrefixRecoveryQualification,
+    name: &str,
+) -> io::Result<(Vec<u8>, Vec<u8>)> {
+    if !matches!(name, "system.reg" | "user.reg" | "userdef.reg") {
+        return Err(err("unsupported_reconciliation_registry"));
+    }
+    let (dir, manifest) = load_backup(root, backup)?;
+    let source = absolute_directory(&backup.source_identity.canonical_path)?;
+    let mut old = Vec::new();
+    let mut current = Vec::new();
+    read_file(&descend(&dir, "tree")?, name)?
+        .take(8 * 1024 * 1024 + 1)
+        .read_to_end(&mut old)?;
+    read_file(&source, name)?
+        .take(8 * 1024 * 1024 + 1)
+        .read_to_end(&mut current)?;
+    if old.len() > 8 * 1024 * 1024 || current.len() > 8 * 1024 * 1024 {
+        return Err(err("registry_reconciliation_limit"));
+    }
+    if manifest
+        .entries
+        .iter()
+        .find(|e| e.relative_path == name)
+        .and_then(|e| e.sha256.as_ref())
+        != Some(&format!("{:x}", Sha256::digest(&old)))
+    {
+        return Err(err("historical_registry_integrity_mismatch"));
+    }
+    Ok((old, current))
+}
+
+pub fn save_recovery_source_drift(
+    root: &Path,
+    report: &RecoverySourceDriftReport,
+) -> io::Result<BaselineReceipt> {
+    let dir = private_child(&storage(root)?, "snapshots", false)?;
+    let name = format!("recovery-source-drift-{}.json", new_id()?);
+    let hash = write_json(&dir, &name, report)?;
+    Ok(BaselineReceipt {
+        manifest_path: root.join("snapshots").join(name),
+        sha256: hash,
+    })
+}
+
+pub fn save_steam_protected_review(
+    root: &Path,
+    report: &lxmi_steam::SteamProtectedStateReview,
+) -> io::Result<BaselineReceipt> {
+    let dir = private_child(&storage(root)?, "snapshots", false)?;
+    let name = format!("steam-protected-review-{}.json", new_id()?);
+    let hash = write_json(&dir, &name, report)?;
+    Ok(BaselineReceipt {
+        manifest_path: root.join("snapshots").join(name),
+        sha256: hash,
+    })
+}
+
+pub fn current_recovery_tree_fingerprint(path: &Path) -> io::Result<String> {
+    Ok(format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(&private_tree_inventory(path)?)?)
+    ))
+}
+
 fn same_source(a: &Tree, b: &Tree) -> bool {
     a.entries == b.entries && a.stamps == b.stamps
 }
@@ -1012,7 +1123,11 @@ pub fn latest_recovery_qualification(
     let mut candidates = Vec::new();
     for name in names(&journal)?
         .into_iter()
-        .filter(|s| s.starts_with("recovery-") && s.ends_with(".json"))
+        .filter(|s| {
+            s.strip_prefix("recovery-")
+                .and_then(|s| s.strip_suffix(".json"))
+                .is_some_and(|id| validate_id(id).is_ok())
+        })
         .take(64)
     {
         let file = read_file(&journal, &name)?;
@@ -1029,6 +1144,28 @@ pub fn latest_recovery_qualification(
     }
     candidates.sort_by_key(|(time, _)| *time);
     Ok(candidates.pop().map(|(_, report)| report))
+}
+
+pub fn load_recovery_generation(
+    root: &Path,
+    id: &str,
+    identity: &PrefixFileIdentity,
+) -> io::Result<PrefixRecoveryQualification> {
+    validate_id(id)?;
+    let dir = descend(&storage(root)?, "snapshots")?;
+    let mut bytes = Vec::new();
+    read_file(&dir, &format!("recovery-{id}.json"))?
+        .take(128 * 1024 + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() > 128 * 1024 {
+        return Err(err("qualification_journal_limit"));
+    }
+    let report: PrefixRecoveryQualification = serde_json::from_slice(&bytes)?;
+    if report.backup_id != id || &report.source_identity != identity {
+        return Err(err("recovery_generation_identity_mismatch"));
+    }
+    load_backup(root, &report)?;
+    Ok(report)
 }
 pub fn apply_prefix_recovery(
     report: &mut GamePrefixEntryPreflight,
@@ -1123,6 +1260,85 @@ mod tests {
         assert!(recovery_source_matches(&f.storage, &r).unwrap());
         assert!(same_source(&before, &scan(&src, Instant::now()).unwrap()));
         assert!(test_prefix_restore(&f.storage, &mut r).is_err());
+    }
+    #[test]
+    fn latest_generation_ignores_source_drift_and_semantic_review_reports() {
+        let f = Fixture::new();
+        let old = f.create();
+        save_recovery_qualification(&f.storage, &old).unwrap();
+        fs::write(
+            f.storage
+                .join("snapshots/recovery-source-drift-deadbeef.json"),
+            b"{\"assessment\":\"unknown\"}",
+        )
+        .unwrap();
+        fs::write(
+            f.storage
+                .join("snapshots/steam-protected-review-deadbeef.json"),
+            b"{\"assessment\":\"unknown\"}",
+        )
+        .unwrap();
+        assert_eq!(
+            latest_recovery_qualification(&f.storage, &old.source_identity)
+                .unwrap()
+                .unwrap()
+                .backup_id,
+            old.backup_id
+        );
+    }
+    #[test]
+    fn reconciled_current_recovery_and_baseline_generations_preserve_history() {
+        let f = Fixture::new();
+        fs::write(f.source.join("user.reg"), b"fixture user registry\n").unwrap();
+        fs::write(f.source.join("userdef.reg"), b"fixture default registry\n").unwrap();
+        let mut old = f.create();
+        let old_manifest = fs::read(old.backup_path.join("manifest.json")).unwrap();
+        let proton = f.base.join("proton");
+        fs::create_dir(&proton).unwrap();
+        fs::write(proton.join("version"), ZZZ_OBSERVED_BUILD).unwrap();
+        let inspect = || {
+            inspect_game_prefix(GamePrefixPreflightInput {
+                compatdata: f.source.parent().unwrap().into(),
+                proton_root: proton.clone(),
+                protected_paths: vec![],
+                active_processes: 0,
+                unresolved_processes: 0,
+            })
+        };
+        let mut before = inspect();
+        capture_game_prefix_baseline(&mut before, &f.storage).unwrap();
+        fs::write(f.source.join("drive_c/windows/test.txt"), b"test bytes").unwrap();
+        let (drift, _, consistent) =
+            inspect_recovery_source_drift(&f.storage, &mut old, || Ok(())).unwrap();
+        assert!(!drift.is_empty());
+        assert!(consistent);
+        assert_eq!(old.integrity.state, RecoveryVerificationState::Verified);
+        assert!(!recovery_source_matches(&f.storage, &old).unwrap());
+        assert_eq!(
+            assess_current_prefix(true, true, true, consistent, true, true, &drift),
+            CurrentPrefixStateAssessment::UnderstoodAndAcceptable
+        );
+        let mut current = inspect();
+        capture_game_prefix_baseline(&mut current, &f.storage).unwrap();
+        assert_ne!(
+            before.baseline_receipt.as_ref().unwrap().manifest_path,
+            current.baseline_receipt.as_ref().unwrap().manifest_path
+        );
+        assert!(before.baseline_receipt.unwrap().manifest_path.exists());
+        let mut new = f.create();
+        new.protected_paths_unchanged = Some(true);
+        assert_ne!(new.backup_id, old.backup_id);
+        test_prefix_restore(&f.storage, &mut new).unwrap();
+        assert!(recovery_source_matches(&f.storage, &new).unwrap());
+        assert!(!recovery_source_matches(&f.storage, &old).unwrap());
+        assert_eq!(
+            fs::read(old.backup_path.join("manifest.json")).unwrap(),
+            old_manifest
+        );
+        verify_prefix_recovery(&f.storage, &mut old).unwrap();
+        apply_prefix_recovery(&mut current, &new);
+        assert_eq!(current.result, PrefixPreflightState::EligibleForReview);
+        assert_eq!(new.real_prefix_restore, "not_tested");
     }
     #[test]
     fn tampered_backup_blocks_restore() {

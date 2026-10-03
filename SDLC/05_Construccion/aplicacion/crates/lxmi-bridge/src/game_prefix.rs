@@ -160,6 +160,8 @@ pub struct GamePrefixSnapshotPolicy {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GamePrefixBaseline {
+    #[serde(default)]
+    pub steam_semantic_state: Option<lxmi_steam::SteamProtectedSemanticState>,
     pub schema: u16,
     pub timestamp_unix_seconds: u64,
     pub prefix_identity: Option<PrefixFileIdentity>,
@@ -289,7 +291,7 @@ pub fn inspect_game_prefix(input: GamePrefixPreflightInput) -> GamePrefixEntryPr
     } else {
         PrefixPreflightState::NeedsEvidence
     };
-    let baseline = GamePrefixBaseline {schema:1,timestamp_unix_seconds:SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
+    let baseline = GamePrefixBaseline {steam_semantic_state:None,schema:1,timestamp_unix_seconds:SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
         prefix_identity:identity.clone(),selected_prefix_paths:selected,protected_paths:protected,
         policy:GamePrefixSnapshotPolicy {file_byte_limit:FILE_LIMIT,directory_entry_limit:DIRECTORY_LIMIT,
             exclusions:vec!["No full prefix/game tree, documents, registry values or environment persisted".into(),"Large files and directory contents covered only by selected metadata; no content rollback".into()]}};

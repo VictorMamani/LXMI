@@ -113,6 +113,17 @@ pub(crate) fn inspect_zzz_prefix_preflight_raw(
         active_processes: activity.matching_processes + activity.game_name_matches,
         unresolved_processes: activity.unresolved_runtime_processes + activity.scan_warnings.len(),
     });
+    // Two fixed VDF files only. Raw evidence must bind to this exact snapshot.
+    let semantics = lxmi_steam::inspect_zzz_steam_semantic_state(&runtime.steam_root)
+        .map_err(|_| fail("steam_semantic_state_unavailable_or_unparseable"))?;
+    if !lxmi_bridge::steam_semantics_bind_protected_paths(
+        &semantics,
+        &report.baseline.protected_paths,
+    ) {
+        return Err(fail("steam_semantic_snapshot_binding_mismatch"));
+    }
+    report.baseline.schema = 2;
+    report.baseline.steam_semantic_state = Some(semantics);
     if capture_baseline {
         lxmi_bridge::capture_game_prefix_baseline(&mut report, store.root()).map_err(|e| {
             BridgeServiceError {

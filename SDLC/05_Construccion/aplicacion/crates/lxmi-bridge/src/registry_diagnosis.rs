@@ -16,7 +16,7 @@ pub enum RegistryDiagnosisError {
     DuplicateSection,
     DuplicateValue,
 }
-#[derive(Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct RegistryChangeDiagnosis {
     pub content_changed: bool,
     pub changed_sections: usize,

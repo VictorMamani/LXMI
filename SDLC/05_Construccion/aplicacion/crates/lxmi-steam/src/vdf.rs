@@ -318,6 +318,65 @@ pub fn parse_library_folders(input: &str) -> Result<Vec<PathBuf>, VdfParseError>
     Ok(paths)
 }
 
+/// Strict bounded binary KeyValues subset used by Steam UserAppConfig hex scalars.
+/// Same typed AST as text parsing; unsupported wire types fail closed.
+pub(crate) fn parse_binary_key_values_hex(
+    input: &str,
+) -> Result<Vec<(String, KeyValuesValue)>, VdfParseError> {
+    let error = || VdfParseError {
+        offset: 0,
+        message: "invalid/unsupported bounded binary KeyValues",
+    };
+    if input.len() > 8192 || !input.len().is_multiple_of(2) || !input.is_ascii() {
+        return Err(error());
+    }
+    let bytes = (0..input.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&input[i..i + 2], 16).map_err(|_| error()))
+        .collect::<Result<Vec<_>, _>>()?;
+    fn string(bytes: &[u8], cursor: &mut usize) -> Option<String> {
+        let end = bytes.get(*cursor..)?.iter().position(|b| *b == 0)? + *cursor;
+        let s = std::str::from_utf8(bytes.get(*cursor..end)?)
+            .ok()?
+            .to_owned();
+        *cursor = end + 1;
+        Some(s)
+    }
+    fn entries(
+        bytes: &[u8],
+        cursor: &mut usize,
+        depth: usize,
+    ) -> Option<Vec<(String, KeyValuesValue)>> {
+        if depth > 16 {
+            return None;
+        }
+        let mut out = Vec::new();
+        loop {
+            let kind = *bytes.get(*cursor)?;
+            *cursor += 1;
+            if kind == 8 {
+                return Some(out);
+            }
+            let key = string(bytes, cursor)?;
+            let value = match kind {
+                0 => KeyValuesValue::Object(entries(bytes, cursor, depth + 1)?),
+                1 => KeyValuesValue::Scalar(string(bytes, cursor)?),
+                _ => return None,
+            };
+            out.push((key, value));
+            if out.len() > 64 {
+                return None;
+            }
+        }
+    }
+    let mut cursor = 0;
+    let out = entries(&bytes, &mut cursor, 0).ok_or_else(error)?;
+    if cursor != bytes.len() {
+        return Err(error());
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{parse_library_folders, MAX_NESTING_DEPTH};
