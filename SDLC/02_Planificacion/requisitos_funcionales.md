@@ -37,12 +37,12 @@ Estados: **implementado** indica que la función existe y fue verificada en el t
 
 | ID | Requisito | Estado |
 |---|---|---|
-| RF-09 | Importar un archivo local de mod compatible y autorizado | Propuesto |
-| RF-10 | Validar rutas del archivo antes de extraerlo y rechazar escapes del destino | Obligatorio antes de habilitar importación |
-| RF-11 | Calcular SHA-256 y señalar posibles duplicados | Propuesto |
+| RF-09 | Importar un archivo local de mod compatible y autorizado | Implementado para carpetas/ZIP con INI en biblioteca privada; juego asignado explícitamente, compatibilidad no inferida; pruebas sintéticas e interfaz con IPC Tauri real y reinicio comprobados |
+| RF-10 | Validar rutas del archivo antes de extraerlo y rechazar escapes del destino | Implementado reutilizando extracción acotada y filesystem anclado a descriptores; traversal, links, límites y nombres ambiguos rechazados |
+| RF-11 | Calcular SHA-256 y señalar posibles duplicados | Implementado; deduplicación exacta por inventario/contenido y verificación al listar/guardar/preparar |
 | RF-12 | Guardar metadatos locales editables sin sobrescribir el archivo original | Propuesto |
 | RF-13 | Activar y desactivar un mod usando una operación reversible | Por validar según runtime y sistema de archivos |
-| RF-14 | Crear perfiles por juego y seleccionar un conjunto de mods | Propuesto |
+| RF-14 | Crear perfiles por juego y seleccionar un conjunto de mods | Implementado para selecciones persistentes, copias preparadas y aplicación/reversión a runtimes privados WWMI/ZZMI. Carga dentro del juego y live pendientes. Ver guía del gestor local |
 | RF-15 | Informar conflicto potencial cuando exista evidencia verificable | Posterior; no prometer detección completa |
 
 ## Runtime live y fuentes externas

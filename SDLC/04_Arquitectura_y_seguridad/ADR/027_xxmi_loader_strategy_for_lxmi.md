@@ -59,3 +59,31 @@ La inspección read-only encontró vacío el `CompatToolMapping` local para AppI
 ### Seguimiento 0.8.5 — límite de identidad del fixture
 
 Same-prefix: Direct Inject del componente oficial vuelve a cargar la DLL propia con marker/nonce. Cross-prefix: ambos ven filesystem pero el pipe de identidad no cruza; se observaron IDs Windows iguales en target y runner de contexts distintos. El guard impide entregar a upstream un PID no correlacionado. `TargetIdentityUnavailable` no acredita un error de `Inject`, ni same-prefix como requisito universal. **NoDecision** permanece; Hook sigue bloqueado; 0.9 no está autorizado. Ver [investigación 0.8.5](../../01_Descubrimiento/direct_inject_context_boundary_0_8_5.md).
+
+### Seguimiento 2026-10-15 — evidencia de ZZZ e isolation Hook en fixture
+
+Direct Inject contra ZZZ real cargó el módulo, pero con el juego ya iniciado
+no hubo efecto visual y a 1.6–2.8 s del arranque el proceso terminó con
+`0xc0000409` (Libraries 1.1.7 y 1.2.2). El control sin inyección llegó a
+«Pulsa para entrar». Upstream ofrece Hook como default de ZZMI precisamente
+para cargar antes de crear el dispositivo.
+
+El fixture `hook_isolation.py` ejecutó el `HookLibrary` oficial en prefixes
+propiedad de LXMI. El hook global quedó dentro de su wineserver, los procesos
+ajenos rechazaron ZZMI en `DllMain`, el target lo recibió antes del dispositivo
+(dispositivo envuelto, Present correcto) y `UnhookLibrary` detuvo nuevas cargas.
+Si el target resuelve `d3d11` antes de su primera ventana, ZZMI sale
+deliberadamente con `0xc0000135`.
+
+**Hook pasa de BLOCKED a candidato con evidencia de aislamiento en fixture.**
+El guard de producción del Loader Lab no cambia. `LoaderStrategyDecision`
+sigue `NoDecision` hasta una sesión ZZZ consentida en modo Hook
+(`experiment.py run --arm-before-game --hook`). Ver la
+[verificación](../../06_Verificacion/verificacion_primera_carga_zzz.md) y el
+[resumen](../../06_Verificacion/evidencias/aislamiento_hook_fixture_20261015.json).
+
+### Resolución 2026-10-15
+
+La sesión ZZZ en modo Hook cargó ZZMI con el juego estable y mods visibles en
+partida. Para ZZMI/ZZZ en Steam + Proton la estrategia queda decidida en
+[ADR-032](032_jugar_con_mods_hook_oficial.md). Esta ADR conserva el historial.

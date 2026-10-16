@@ -1,5 +1,7 @@
 # Roadmap técnico propuesto
 
+Actualización 2026-10-14: el usuario priorizó el gestor. La biblioteca local, importación carpeta/ZIP, perfiles y copias privadas ya están implementados sin cambiar la versión 0.8.7. La aplicación reversible al runtime privado WWMI/ZZMI y el diseño del prototipo están implementados; la carga dentro del juego y los cambios live siguen pendientes. [Guía y próximos pasos vigentes](../05_Construccion/gestor_mods_local.md). La tabla siguiente conserva la secuencia propuesta inicialmente; sus números no representan el avance actual de los experimentos de bridge.
+
 Las versiones expresan una secuencia de aprendizaje, no compromisos de entrega ni prueba de viabilidad. Cada etapa debe revisarse tras el descubrimiento.
 
 | Hito tentativo | Resultado propuesto | Puerta de decisión |

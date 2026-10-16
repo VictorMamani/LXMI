@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-14",
+  "scope": "Local mod library and profiles; no runtime deployment",
+  "rust": {
+    "passed": 390,
+    "failed": 0,
+    "ignored": 12,
+    "new_mod_library_tests": 16,
+    "fmt": "PASS",
+    "check": "PASS",
+    "clippy_all_targets": "PASS"
+  },
+  "frontend": {
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "format": "PASS",
+    "build": "PASS"
+  },
+  "browser": {
+    "transport": "synthetic Tauri IPC in memory; not native IPC",
+    "viewports": [
+      {
+        "width": 1280,
+        "height": 1000,
+        "horizontalOverflow": false
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      }
+    ],
+    "flows": [
+      "empty library",
+      "folder/ZIP import UI",
+      "invalid mod error",
+      "content deduplication UI",
+      "search",
+      "save/update/restore profiles",
+      "game isolation",
+      "dirty preparation blocked",
+      "prepared snapshot display",
+      "direct current-profile restore",
+      "singular file counts and KiB sizes",
+      "keyboard tab name to source"
+    ],
+    "nativeIpc": "NOT_TESTED"
+  },
+  "independent_ui_review": {
+    "disposition": "Ship",
+    "bounded_verdict": "All three minor findings resolved",
+    "documentation": "Ship; incumbent design preserved"
+  },
+  "gameExecution": "NOT_RUN",
+  "version": "0.8.7"
+}

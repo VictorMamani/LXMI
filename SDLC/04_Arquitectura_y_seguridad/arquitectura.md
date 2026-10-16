@@ -1,5 +1,11 @@
 # Arquitectura conceptual
 
+## Gestor local — actualización 2026-10-14
+
+`ModManagerPanel` usa comandos Tauri de `mod_commands.rs` para listar/importar mods, guardar perfiles y preparar copias. El adaptador resuelve el store y sus fronteras mediante `xxmi_service::store_for`; `lxmi-xxmi::ModLibrary` reutiliza filesystem, ZIP e inventarios existentes. La persistencia está en archivos JSON y payloads privados por juego, sin SQLite. Las preparaciones son snapshots completos. `activation.rs` construye runtimes derivados privados; `game_runtime_commands.rs` expone revisión/aplicación/reversión. El resolver verifica y consume la selección por juego en los puntos existentes de bridge/topología. La carga dentro del juego conserva sus gates pendientes. [ADR-031](ADR/031_local_mod_library_and_profiles.md) · [Guía](../05_Construccion/gestor_mods_local.md).
+
+Las vistas siguientes conservan la arquitectura y alcance de sus incrementos históricos; las referencias a biblioteca futura en 0.5 describen ese checkpoint.
+
 ## Incremento LXMI-0.5: paquetes XXMI/WWMI
 
 Esta vista amplía discovery/planning 0.1–0.4. `lxmi-xxmi` agrega detección estructural limitada, importación de directorio, storage administrado, assessment y plan. Importar persiste un paquete solo bajo XDG/LXMI; escaneos y planes siguen siendo efímeros. El plan no tiene executor y no escribe Steam/juego/prefix.

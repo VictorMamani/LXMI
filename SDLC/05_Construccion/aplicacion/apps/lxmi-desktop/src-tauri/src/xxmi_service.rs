@@ -16,10 +16,10 @@ use lxmi_steam::{
     SteamDiscoveryResult, SteamDiscoveryScanner,
 };
 use lxmi_xxmi::{
-    assemble_zzmi_runtime, existing_zzmi_runtime, inspect_launch_topology, inspect_runtime,
-    integration_for_game, plan_installation_for_integration, plan_zzmi_assembly,
-    ConfiguredToolMappingEvidence, ContextFindingState, ContextToolKind, ContextToolOrigin,
-    DownloadCache, ErrorCode, GitHubReleaseProvider, HookRequirementState, InstallationPlan,
+    assemble_zzmi_runtime, inspect_launch_topology, inspect_runtime, integration_for_game,
+    plan_installation_for_integration, plan_zzmi_assembly, ConfiguredToolMappingEvidence,
+    ContextFindingState, ContextToolKind, ContextToolOrigin, DownloadCache, ErrorCode,
+    GitHubReleaseProvider, HookRequirementState, InstallationPlan,
     InstalledCompatibilityToolEvidence, LaunchTopologyPlan, ManagedRuntime, ManagedStore,
     OfficialPackageKind, PackageAuthenticity, PackageKind, PackageManifest,
     PerGameToolMappingState, ReadinessCapabilityState, ReadinessEvidenceState, ReleaseProvider,
@@ -706,7 +706,7 @@ pub struct IntegrationStatus {
     pub observations: Vec<RuntimeDiscovery>,
     pub issues: Vec<XxmiError>,
 }
-fn protected_paths(discovery: &SteamDiscoveryResult) -> Vec<std::path::PathBuf> {
+pub(crate) fn protected_paths(discovery: &SteamDiscoveryResult) -> Vec<std::path::PathBuf> {
     let mut protected = Vec::new();
     for root in &discovery.steam.installations {
         protected.push(root.root_path.clone());
@@ -720,7 +720,7 @@ fn protected_paths(discovery: &SteamDiscoveryResult) -> Vec<std::path::PathBuf> 
     protected
 }
 
-fn store_for(discovery: &SteamDiscoveryResult) -> Result<ManagedStore> {
+pub(crate) fn store_for(discovery: &SteamDiscoveryResult) -> Result<ManagedStore> {
     let store = ManagedStore::from_system(&SystemInfo::current())?;
     // Refuse writes if Steam discovery failed with an error: cannot establish boundaries.
     if !matches!(
@@ -767,7 +767,7 @@ pub fn status() -> Result<IntegrationStatus> {
     })
 }
 
-fn platform_plan(
+pub(crate) fn platform_plan(
     discovery: &SteamDiscoveryResult,
     game_id: &str,
 ) -> Result<lxmi_runtime::GameRuntimePlan> {
@@ -782,6 +782,18 @@ fn platform_plan(
                 "El juego no aparece en el discovery actual de Steam.",
             )
         })
+}
+
+fn existing_zzmi_runtime(
+    store: &ManagedStore,
+    platform: &lxmi_runtime::GameRuntimePlan,
+    importer: &str,
+    libraries: &str,
+    protected: &[PathBuf],
+) -> Result<Option<ManagedRuntime>> {
+    lxmi_xxmi::existing_zzmi_runtime(store, platform, importer, libraries, protected)?
+        .map(|base| lxmi_xxmi::resolve_profile_runtime(store, &base))
+        .transpose()
 }
 
 pub fn prepare_zzmi_runtime(zzmi_id: &str, libraries_id: &str) -> Result<ManagedRuntime> {
@@ -1493,7 +1505,7 @@ pub fn inspect_zzz_launch_readiness(
             prefix_path: prefix,
             steam_process_context: Some(steam_process_context),
             managed_runtime_root,
-            zzmi_version: zzmi.version,
+            integration_version: zzmi.version,
             xxmi_libraries_version: libraries.version,
             upstream_default_loader_mode: ZzmiLoaderMode::Hook,
             upstream_loader_strategy: UpstreamLoaderStrategy::EitherDependingOnLaunchMode,
@@ -1514,6 +1526,7 @@ pub fn import_directory(path: &Path) -> Result<PackageManifest> {
 pub fn check_official_releases() -> Result<Vec<UpstreamRelease>> {
     let provider = GitHubReleaseProvider::new()?;
     Ok(vec![
+        provider.latest_release(OfficialPackageKind::Wwmi)?,
         provider.latest_release(OfficialPackageKind::Zzmi)?,
         provider.latest_release(OfficialPackageKind::XxmiLibraries)?,
     ])

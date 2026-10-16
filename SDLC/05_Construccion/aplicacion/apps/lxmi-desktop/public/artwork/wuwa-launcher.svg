@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" fill="none">
+  <!-- Original LXMI illustration: tide under a pale moon. No game assets. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#08111c"/>
+      <stop offset=".55" stop-color="#10263a"/>
+      <stop offset="1" stop-color="#061019"/>
+    </linearGradient>
+    <radialGradient id="moonglow" cx="0" cy="0" r="1" gradientTransform="matrix(0 420 -560 0 1120 300)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#bfe6f2" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#bfe6f2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="moon" cx="0" cy="0" r="1" gradientTransform="matrix(-60 120 -120 -60 1150 270)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f6fbff"/>
+      <stop offset="1" stop-color="#a9cfe0"/>
+    </radialGradient>
+    <linearGradient id="wave1" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#2d6f8e" stop-opacity=".75"/>
+      <stop offset="1" stop-color="#0a1c2b" stop-opacity=".2"/>
+    </linearGradient>
+    <linearGradient id="wave2" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#163f59"/>
+      <stop offset="1" stop-color="#07121c"/>
+    </linearGradient>
+    <linearGradient id="reflect" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#e6f6ff" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#e6f6ff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset=".45" stop-color="#050b12" stop-opacity="0"/>
+      <stop offset="1" stop-color="#050b12" stop-opacity=".9"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <rect width="1600" height="1000" fill="url(#moonglow)"/>
+  <g fill="#e8f6ff">
+    <circle cx="140" cy="90" r="1.6" opacity=".7"/><circle cx="320" cy="180" r="1.2" opacity=".5"/>
+    <circle cx="520" cy="70" r="1.8" opacity=".6"/><circle cx="690" cy="210" r="1.1" opacity=".45"/>
+    <circle cx="860" cy="120" r="1.4" opacity=".6"/><circle cx="1420" cy="90" r="1.6" opacity=".6"/>
+    <circle cx="1530" cy="240" r="1.2" opacity=".5"/><circle cx="1330" cy="460" r="1.1" opacity=".4"/>
+    <circle cx="240" cy="330" r="1.3" opacity=".4"/><circle cx="960" cy="40" r="1.2" opacity=".5"/>
+  </g>
+  <circle cx="1120" cy="300" r="128" fill="url(#moon)"/>
+  <circle cx="1120" cy="300" r="170" stroke="#d8f1fb" stroke-opacity=".22"/>
+  <circle cx="1120" cy="300" r="226" stroke="#d8f1fb" stroke-opacity=".1" stroke-dasharray="3 12"/>
+  <path d="M0 560c180-40 330-30 480 10s290 60 460 20 330-90 660-40v450H0Z" fill="url(#wave1)"/>
+  <path d="M0 610c150 30 300 40 460 0s300-80 470-50 260 90 420 70 190-40 250-50v420H0Z" fill="#0d2a3e" fill-opacity=".85"/>
+  <path d="M0 690c220-50 380-40 560 10s320 50 500 0 330-60 540-20v320H0Z" fill="url(#wave2)"/>
+  <path d="M0 690c220-50 380-40 560 10s320 50 500 0 330-60 540-20" stroke="#9fdcef" stroke-opacity=".45" stroke-width="2"/>
+  <path d="M0 610c150 30 300 40 460 0s300-80 470-50 260 90 420 70 190-40 250-50" stroke="#9fdcef" stroke-opacity=".22"/>
+  <g fill="url(#reflect)">
+    <ellipse cx="1120" cy="612" rx="120" ry="5"/>
+    <ellipse cx="1112" cy="640" rx="86" ry="4" opacity=".8"/>
+    <ellipse cx="1128" cy="668" rx="104" ry="4" opacity=".6"/>
+    <ellipse cx="1118" cy="700" rx="64" ry="3" opacity=".5"/>
+    <ellipse cx="1124" cy="728" rx="80" ry="3" opacity=".35"/>
+  </g>
+  <path d="M0 780c260-30 420-10 600 30s360 30 560-10 300-30 440-10v210H0Z" fill="#06121c" fill-opacity=".9"/>
+  <rect width="1600" height="1000" fill="url(#fade)"/>
+</svg>

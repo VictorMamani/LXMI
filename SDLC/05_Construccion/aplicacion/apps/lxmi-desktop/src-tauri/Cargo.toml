@@ -16,6 +16,7 @@ tauri-build = { version = "2", features = [] }
 lxmi-xxmi = { path = "../../../crates/lxmi-xxmi" }
 lxmi-bridge = { path = "../../../crates/lxmi-bridge" }
 lxmi-core = { path = "../../../crates/lxmi-core" }
+lxmi-launch = { path = "../../../crates/lxmi-launch" }
 lxmi-proton = { path = "../../../crates/lxmi-proton" }
 lxmi-runtime = { path = "../../../crates/lxmi-runtime" }
 lxmi-steam = { path = "../../../crates/lxmi-steam" }

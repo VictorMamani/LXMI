@@ -1,5 +1,5 @@
 //! Read-only semantic diagnostics. Findings never authorize prefix entry or a loader.
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -290,7 +290,7 @@ pub fn diagnose_registry_change(
     Ok(report)
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FixtureRegistrySectionMutation {
     pub section: String,
     pub changed_fields: Vec<String>,

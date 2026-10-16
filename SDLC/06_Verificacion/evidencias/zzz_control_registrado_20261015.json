@@ -1,0 +1,44 @@
+{
+  "recorded_local_date": "2026-10-15",
+  "scope": "Repeated normal ZZZ startup without helper or injection, same Steam launch options as the logged failure",
+  "start_method": "manual Steam then HoYoPlay Play",
+  "steam_launch_options": "PROTON_LOG=1 PROTON_LOG_DIR=/tmp/lxmi-zzz-debug WINEDEBUG=+seh,+loaddll %command%",
+  "helper_executed": false,
+  "injector_called": false,
+  "hook_installed": false,
+  "observation": {
+    "game_process_age_seconds_at_capture": 379,
+    "lxmi_module_mapped": false,
+    "steam_appid_in_launch_chain": 4162040,
+    "proton_verb": "waitforexitandrun"
+  },
+  "user_report": {
+    "character_checked": "Miyabi",
+    "mods_visible": false,
+    "expected": true,
+    "reason": "nothing loads ZZMI in a normal launch"
+  },
+  "private_copy": "~/.local/share/lxmi/experiments/control-normal-20261015-1337/",
+  "proton_log": {
+    "bytes": 570552,
+    "sha256": "0bacfc2707506a2a7a77a82242bf685fb85f3d775238b170abcc224b69ee4323",
+    "contains_c0000005_c0000409_or_access_violation": false,
+    "dxvk_unknown_interface_query_lines": 4,
+    "game_assembly_loaded": true,
+    "game_and_launcher_may_still_write": true
+  },
+  "player_log": {
+    "bytes": 12644,
+    "sha256": "a485b0a4fb7da9f90d8f4343acdde31341dd9a0147122fa5591f1b6ea5a2a165",
+    "passes_line_where_failed_run_stopped": "<RI> Initialized touch support."
+  },
+  "comparison_with_logged_failure": {
+    "failed_session": "zzz-direct-c036a0271c371b6db1da0809b439da08",
+    "dxvk_unknown_interface_query_lines_failed": 138,
+    "dxvk_unknown_interface_query_lines_control": 4,
+    "reading": "Superseded: see correction_after_hook_success.",
+    "correction_after_hook_success": "The successful Hook run (zzz-direct-f8acde73c92b4a6559573efd2831c484) logged 289 such lines. The count reflects ZZMI being loaded, not the failure; it does not discriminate the crash."
+  },
+  "cause_established": false,
+  "next_step": "Close ZZZ, prepare a fresh session, open HoYoPlay from Steam, arm run --arm-before-game --hook, then press Play."
+}

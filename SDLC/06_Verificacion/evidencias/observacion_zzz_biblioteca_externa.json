@@ -1,0 +1,42 @@
+{
+  "recorded_at": "2026-10-14T21:30:04.107394-04:00",
+  "scope": "summary of passive observation during user manual Steam launch; not a persisted runtime-observation snapshot",
+  "authorization": "User stated that all games are on the other disk and would enter ZZZ; subsequently described Steam opening launcher then game.",
+  "source": "lxmi-runtime::ProcfsObserver production parser via opt-in observe_zzz example",
+  "app_id": 4162040,
+  "single_game_process_accepted": true,
+  "app_id_evidence": "verified",
+  "runtime": {
+    "state": "verified",
+    "display_name": "Proton - Experimental",
+    "version": "1791480010 experimental-11.0-20261008-x86_64",
+    "path": "~/.local/share/Steam/steamapps/common/Proton - Experimental",
+    "scope": "this observed execution only; does not select configured runtime"
+  },
+  "compatdata": {
+    "state": "observed_and_matches",
+    "path": "/media/university/Steam/SteamLibrary/steamapps/compatdata/4162040",
+    "present_after_manual_start": true
+  },
+  "prefix": {
+    "state": "observed",
+    "path": "/media/university/Steam/SteamLibrary/steamapps/compatdata/4162040/pfx",
+    "present_after_manual_start": true,
+    "symlink": false
+  },
+  "environment_evidence": "permission_denied for at least one ancestry member; allowlisted AppID, prefix and Proton evidence still observed",
+  "wineserver": {
+    "state": "observed_and_matches",
+    "related_process_count": 1,
+    "limitation": "Same WINEPREFIX observed on a current-user wineserver; not proof the game is attached to that instance."
+  },
+  "launcher_distinguished_from_game": true,
+  "game_started_by_user": true,
+  "game_started_by_lxmi": false,
+  "loader_or_helper_executed_by_lxmi": false,
+  "mods_loaded_in_game": "not_tested",
+  "steam_game_prefix_modified_by_lxmi": false,
+  "historical_0_8_8_consent_consumed": false,
+  "raw_environ_or_command_line_saved": false,
+  "pids_or_full_snapshot_saved": false
+}

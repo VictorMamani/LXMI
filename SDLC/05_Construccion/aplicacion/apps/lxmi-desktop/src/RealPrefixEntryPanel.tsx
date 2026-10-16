@@ -28,6 +28,7 @@ type EnvironmentPanel = {
   limitations: string[];
 };
 type Review = {
+  experiment_id: string;
   review_token: string;
   consent_text: string;
   preflight: {
@@ -46,6 +47,8 @@ type Review = {
   };
 };
 type Result = {
+  experiment_id: string | null;
+  session_nonce: string;
   result: string;
   executor_qualified: boolean;
   executor_recipe_fingerprint: string | null;
@@ -66,6 +69,22 @@ type Result = {
   game_context_inactive_after: boolean;
   evidence_receipt: { manifest_path: string; sha256: string } | null;
   warnings: string[];
+};
+type Experiment = {
+  experiment: {
+    experiment_id: string;
+    recovery_backup: string;
+    executor_fingerprint: string;
+    source_baseline: { manifest_path: string; sha256: string };
+  };
+  status: string;
+  consumed: boolean;
+  terminal: { reason: string } | null;
+  result: Result | null;
+};
+type History = {
+  historical: { attempted: boolean; result: Result | null };
+  current: Experiment | null;
 };
 export default function RealPrefixEntryPanel({
   preflightEligible = false,
@@ -100,16 +119,31 @@ export default function RealPrefixEntryPanel({
   const [error, setError] = useState<string | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [historyPending, setHistoryPending] = useState(false);
+  const [historicalResult, setHistoricalResult] = useState<Result | null>(null);
+  const [historicalConsumed, setHistoricalConsumed] = useState(false);
+  const [experiment, setExperiment] = useState<Experiment | null>(null);
+  function acceptHistory(history: History) {
+    setHistoricalConsumed(history.historical.attempted);
+    setHistoricalResult(history.historical.result);
+    setExperiment(history.current);
+    setAttempted(history.current?.consumed ?? false);
+    setResult(history.current?.result ?? null);
+    setHistoryPending(
+      Boolean(history.current?.consumed && !history.current.result),
+    );
+    setHistoryLoaded(true);
+  }
+  async function refreshHistory() {
+    acceptHistory(
+      await invoke<History>("inspect_zzz_harmless_prefix_entry_history"),
+    );
+  }
   useEffect(() => {
     let mounted = true;
-    void invoke<{ attempted: boolean; result: Result | null }>(
-      "inspect_zzz_harmless_prefix_entry_history",
-    )
+    void invoke<History>("inspect_zzz_harmless_prefix_entry_history")
       .then((history) => {
         if (!mounted) return;
-        setAttempted(history.attempted);
-        setResult(history.result);
-        setHistoryPending(history.attempted && !history.result);
+        acceptHistory(history);
         setConsent(false);
         setHistoryLoaded(true);
       })
@@ -148,20 +182,50 @@ export default function RealPrefixEntryPanel({
     }
   }
   async function prepare() {
+    if (!experiment || experiment.status !== "pending_review") return;
     setBusy(true);
     setError(null);
     setConsent(false);
     setReview(null);
     try {
-      setReview(await invoke<Review>("prepare_zzz_harmless_prefix_entry"));
+      setReview(
+        await invoke<Review>("prepare_zzz_harmless_prefix_entry", {
+          experimentId: experiment.experiment.experiment_id,
+        }),
+      );
     } catch (cause) {
       fail(cause);
+    } finally {
+      await refreshHistory().catch(fail);
+      setBusy(false);
+    }
+  }
+  async function createExperiment() {
+    setBusy(true);
+    setError(null);
+    setConsent(false);
+    setReview(null);
+    try {
+      setExperiment(
+        await invoke<Experiment>("create_zzz_harmless_prefix_entry_experiment"),
+      );
+      await refreshHistory();
+    } catch (cause) {
+      fail(cause);
+      await refreshHistory().catch(fail);
     } finally {
       setBusy(false);
     }
   }
   async function run() {
-    if (!review || !consent || attempted) return;
+    if (
+      !review ||
+      !consent ||
+      attempted ||
+      !experiment ||
+      review.experiment_id !== experiment.experiment.experiment_id
+    )
+      return;
     setBusy(true);
     setError(null);
     setAttempted(true);
@@ -169,6 +233,7 @@ export default function RealPrefixEntryPanel({
     try {
       setResult(
         await invoke<Result>("run_zzz_harmless_prefix_entry", {
+          experimentId: review.experiment_id,
           reviewToken: review.review_token,
           consentAccepted: true,
         }),
@@ -176,6 +241,7 @@ export default function RealPrefixEntryPanel({
     } catch (cause) {
       fail(cause);
     } finally {
+      await refreshHistory().catch(fail);
       setBusy(false);
     }
   }
@@ -202,6 +268,71 @@ export default function RealPrefixEntryPanel({
         LXMI y lee un marker externo; no ejecuta el juego ni un loader. La
         restauración del prefix real no está probada.
       </p>
+      <h5>Previous experiment · consumed / historical</h5>
+      <p>
+        {historicalConsumed
+          ? `Consumed · ${historicalResult?.result ?? "final evidence unavailable"} · reservation preserved`
+          : "Checking historical evidence"}
+      </p>
+      {historicalResult && (
+        <details>
+          <summary>Inspect previous experiment</summary>
+          <dl>
+            <dt>Historical session</dt>
+            <dd>{historicalResult.session_nonce}</dd>
+            <dt>Historical result</dt>
+            <dd>{historicalResult.result}</dd>
+            <dt>Historical helper</dt>
+            <dd>{historicalResult.helper?.handshake ?? "Not observed"}</dd>
+            <dt>Historical evidence</dt>
+            <dd>
+              {historicalResult.evidence_receipt?.manifest_path ??
+                "Unavailable"}
+            </dd>
+          </dl>
+        </details>
+      )}
+      <h5>New independent experiment</h5>
+      {experiment ? (
+        <dl>
+          <dt>Experiment ID</dt>
+          <dd>{experiment.experiment.experiment_id}</dd>
+          <dt>Experiment status</dt>
+          <dd>
+            {experiment.status}
+            {experiment.consumed ? " · CONSUMED · no retry" : ""}
+          </dd>
+          <dt>Recovery binding</dt>
+          <dd>{experiment.experiment.recovery_backup}</dd>
+          <dt>Executor binding</dt>
+          <dd>{experiment.experiment.executor_fingerprint}</dd>
+          <dt>Source baseline</dt>
+          <dd>{experiment.experiment.source_baseline.manifest_path}</dd>
+          {experiment.terminal && (
+            <>
+              <dt>Terminal evidence</dt>
+              <dd>{experiment.terminal.reason}</dd>
+            </>
+          )}
+        </dl>
+      ) : (
+        <p>
+          Not created. One new experiment is authorized; review and new consent
+          are required.
+        </p>
+      )}
+      <button
+        disabled={
+          busy ||
+          !historyLoaded ||
+          Boolean(experiment) ||
+          environmentBlocked ||
+          !preflightEligible
+        }
+        onClick={() => void createExperiment()}
+      >
+        Create Independent Experiment
+      </button>
       <h4>Linux runtime environment</h4>
       <p role="status">
         Current: {environment?.current_environment.qualification ?? "UNKNOWN"} ·
@@ -328,6 +459,7 @@ export default function RealPrefixEntryPanel({
         disabled={
           busy ||
           attempted ||
+          experiment?.status !== "pending_review" ||
           !historyLoaded ||
           environmentBlocked ||
           !preflightEligible
@@ -352,6 +484,8 @@ export default function RealPrefixEntryPanel({
       {review && (
         <>
           <dl>
+            <dt>Reviewed experiment ID</dt>
+            <dd>{review.experiment_id}</dd>
             <dt>Preflight</dt>
             <dd>{review.preflight.result}</dd>
             <dt>Game / prefix activity</dt>
@@ -387,8 +521,8 @@ export default function RealPrefixEntryPanel({
               disabled={busy || attempted}
               onChange={(event) => setConsent(event.target.checked)}
             />{" "}
-            I explicitly consent to this single harmless real-prefix entry
-            experiment. I will keep ZZZ closed.
+            I explicitly consent to the NEW harmless real-prefix experiment{" "}
+            {review.experiment_id}. I will keep ZZZ closed.
           </label>
           <div className="actions">
             <button

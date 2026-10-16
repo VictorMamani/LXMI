@@ -668,6 +668,9 @@ fn refresh_recovery_history(
 }
 
 struct EntryReview {
+    experiment_id: String,
+    session_nonce: String,
+    executor_fingerprint: String,
     token: String,
     created: std::time::Instant,
     before: GamePrefixEntryPreflight,
@@ -677,8 +680,17 @@ struct EntryReview {
 }
 static ENTRY: Mutex<Option<EntryReview>> = Mutex::new(None);
 static QUALIFIED_EXECUTOR: Mutex<Option<QualifiedLinuxRuntimeRecipe>> = Mutex::new(None);
-pub fn entry_history() -> Result<HarmlessEntryHistory, BridgeServiceError> {
-    read_harmless_entry_history(&xxmi_service::prefix_recovery_storage()?).map_err(error)
+#[derive(Serialize)]
+pub struct HarmlessExperimentPanel {
+    pub historical: HarmlessEntryHistory,
+    pub current: Option<EntryExperimentHistory>,
+}
+pub fn entry_history() -> Result<HarmlessExperimentPanel, BridgeServiceError> {
+    let root = xxmi_service::prefix_recovery_storage()?;
+    Ok(HarmlessExperimentPanel {
+        historical: read_harmless_entry_history(&root).map_err(error)?,
+        current: read_independent_entry_experiment(&root).map_err(error)?,
+    })
 }
 pub fn qualify_executor() -> Result<QualifiedExecutorPanel, BridgeServiceError> {
     let mut state = QUALIFIED_EXECUTOR
@@ -761,49 +773,167 @@ pub fn environment_panel() -> Result<LinuxEnvironmentQualificationPanel, BridgeS
 
 #[derive(Serialize)]
 pub struct HarmlessEntryReviewPanel {
+    pub experiment_id: String,
     pub review_token: String,
     pub preflight: GamePrefixEntryPreflight,
     pub recovery: PrefixRecoveryQualification,
     pub runtime: ExplicitBridgeRuntime,
     pub consent_text: &'static str,
 }
-const CONSENT: &str = "LXMI will run ONE harmless Windows helper using ZZZ's real compatibility prefix through the qualified Steam Runtime container and a verified private Proton copy. Proton/Wine may update prefix metadata. ZZZ must remain closed. LXMI will not launch the game, load ZZMI, inject DLLs, install mods, or modify Steam launch options. Recovery backup exists; real-prefix restore is NOT TESTED. This fresh consent applies only to this reviewed experiment and cannot be reused.";
-pub fn prepare_entry() -> Result<HarmlessEntryReviewPanel, BridgeServiceError> {
-    let recipe = qualified_entry_environment()?;
-    let storage = xxmi_service::prefix_recovery_storage()?;
-    if storage
-        .join("tests/qualified-real-entry-0_8_8_2-once.json")
-        .exists()
-    {
-        return Err(entry_error("entry_already_attempted_no_retry"));
-    }
-    // Read-only for Steam/prefix; fresh baseline is stored only under LXMI.
+const CONSENT: &str = "LXMI will run ONE harmless Windows helper using ZZZ's real compatibility prefix through the qualified Steam Runtime container and a verified private Proton copy. Proton/Wine may update prefix metadata. ZZZ must remain closed. LXMI will not launch the game, load ZZMI, use a loader/Hook/Direct Inject, interact with the game process or modify Steam launch options. Recovery backup exists; real-prefix restore is NOT TESTED. This fresh consent applies only to the displayed NEW experiment ID and cannot be reused.";
+fn fresh_nonce() -> Result<String, BridgeServiceError> {
+    let mut bytes = [0u8; 16];
+    getrandom::fill(&mut bytes).map_err(error)?;
+    Ok(bytes.iter().map(|b| format!("{b:02x}")).collect())
+}
+fn unix_now() -> Result<u64, BridgeServiceError> {
+    Ok(std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(error)?
+        .as_secs())
+}
+fn new_entry_evidence(
+    recipe: &QualifiedLinuxRuntimeRecipe,
+) -> Result<PrefixRecoveryPanel, BridgeServiceError> {
     let panel = inspect(true)?;
+    let recovery = panel
+        .recovery
+        .as_ref()
+        .ok_or_else(|| entry_error("backup_invalid"))?;
     if panel.preflight.result != PrefixPreflightState::EligibleForReview {
         return Err(error(format!(
             "entry_preflight_not_eligible: {:?}",
             panel.preflight.blockers
         )));
     }
-    // No consent/review token for a source state outside the measured self-test.
-    let registry =
-        qualified_registry_capture(&panel.preflight.compatdata.join("pfx")).map_err(error)?;
+    if panel
+        .preflight
+        .prefix_identity
+        .as_ref()
+        .is_none_or(|id| !source_identity_expected(id))
+        || recovery.backup_id != CURRENT_ENTRY_BACKUP
+        || recovery.manifest_sha256 != CURRENT_ENTRY_BACKUP_SHA
+    {
+        return Err(entry_error(
+            "independent_experiment_source_binding_mismatch",
+        ));
+    }
     recipe
-        .require_initial_prefix_state(&registry)
-        .map_err(|_| entry_error("initial_prefix_state_unqualified"))?;
-    let recovery = panel.recovery.ok_or_else(|| error("backup_invalid"))?;
-    recipe
-        .require_recovery_seed(&recovery)
+        .require_recovery_seed(recovery)
         .map_err(|_| entry_error("current_recovery_executor_unqualified"))?;
+    recipe
+        .require_initial_prefix_state(
+            &qualified_registry_capture(&panel.preflight.compatdata.join("pfx")).map_err(error)?,
+        )
+        .map_err(|_| entry_error("initial_prefix_state_unqualified"))?;
+    Ok(panel)
+}
+pub fn create_entry_experiment() -> Result<EntryExperimentHistory, BridgeServiceError> {
+    let recipe = qualified_entry_environment()?;
+    let storage = xxmi_service::prefix_recovery_storage()?;
+    read_harmless_entry_history(&storage).map_err(error)?;
+    if read_independent_entry_experiment(&storage)
+        .map_err(error)?
+        .is_some()
+    {
+        return Err(entry_error(
+            "independent_experiment_already_reserved_no_third_experiment",
+        ));
+    }
+    let panel = new_entry_evidence(&recipe)?;
+    let recovery = panel.recovery.as_ref().unwrap();
+    create_independent_entry_experiment(
+        &storage,
+        &RealPrefixEntryExperiment {
+            schema: 1,
+            experiment_id: fresh_nonce()?,
+            session_nonce: fresh_nonce()?,
+            created_at: unix_now()?,
+            app_id: 4162040,
+            source_baseline: panel
+                .preflight
+                .baseline_receipt
+                .clone()
+                .ok_or_else(|| entry_error("baseline_missing"))?,
+            recovery_backup: recovery.backup_id.clone(),
+            recovery_manifest_sha256: recovery.manifest_sha256.clone(),
+            executor_fingerprint: recipe.panel().fingerprint,
+            prefix_identity: panel.preflight.prefix_identity.unwrap(),
+            runtime_build: ZZZ_OBSERVED_BUILD.into(),
+        },
+    )
+    .map_err(error)
+}
+fn block_experiment(
+    storage: &std::path::Path,
+    id: &str,
+    reason: &str,
+) -> Result<(), BridgeServiceError> {
+    finish_independent_entry_experiment(
+        storage,
+        &EntryExperimentTerminal {
+            experiment_id: id.into(),
+            status: EntryExperimentStatus::Blocked,
+            ended_at: unix_now()?,
+            reason: reason.chars().take(4096).collect(),
+            result_receipt: None,
+        },
+    )
+    .map_err(error)
+}
+pub fn prepare_entry(
+    experiment_id: String,
+) -> Result<HarmlessEntryReviewPanel, BridgeServiceError> {
+    // Read only the reservation first; recipe validation remains before source inspection.
+    let storage = xxmi_service::prefix_recovery_storage()?;
+    let history = read_independent_entry_experiment(&storage)
+        .map_err(error)?
+        .ok_or_else(|| entry_error("independent_experiment_required"))?;
+    if history.experiment.experiment_id != experiment_id
+        || history.status != EntryExperimentStatus::PendingReview
+    {
+        return Err(entry_error("experiment_not_pending_review"));
+    }
+    let outcome = prepare_independent_entry(&storage, history.experiment);
+    if let Err(e) = &outcome {
+        block_experiment(&storage, &experiment_id, &e.detail)?;
+    }
+    outcome
+}
+fn prepare_independent_entry(
+    storage: &std::path::Path,
+    experiment: RealPrefixEntryExperiment,
+) -> Result<HarmlessEntryReviewPanel, BridgeServiceError> {
+    let recipe = qualified_entry_environment()?;
+    if recipe.panel().fingerprint != experiment.executor_fingerprint {
+        return Err(entry_error("executor_changed"));
+    }
+    let panel = new_entry_evidence(&recipe)?;
+    if panel.preflight.prefix_identity.as_ref() != Some(&experiment.prefix_identity) {
+        return Err(entry_error("prefix_identity_changed"));
+    }
+    let recovery = panel.recovery.ok_or_else(|| error("backup_invalid"))?;
     let (runtime, steam_root) = xxmi_service::harmless_entry_runtime()?;
     let mut state = ENTRY.try_lock().map_err(|_| error("entry_busy"))?;
-    if state.as_ref().is_some_and(|r| r.consumed) {
-        return Err(error("entry_already_attempted_no_retry"));
-    }
-    let mut bytes = [0u8; 16];
-    getrandom::fill(&mut bytes).map_err(error)?;
-    let token = bytes.iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let token = fresh_nonce()?;
+    review_independent_entry_experiment(
+        storage,
+        &EntryExperimentReview {
+            experiment_id: experiment.experiment_id.clone(),
+            reviewed_at: unix_now()?,
+            review_token_sha256: entry_review_token_hash(&token).map_err(error)?,
+            source_baseline: panel
+                .preflight
+                .baseline_receipt
+                .clone()
+                .ok_or_else(|| entry_error("baseline_missing"))?,
+        },
+    )
+    .map_err(error)?;
     *state = Some(EntryReview {
+        experiment_id: experiment.experiment_id.clone(),
+        session_nonce: experiment.session_nonce,
+        executor_fingerprint: experiment.executor_fingerprint,
         token: token.clone(),
         created: std::time::Instant::now(),
         before: panel.preflight.clone(),
@@ -812,6 +942,7 @@ pub fn prepare_entry() -> Result<HarmlessEntryReviewPanel, BridgeServiceError> {
         consumed: false,
     });
     Ok(HarmlessEntryReviewPanel {
+        experiment_id: experiment.experiment_id,
         review_token: token,
         preflight: panel.preflight,
         recovery,
@@ -828,32 +959,68 @@ fn fresh_review(
     !consumed && elapsed <= std::time::Duration::from_secs(600) && expected == provided
 }
 pub fn run_entry(
+    experiment_id: String,
     review_token: String,
     consent_accepted: bool,
 ) -> Result<RealPrefixEntryResult, BridgeServiceError> {
     if !consent_accepted {
         return Err(entry_error("consent_missing"));
     }
-    qualified_entry_environment()?;
     let mut state = ENTRY.try_lock().map_err(|_| error("entry_busy"))?;
     let entry = state
         .as_mut()
         .ok_or_else(|| entry_error("entry_review_required"))?;
-    if !fresh_review(
-        entry.consumed,
-        entry.created.elapsed(),
-        &entry.token,
-        &review_token,
-    ) {
-        return Err(entry_error("entry_review_expired_or_consumed"));
+    if entry.experiment_id != experiment_id || entry.consumed {
+        return Err(entry_error("experiment_identity_mismatch_or_consumed"));
+    }
+    entry.consumed = true;
+    let root = xxmi_service::prefix_recovery_storage()?;
+    let execution = (|| {
+        if !fresh_review(false, entry.created.elapsed(), &entry.token, &review_token) {
+            return Err(entry_error("entry_review_expired_or_consumed"));
+        }
+        consume_independent_entry_experiment(&root, &experiment_id, &review_token)
+            .map_err(error)?;
+        run_independent_entry(&root, entry)
+    })();
+    match &execution {
+        Ok(result) => finish_independent_entry_experiment(
+            &root,
+            &EntryExperimentTerminal {
+                experiment_id,
+                status: if result.gate_passed() {
+                    EntryExperimentStatus::Succeeded
+                } else if result.result == RealPrefixEntryState::HelperFailed {
+                    EntryExperimentStatus::Failed
+                } else {
+                    EntryExperimentStatus::Blocked
+                },
+                ended_at: unix_now()?,
+                reason: format!("{:?}", result.result),
+                result_receipt: result.evidence_receipt.clone(),
+            },
+        )
+        .map_err(error)?,
+        Err(e) => block_experiment(&root, &experiment_id, &e.detail)?,
+    }
+    execution
+}
+fn run_independent_entry(
+    root: &std::path::Path,
+    entry: &mut EntryReview,
+) -> Result<RealPrefixEntryResult, BridgeServiceError> {
+    let recipe = qualified_entry_environment()?;
+    if recipe.panel().fingerprint != entry.executor_fingerprint {
+        return Err(entry_error("executor_changed"));
     }
     // Hold the shared recovery lock through execution: no concurrent backup/restore operation.
     let _review = REVIEW.try_lock().map_err(|_| error("prefix_review_busy"))?;
-    entry.consumed = true;
-    let root = xxmi_service::prefix_recovery_storage()?;
-    verify_prefix_recovery(&root, &mut entry.recovery).map_err(error)?;
-    verify_prefix_restore(&root, &mut entry.recovery).map_err(error)?;
-    if !recovery_source_matches(&root, &entry.recovery).map_err(error)? {
+    verify_prefix_recovery(root, &mut entry.recovery).map_err(error)?;
+    verify_prefix_restore(root, &mut entry.recovery).map_err(error)?;
+    if entry.recovery.backup_id != CURRENT_ENTRY_BACKUP
+        || entry.recovery.manifest_sha256 != CURRENT_ENTRY_BACKUP_SHA
+        || !recovery_source_matches(root, &entry.recovery).map_err(error)?
+    {
         return Err(entry_error("backup_invalid"));
     }
     let mut before = xxmi_service::inspect_zzz_prefix_preflight_raw(true)?;
@@ -882,29 +1049,33 @@ pub fn run_entry(
     if (stats.f_bavail as u128) * (stats.f_frsize as u128) < 256 * 1024 * 1024 {
         return Err(entry_error("insufficient_storage"));
     }
-    let recipe = qualified_entry_environment()?;
     let plan = validate_harmless_prefix_entry(
-        &root,
+        root,
         &recipe,
         entry.steam_root.clone(),
         &before,
         &entry.recovery,
         true,
-        &entry.token,
+        &entry.session_nonce,
     )
     .map_err(|s| entry_error(&format!("{s:?}")))?;
-    let mut result=RealPrefixEntryResult{schema:1,session_nonce:entry.token.clone(),result:RealPrefixEntryState::Blocked,consent_accepted:true,helper_attempted:false,executor_qualified:true,game_became_active:false,executor_recipe_fingerprint:Some(recipe.panel().fingerprint),helper:None,helper_error:None,before,after:None,mutations:vec![],backup_id:entry.recovery.backup_id.clone(),backup_manifest_sha256:entry.recovery.manifest_sha256.clone(),backup_verified_after:false,prefix_identity_unchanged:false,protected_paths_unchanged:false,runtime_unchanged:false,game_context_inactive_after:false,evidence_receipt:None,warnings:vec!["Point-in-time inactivity checks are not an atomic prefix lock. Source paths are never restored automatically.".into(),"Snapshot coverage is selective; no whole-installation claim. Timeout kills only the owned launcher, never global wineserver; unresolved activity blocks the gate.".into()]};
-    save_entry_evidence(&root, &result, "before")?;
+    let before_registry =
+        qualified_registry_capture(&before.compatdata.join("pfx")).map_err(error)?;
+    recipe
+        .require_initial_prefix_state(&before_registry)
+        .map_err(error)?;
+    let before_metadata =
+        qualified_prefix_metadata(&before.compatdata.join("pfx")).map_err(error)?;
+    let before_fonts = selected_font_state_fingerprints(&before_registry)
+        .map_err(|e| error(format!("font fingerprint: {e:?}")))?;
+    let mut result=RealPrefixEntryResult{schema:1,experiment_id:Some(entry.experiment_id.clone()),font_state_before:Some(before_fonts),font_state_after:None,qualified_registry_sections:vec![],qualified_metadata_before:Some(before_metadata.clone()),qualified_metadata_after:None,session_nonce:entry.session_nonce.clone(),result:RealPrefixEntryState::Blocked,consent_accepted:true,helper_attempted:false,executor_qualified:true,game_became_active:false,executor_recipe_fingerprint:Some(recipe.panel().fingerprint),helper:None,helper_error:None,before,after:None,mutations:vec![],backup_id:entry.recovery.backup_id.clone(),backup_manifest_sha256:entry.recovery.manifest_sha256.clone(),backup_verified_after:false,prefix_identity_unchanged:false,protected_paths_unchanged:false,runtime_unchanged:false,game_context_inactive_after:false,evidence_receipt:None,warnings:vec!["Point-in-time inactivity checks are not an atomic prefix lock. Source paths are never restored automatically.".into(),"Snapshot coverage is selective; no whole-installation claim. Timeout kills only the owned launcher, never global wineserver; unresolved activity blocks the gate.".into()]};
+    save_entry_evidence(root, &result, "before")?;
     // Final same-UID activity and identity check after all costly integrity work.
     inactive(&result.before.compatdata).map_err(error)?;
     if prefix_file_identity(&result.before.compatdata.join("pfx")) != result.before.prefix_identity
     {
         return Err(entry_error("prefix_identity_changed"));
     }
-    let before_registry =
-        qualified_registry_capture(&result.before.compatdata.join("pfx")).map_err(error)?;
-    let before_metadata =
-        qualified_prefix_metadata(&result.before.compatdata.join("pfx")).map_err(error)?;
     let game_seen = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let (seen, done, compat) = (
@@ -952,18 +1123,18 @@ pub fn run_entry(
             return Err(fail("GameBecameActive"));
         }
         inactive(&result.before.compatdata).map_err(|_| fail("ActiveContext before invocation"))?;
-        use std::os::unix::fs::OpenOptionsExt;
-        let bytes=serde_json::to_vec(&serde_json::json!({"schema":1,"review_nonce":entry.token,"recipe":recipe.panel().fingerprint,"real_restore":"not_tested"})).map_err(|e|fail(&e.to_string()))?;
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .mode(0o600)
-            .custom_flags(libc::O_NOFOLLOW)
-            .open(root.join("tests/qualified-real-entry-0_8_8_2-once.json"))
-            .map_err(|e| fail(&format!("one-shot reservation failed: {e}")))?;
-        std::io::Write::write_all(&mut file, &bytes)
-            .and_then(|()| file.sync_all())
-            .map_err(|e| fail(&e.to_string()))?;
+        let history = read_independent_entry_experiment(root)
+            .map_err(|e| fail(&e.to_string()))?
+            .ok_or_else(|| fail("independent experiment reservation missing"))?;
+        if history.status != EntryExperimentStatus::Running
+            || history.experiment.experiment_id != entry.experiment_id
+            || history.experiment.executor_fingerprint != recipe.panel().fingerprint
+        {
+            return Err(fail("experiment reservation changed before invocation"));
+        }
+        if !recovery_source_matches(root, &entry.recovery).map_err(|e| fail(&e.to_string()))? {
+            return Err(fail("source changed before invocation"));
+        }
         Ok(())
     };
     let execution = execute_harmless_prefix_entry(plan, &final_check);
@@ -996,18 +1167,31 @@ pub fn run_entry(
             result.runtime_unchanged = after.runtime_drift == RuntimeBuildDrift::SameBuild
                 && after.installed_build == result.before.installed_build;
             match qualified_registry_capture(&result.before.compatdata.join("pfx"))
-                .and_then(|regs| qualified_registry_diff(&before_registry, &regs))
-                .and_then(|sections| {
+                .and_then(|regs| {
+                    let fonts = selected_font_state_fingerprints(&regs).map_err(|e| {
+                        lxmi_bridge::BridgeError {
+                            code: lxmi_bridge::BridgeErrorCode::UnsafePrefixContext,
+                            detail: format!("font fingerprint unavailable: {e:?}"),
+                            stderr: None,
+                        }
+                    })?;
+                    qualified_registry_diff(&before_registry, &regs)
+                        .map(|sections| (sections, fonts))
+                })
+                .and_then(|(sections, fonts)| {
                     qualified_prefix_metadata(&result.before.compatdata.join("pfx"))
-                        .map(|metadata| (sections, metadata))
+                        .map(|metadata| (sections, metadata, fonts))
                 }) {
-                Ok((sections, metadata)) => {
+                Ok((sections, metadata, fonts)) => {
                     result.mutations = compare_qualified_prefix_entry(
                         &result.before.baseline,
                         &after.baseline,
                         &sections,
                         qualified_prefix_metadata_matches(&before_metadata, &metadata),
-                    )
+                    );
+                    result.font_state_after = Some(fonts);
+                    result.qualified_registry_sections = sections;
+                    result.qualified_metadata_after = Some(metadata);
                 }
                 Err(e) => result.mutations.push(PrefixMutation {
                     path: result.before.compatdata.clone(),
@@ -1016,20 +1200,28 @@ pub fn run_entry(
                 }),
             }
             result.protected_paths_unchanged =
-                after.baseline.protected_paths == result.before.baseline.protected_paths;
+                protected_baselines_match(&result.before.baseline, &after.baseline);
             result.after = Some(after);
         }
         Err(e) => result
             .warnings
             .push(format!("after_snapshot_unavailable: {}", e.detail)),
     }
-    if verify_prefix_recovery(&root, &mut entry.recovery).is_ok()
+    if verify_prefix_recovery(root, &mut entry.recovery).is_ok()
         && entry.recovery.integrity.state == RecoveryVerificationState::Verified
     {
         result.backup_verified_after = true;
     }
     result.result = classify_prefix_entry(&result);
-    result.evidence_receipt = Some(save_entry_evidence(&root, &result, "after")?);
+    if result.font_state_after.is_none() || result.font_state_before != result.font_state_after {
+        result.mutations.push(PrefixMutation {
+            path: result.before.compatdata.join("pfx"),
+            kind: PrefixMutationKind::Unknown,
+            reason: "Initial qualified font state did not remain stable".into(),
+        });
+        result.result = classify_prefix_entry(&result);
+    }
+    result.evidence_receipt = Some(save_entry_evidence(root, &result, "after")?);
     Ok(result)
 }
 fn qualified_entry_environment() -> Result<QualifiedLinuxRuntimeRecipe, BridgeServiceError> {
@@ -1094,17 +1286,26 @@ mod environment_guard_tests {
     use super::*;
     #[test]
     fn unqualified_environment_blocks_commands_before_host_inspection() {
-        let error = match prepare_entry() {
+        let error = match qualified_entry_environment() {
             Err(e) => e,
             Ok(_) => panic!("unqualified real entry review must not pass"),
         };
         assert_eq!(error.code, "linux_runtime_environment_unqualified");
-        let error = run_entry("ignored_fixture_token".into(), true).unwrap_err();
-        assert_eq!(error.code, "linux_runtime_environment_unqualified");
+        let error = run_entry(
+            "ignored_fixture_experiment".into(),
+            "ignored_fixture_token".into(),
+            true,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "entry_review_required");
         assert_eq!(
-            run_entry("ignored_fixture_token".into(), false)
-                .unwrap_err()
-                .code,
+            run_entry(
+                "ignored_fixture_experiment".into(),
+                "ignored_fixture_token".into(),
+                false
+            )
+            .unwrap_err()
+            .code,
             "consent_missing"
         );
     }

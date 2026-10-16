@@ -1,0 +1,32 @@
+{
+  "recorded_local_date": "2026-10-15",
+  "scope": "Interfaz estilo launcher: revisión nativa GTK/WebKit con IPC real (selected_profile_native_review, ahora independiente del perfil)",
+  "game_executed": false,
+  "helper_executed": false,
+  "interaction": "DOM navigation in own GTK/WebKit webview",
+  "launch_with_mods_available": true,
+  "library_mod_names": [
+    "bellebooboshapekeys-1_2",
+    "censor_remover_v320",
+    "daisymeow_evelyn_white_new_no_toggle",
+    "hide_uid_89406",
+    "lucia_nurse_base111",
+    "Miyabi-basico",
+    "nait3d-sunna_roswaallegacy400",
+    "nicoleamillion",
+    "remielle_og_variant_seraphic_sin_v01_nsfw",
+    "thicc_ye_shunguang_scarlet_goth_nsfw_tail_",
+    "v78",
+    "zzz-uma-satono_diamond-721k"
+  ],
+  "library_mutated": false,
+  "play_with_mods_button_enabled": true,
+  "prefix_modified": false,
+  "profile_name": "ZZZ — Todos los mods",
+  "resolved_selected_runtime": true,
+  "runtime_id": "profile-51fa0dccb5c033a9fe7e131aa1a81aa3a3325d884e3971579172044801afacca",
+  "saved_package_selection_restored": true,
+  "selected_mod_count": 12,
+  "status": "passed",
+  "transport": "real native Tauri IPC"
+}

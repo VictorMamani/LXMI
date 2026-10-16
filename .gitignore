@@ -69,3 +69,7 @@ Testing/
 .cache/
 # Local Pi runtime state
 .atl/
+# Local browser automation output and Python caches
+/.playwright-mcp/
+__pycache__/
+*.pyc

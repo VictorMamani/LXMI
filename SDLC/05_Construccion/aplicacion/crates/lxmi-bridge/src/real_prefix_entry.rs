@@ -44,6 +44,18 @@ pub struct PrefixMutation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RealPrefixEntryResult {
     pub schema: u16,
+    #[serde(default)]
+    pub experiment_id: Option<String>,
+    #[serde(default)]
+    pub font_state_before: Option<BTreeMap<String, String>>,
+    #[serde(default)]
+    pub font_state_after: Option<BTreeMap<String, String>>,
+    #[serde(default)]
+    pub qualified_registry_sections: Vec<FixtureRegistrySectionMutation>,
+    #[serde(default)]
+    pub qualified_metadata_before: Option<serde_json::Value>,
+    #[serde(default)]
+    pub qualified_metadata_after: Option<serde_json::Value>,
     pub session_nonce: String,
     pub result: RealPrefixEntryState,
     pub consent_accepted: bool,
@@ -70,6 +82,12 @@ pub struct RealPrefixEntryResult {
     pub warnings: Vec<String>,
 }
 impl RealPrefixEntryResult {
+    pub fn font_state_is_stable(&self) -> bool {
+        self.font_state_before
+            .as_ref()
+            .is_some_and(|fonts| fonts.len() == 3)
+            && self.font_state_before == self.font_state_after
+    }
     pub fn gate_passed(&self) -> bool {
         matches!(
             self.result,
@@ -85,6 +103,20 @@ impl RealPrefixEntryResult {
             && self.protected_paths_unchanged
             && self.runtime_unchanged
             && self.game_context_inactive_after
+            && (self.experiment_id.is_none()
+                || (self.font_state_is_stable()
+                    && matches!(
+                        self.result,
+                        RealPrefixEntryState::Verified
+                            | RealPrefixEntryState::VerifiedWithQualifiedVolatileMutations
+                    )
+                    && self.qualified_registry_sections.iter().all(|s| {
+                        matches!(
+                            s.classification,
+                            PrefixMutationClassification::StableExpected
+                                | PrefixMutationClassification::VolatileExpected
+                        )
+                    })))
     }
 }
 /// No public constructor or fields: validation is mandatory before execution.
@@ -508,6 +540,32 @@ mod tests {
             PrefixMutationKind::Unknown
         );
     }
+    #[test]
+    fn font_stability_requires_three_measured_matching_tables() {
+        let mut result = result_fixture();
+        assert!(!result.font_state_is_stable());
+        let tables = BTreeMap::from([
+            ("nt".into(), "a".repeat(64)),
+            ("windows".into(), "b".repeat(64)),
+            ("external".into(), "c".repeat(64)),
+        ]);
+        result.font_state_before = Some(tables.clone());
+        result.font_state_after = Some(tables);
+        assert!(result.font_state_is_stable());
+        result
+            .font_state_after
+            .as_mut()
+            .unwrap()
+            .insert("external".into(), "d".repeat(64));
+        assert!(!result.font_state_is_stable());
+        result.font_state_after = result.font_state_before.clone();
+        result
+            .font_state_before
+            .as_mut()
+            .unwrap()
+            .remove("external");
+        assert!(!result.font_state_is_stable());
+    }
     fn result_fixture() -> RealPrefixEntryResult {
         let before = inspect_game_prefix(GamePrefixPreflightInput {
             compatdata: "/absent/steamapps/compatdata/4162040".into(),
@@ -518,6 +576,12 @@ mod tests {
         });
         RealPrefixEntryResult {
             schema: 1,
+            experiment_id: None,
+            font_state_before: None,
+            font_state_after: None,
+            qualified_registry_sections: vec![],
+            qualified_metadata_before: None,
+            qualified_metadata_after: None,
             session_nonce: "0123456789abcdef0123456789abcdef".into(),
             result: RealPrefixEntryState::Blocked,
             consent_accepted: true,

@@ -16,9 +16,37 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-const TARGET_GAME_ID: &str = "zenless-zone-zero";
-const IMPORTER_FOLDER: &str = "ZZMI";
-const MANAGED_RUNTIME_RELATIVE: &str = "runtimes/zenless-zone-zero/zzmi";
+#[derive(Clone)]
+struct AssemblySpec {
+    game_id: &'static str,
+    folder: &'static str,
+    slug: &'static str,
+    integration: IntegrationKind,
+    official: OfficialPackageKind,
+}
+fn spec_for(game: &str) -> Result<AssemblySpec> {
+    match game {
+        "zenless-zone-zero" => Ok(AssemblySpec {
+            game_id: "zenless-zone-zero",
+            folder: "ZZMI",
+            slug: "zzmi",
+            integration: IntegrationKind::Zzmi,
+            official: OfficialPackageKind::Zzmi,
+        }),
+        "wuthering-waves" => Ok(AssemblySpec {
+            game_id: "wuthering-waves",
+            folder: "WWMI",
+            slug: "wwmi",
+            integration: IntegrationKind::Wwmi,
+            official: OfficialPackageKind::Wwmi,
+        }),
+        _ => Err(XxmiError::new(
+            ErrorCode::UnsupportedIntegration,
+            None,
+            "No hay ensamblador para este juego.",
+        )),
+    }
+}
 const ZZMI_LOADER_IDENTITY: &str = "XXMI Launcher.exe";
 const LIBRARY_DLLS_IN_IMPORTER: &[&str] = &["d3d11.dll", "d3dcompiler_47.dll"];
 static NEXT_ASSEMBLY: AtomicU64 = AtomicU64::new(0);
@@ -27,6 +55,7 @@ static NEXT_ASSEMBLY: AtomicU64 = AtomicU64::new(0);
 #[serde(rename_all = "snake_case")]
 pub enum RuntimeComponent {
     Zzmi,
+    Wwmi,
     XxmiLibraries,
 }
 
@@ -65,9 +94,11 @@ pub struct RuntimeAssemblyPlan {
     pub app_root: PathBuf,
     pub importer_root: PathBuf,
     pub import_path_from_app_root: String,
-    pub zzmi_package_id: String,
+    #[serde(alias = "zzmi_package_id")]
+    pub integration_package_id: String,
     pub libraries_package_id: String,
-    pub zzmi_version: Option<String>,
+    #[serde(alias = "zzmi_version")]
+    pub integration_version: Option<String>,
     pub libraries_version: Option<String>,
     pub target_process: String,
     pub loader_library_source: PathBuf,
@@ -87,11 +118,14 @@ pub struct RuntimeManifest {
     pub integration: IntegrationKind,
     pub created_unix_seconds: u64,
     pub import_path_from_app_root: String,
-    pub zzmi_package_id: String,
+    #[serde(alias = "zzmi_package_id")]
+    pub integration_package_id: String,
     pub libraries_package_id: String,
-    pub zzmi_version: Option<String>,
+    #[serde(alias = "zzmi_version")]
+    pub integration_version: Option<String>,
     pub libraries_version: Option<String>,
-    pub zzmi_release_tag: Option<String>,
+    #[serde(alias = "zzmi_release_tag")]
+    pub integration_release_tag: Option<String>,
     pub libraries_release_tag: Option<String>,
     pub target_process: String,
     pub loader_process_identity: String,
@@ -112,9 +146,11 @@ pub struct ManagedRuntime {
     pub importer_root: PathBuf,
     pub manifest_path: PathBuf,
     pub loader_library_path: PathBuf,
-    pub zzmi_package_id: String,
+    #[serde(alias = "zzmi_package_id")]
+    pub integration_package_id: String,
     pub libraries_package_id: String,
-    pub zzmi_version: Option<String>,
+    #[serde(alias = "zzmi_version")]
+    pub integration_version: Option<String>,
     pub libraries_version: Option<String>,
     pub target_process: String,
     pub loader_process_identity: String,
@@ -130,8 +166,49 @@ struct PlannedBytes {
     bytes: Option<Vec<u8>>,
 }
 
-/// Produces a reviewable assembly plan; it does not create or modify files.
+fn require_zzz(platform: &GameRuntimePlan) -> Result<()> {
+    if platform.game.id != "zenless-zone-zero" {
+        return Err(XxmiError::new(
+            ErrorCode::WrongGameIntegration,
+            None,
+            "Esta operación requiere Zenless Zone Zero.",
+        ));
+    }
+    Ok(())
+}
 pub fn plan_zzmi_assembly(
+    store: &ManagedStore,
+    platform: &GameRuntimePlan,
+    importer: &VerifiedPackage,
+    libraries: &VerifiedPackage,
+    protected: &[PathBuf],
+) -> Result<RuntimeAssemblyPlan> {
+    require_zzz(platform)?;
+    plan_importer_assembly(store, platform, importer, libraries, protected)
+}
+pub fn assemble_zzmi_runtime(
+    store: &ManagedStore,
+    platform: &GameRuntimePlan,
+    importer: &str,
+    libraries: &str,
+    protected: &[PathBuf],
+) -> Result<ManagedRuntime> {
+    require_zzz(platform)?;
+    assemble_importer_runtime(store, platform, importer, libraries, protected)
+}
+pub fn existing_zzmi_runtime(
+    store: &ManagedStore,
+    platform: &GameRuntimePlan,
+    importer: &str,
+    libraries: &str,
+    protected: &[PathBuf],
+) -> Result<Option<ManagedRuntime>> {
+    require_zzz(platform)?;
+    existing_importer_runtime(store, platform, importer, libraries, protected)
+}
+
+/// Produces a reviewable assembly plan; it does not create or modify files.
+pub fn plan_importer_assembly(
     store: &ManagedStore,
     platform: &GameRuntimePlan,
     zzmi: &VerifiedPackage,
@@ -143,7 +220,7 @@ pub fn plan_zzmi_assembly(
 }
 
 /// Materializes an immutable assembly only below the LXMI XDG data root.
-pub fn assemble_zzmi_runtime(
+pub fn assemble_importer_runtime(
     store: &ManagedStore,
     platform: &GameRuntimePlan,
     zzmi_id: &str,
@@ -154,6 +231,7 @@ pub fn assemble_zzmi_runtime(
     let zzmi = store.verify(zzmi_id)?;
     let libraries = store.verify(libraries_id)?;
     let (plan, pending) = build_plan(store, platform, &zzmi, &libraries, protected_paths)?;
+    let spec = spec_for(&plan.game_id)?;
     if let Some(existing) = read_runtime(&plan)? {
         tracing::info!(runtime_id = %existing.runtime_id, "Existing managed runtime verified");
         return Ok(existing);
@@ -162,8 +240,8 @@ pub fn assemble_zzmi_runtime(
     let root = store.initialize()?;
     let staging = root.child("staging")?;
     let runtimes = root.private_child("runtimes")?;
-    let game_root = runtimes.private_child("zenless-zone-zero")?;
-    let integration_root = game_root.private_child("zzmi")?;
+    let game_root = runtimes.private_child(spec.game_id)?;
+    let integration_root = game_root.private_child(spec.slug)?;
     if integration_root.metadata(&plan.runtime_id)?.is_some() {
         return read_runtime(&plan)?.ok_or_else(|| {
             XxmiError::new(
@@ -181,7 +259,7 @@ pub fn assemble_zzmi_runtime(
     );
     let stage = staging.new_private_child(&stage_name)?;
     let result = (|| {
-        let importer = stage.private_child(IMPORTER_FOLDER)?;
+        let importer = stage.private_child(spec.folder)?;
         for pending_file in &pending {
             validate_relative_path(&pending_file.file.destination_relative_path)?;
             importer.ensure_parents(&pending_file.file.destination_relative_path)?;
@@ -214,11 +292,11 @@ pub fn assemble_zzmi_runtime(
             integration: plan.integration,
             created_unix_seconds,
             import_path_from_app_root: plan.import_path_from_app_root.clone(),
-            zzmi_package_id: plan.zzmi_package_id.clone(),
+            integration_package_id: plan.integration_package_id.clone(),
             libraries_package_id: plan.libraries_package_id.clone(),
-            zzmi_version: plan.zzmi_version.clone(),
+            integration_version: plan.integration_version.clone(),
             libraries_version: plan.libraries_version.clone(),
-            zzmi_release_tag: zzmi.manifest.upstream.as_ref().map(|u| u.tag.clone()),
+            integration_release_tag: zzmi.manifest.upstream.as_ref().map(|u| u.tag.clone()),
             libraries_release_tag: libraries.manifest.upstream.as_ref().map(|u| u.tag.clone()),
             target_process: plan.target_process.clone(),
             loader_process_identity: plan.config.loader_process_identity.clone(),
@@ -260,7 +338,7 @@ pub fn assemble_zzmi_runtime(
 }
 
 /// Returns an existing verified assembly without creating the runtime directory.
-pub fn existing_zzmi_runtime(
+pub fn existing_importer_runtime(
     store: &ManagedStore,
     platform: &GameRuntimePlan,
     zzmi_id: &str,
@@ -280,13 +358,7 @@ fn build_plan(
     libraries: &VerifiedPackage,
     protected_paths: &[PathBuf],
 ) -> Result<(RuntimeAssemblyPlan, Vec<PlannedBytes>)> {
-    if platform.game.id != TARGET_GAME_ID {
-        return Err(XxmiError::new(
-            ErrorCode::WrongGameIntegration,
-            None,
-            "El ensamblador 0.5.3 solo materializa ZZMI para Zenless Zone Zero.",
-        ));
-    }
+    let spec = spec_for(platform.game.id)?;
     let (game_path, game_library, executable) = match &platform.installation {
         GameInstallationAssessment::Detected {
             install_path,
@@ -300,8 +372,16 @@ fn build_plan(
         _ => return Err(XxmiError::new(
             ErrorCode::InvalidPackage,
             None,
-            "Se necesita ZZZ detectado desde Steam, directorio presente y ejecutable reconocido.",
+            "Se necesita el juego detectado desde Steam, directorio presente y ejecutable reconocido.",
         )),
+    };
+    // WWMI attaches to the payload process, never the bootstrap executable.
+    let wwmi_executable;
+    let executable = if spec.integration == IntegrationKind::Wwmi {
+        wwmi_executable = game_path.join("Client/Binaries/Win64/Client-Win64-Shipping.exe");
+        &wwmi_executable
+    } else {
+        executable
     };
     let target_process = executable
         .file_name()
@@ -322,7 +402,7 @@ fn build_plan(
         return Err(XxmiError::new(
             ErrorCode::WrongGameIntegration,
             Some(executable.clone()),
-            "El ejecutable observado no está en el registro de ejecutables de ZZZ.",
+            "El ejecutable observado no está en el registro de este juego.",
         ));
     }
     let executable_parent = executable.parent().ok_or_else(|| {
@@ -350,16 +430,16 @@ fn build_plan(
         ));
     }
 
-    if zzmi.manifest.kind != PackageKind::GameIntegration(IntegrationKind::Zzmi)
+    if zzmi.manifest.kind != PackageKind::GameIntegration(spec.integration)
         || libraries.manifest.kind != PackageKind::XxmiLibraries
     {
         return Err(XxmiError::new(
             ErrorCode::WrongGameIntegration,
             None,
-            "El runtime requiere ZZMI y XXMI Libraries como paquetes separados.",
+            "El runtime requiere el importer de su juego y XXMI Libraries separados.",
         ));
     }
-    require_official_package(zzmi, OfficialPackageKind::Zzmi, false)?;
+    require_official_package(zzmi, spec.official, false)?;
     require_official_package(libraries, OfficialPackageKind::XxmiLibraries, true)?;
 
     let mut protected = protected_paths.to_vec();
@@ -435,12 +515,14 @@ fn build_plan(
         sha256(&derived_config),
     ))
     .map_err(|e| XxmiError::new(ErrorCode::InvalidMetadata, None, e.to_string()))?;
-    let runtime_id = format!("zzmi-{}", sha256(&runtime_seed));
+    let runtime_id = format!("{}-{}", spec.slug, sha256(&runtime_seed));
     let app_root = store
         .root()
-        .join(MANAGED_RUNTIME_RELATIVE)
+        .join("runtimes")
+        .join(spec.game_id)
+        .join(spec.slug)
         .join(&runtime_id);
-    let importer_root = app_root.join(IMPORTER_FOLDER);
+    let importer_root = app_root.join(spec.folder);
 
     let mut pending = Vec::new();
     let mut targets = HashSet::new();
@@ -463,14 +545,16 @@ fn build_plan(
             None => (source.size, source.sha256.clone()),
         };
         let file = RuntimeAssemblyFile {
-            source_component: RuntimeComponent::Zzmi,
+            source_component: if spec.integration == IntegrationKind::Wwmi { RuntimeComponent::Wwmi } else { RuntimeComponent::Zzmi },
             source_package_id: zzmi.manifest.id.clone(),
             source_relative_path: source.relative_path.clone(),
             destination_relative_path: source.relative_path.clone(),
             size,
             sha256: digest,
             derived: bytes.is_some(),
-            reason: if bytes.is_some() {
+            reason: if spec.integration == IntegrationKind::Wwmi {
+                if bytes.is_some() { "Copia derivada; target es el proceso payload Client-Win64-Shipping.exe, no el bootstrap." } else { "Payload WWMI verificado; se conserva su ruta relativa original." }
+            } else if bytes.is_some() {
                 "Copia derivada; target se resuelve al nombre del ejecutable observado en la instalación Steam de ZZZ."
             } else {
                 "Payload ZZMI verificado; se conserva su ruta relativa original."
@@ -528,23 +612,21 @@ fn build_plan(
         source_sha256: config_entry.sha256.clone(),
         derived_sha256: sha256(&derived_config),
         target_process: target_process.clone(),
-        target_evidence: "Steam manifest → game scanner → archivo ejecutable regular observado; filename coincide con el registry ZZZ upstream."
-            .into(),
+        target_evidence: if spec.integration == IntegrationKind::Wwmi { "Steam manifest y payload regular en Client/Binaries/Win64; process_exe_names de WWMI v2.2.1." } else { "Steam manifest → game scanner → archivo ejecutable regular observado; filename coincide con el registry ZZZ upstream." }.into(),
         loader_process_identity: loader_identity,
-        loader_identity_evidence: "ZZMI upstream fija [Loader] loader = XXMI Launcher.exe; 3Dmigoto lo usa como nombre de proceso permitido para cargar su DLL."
-            .into(),
+        loader_identity_evidence: if spec.integration == IntegrationKind::Wwmi { "WWMI upstream fija [Loader] loader = XXMI Launcher.exe; identidad conservada en la copia derivada." } else { "ZZMI upstream fija [Loader] loader = XXMI Launcher.exe; 3Dmigoto lo usa como nombre de proceso permitido para cargar su DLL." }.into(),
         loader_identity_change: None,
     };
     let plan = RuntimeAssemblyPlan {
         runtime_id,
-        game_id: TARGET_GAME_ID.into(),
-        integration: IntegrationKind::Zzmi,
+        game_id: spec.game_id.into(),
+        integration: spec.integration,
         app_root,
         importer_root,
-        import_path_from_app_root: "ZZMI/".into(),
-        zzmi_package_id: zzmi.manifest.id.clone(),
+        import_path_from_app_root: format!("{}/", spec.folder),
+        integration_package_id: zzmi.manifest.id.clone(),
         libraries_package_id: libraries.manifest.id.clone(),
-        zzmi_version: zzmi.manifest.version.as_ref().map(|v| v.raw.clone()),
+        integration_version: zzmi.manifest.version.as_ref().map(|v| v.raw.clone()),
         libraries_version: libraries.manifest.version.as_ref().map(|v| v.raw.clone()),
         target_process,
         loader_library_source: libraries.payload_path.join("3dmloader.dll"),
@@ -553,14 +635,14 @@ fn build_plan(
         files,
         directories_to_create: vec!["Mods".into()],
         evidence: vec![
-            "Upstream ZZMI importer_folder is relative to App.Root and equals ZZMI/.".into(),
+            format!("Upstream {} importer_folder is relative to App.Root and equals {}/.",spec.folder,spec.folder),
             "The importer root is placed under LXMI XDG managed storage, outside the game and prefix.".into(),
             "XXMI Libraries deploys d3d11.dll and d3dcompiler_47.dll under importer_path; 3dmloader.dll remains in the separate Libraries package for the injector API.".into(),
             "The runtime package sources remain immutable; only derived copies are assembled.".into(),
         ],
         warnings: vec![
             "This assembly is not a launchable Windows helper or a tested Proton integration.".into(),
-            "Steam/ZZZ/Proton launch and DLL loading remain unverified; no game files are changed.".into(),
+            format!("Steam/{}/Proton launch and DLL loading remain unverified; no game files are changed.",spec.folder),
         ],
     };
     tracing::info!(runtime_id = %plan.runtime_id, files = plan.files.len(), "Managed runtime assembly plan generated");
@@ -573,7 +655,7 @@ fn source_bytes_for_pending(
     pending: &PlannedBytes,
 ) -> Result<Vec<u8>> {
     let source_package = match pending.file.source_component {
-        RuntimeComponent::Zzmi => zzmi,
+        RuntimeComponent::Zzmi | RuntimeComponent::Wwmi => zzmi,
         RuntimeComponent::XxmiLibraries => libraries,
     };
     let directory = Directory::open_absolute(&source_package.payload_path)?;
@@ -620,6 +702,7 @@ fn require_official_package(
 }
 
 fn read_runtime(plan: &RuntimeAssemblyPlan) -> Result<Option<ManagedRuntime>> {
+    let spec = spec_for(&plan.game_id)?;
     let app_root = match Directory::open_absolute(&plan.app_root) {
         Ok(value) => value,
         Err(error) if missing(&error) => return Ok(None),
@@ -637,9 +720,9 @@ fn read_runtime(plan: &RuntimeAssemblyPlan) -> Result<Option<ManagedRuntime>> {
             })?;
     if manifest.schema_version != 1
         || manifest.runtime_id != plan.runtime_id
-        || manifest.game_id != TARGET_GAME_ID
-        || manifest.integration != IntegrationKind::Zzmi
-        || manifest.zzmi_package_id != plan.zzmi_package_id
+        || manifest.game_id != plan.game_id
+        || manifest.integration != plan.integration
+        || manifest.integration_package_id != plan.integration_package_id
         || manifest.libraries_package_id != plan.libraries_package_id
         || manifest.target_process != plan.target_process
         || manifest.files != plan.files
@@ -651,7 +734,7 @@ fn read_runtime(plan: &RuntimeAssemblyPlan) -> Result<Option<ManagedRuntime>> {
             "runtime-manifest.json no corresponde al plan actual.",
         ));
     }
-    let importer = app_root.child(IMPORTER_FOLDER)?;
+    let importer = app_root.child(spec.folder)?;
     let mods_meta = importer.metadata("Mods")?.ok_or_else(|| {
         XxmiError::new(
             ErrorCode::MissingRequiredFile,
@@ -687,9 +770,9 @@ fn read_runtime(plan: &RuntimeAssemblyPlan) -> Result<Option<ManagedRuntime>> {
         importer_root: plan.importer_root.clone(),
         manifest_path: plan.app_root.join("runtime-manifest.json"),
         loader_library_path: plan.loader_library_source.clone(),
-        zzmi_package_id: manifest.zzmi_package_id.clone(),
+        integration_package_id: manifest.integration_package_id.clone(),
         libraries_package_id: manifest.libraries_package_id.clone(),
-        zzmi_version: manifest.zzmi_version.clone(),
+        integration_version: manifest.integration_version.clone(),
         libraries_version: manifest.libraries_version.clone(),
         target_process: manifest.target_process.clone(),
         loader_process_identity: manifest.loader_process_identity.clone(),
@@ -1054,6 +1137,312 @@ mod tests {
         zzmi.manifest.authenticity = PackageAuthenticity::NotAuthenticated;
         let error = build_plan(&store, &tree.platform(), &zzmi, &libraries, &[]).unwrap_err();
         assert_eq!(error.code, ErrorCode::InvalidSignature);
+    }
+
+    fn profile_fixture(tree: &Tree, store: &ManagedStore) -> (crate::ModLibrary, String, u64) {
+        let source = tree.0.join("mod-source");
+        fs::create_dir(&source).unwrap();
+        fs::write(
+            source.join("skin.ini"),
+            b"; synthetic\r\n[Constants]\r\nglobal $a = 1\r\n",
+        )
+        .unwrap();
+        let library = crate::ModLibrary::new(store.clone());
+        let item = library
+            .import("zenless-zone-zero", "Skin", &source)
+            .unwrap();
+        let state = library
+            .save_profile(
+                "zenless-zone-zero",
+                "Daily",
+                std::slice::from_ref(&item.id),
+                0,
+            )
+            .unwrap();
+        (library, item.id, state.revision)
+    }
+
+    #[test]
+    fn shader_profile_deploys_to_shaderfixes_and_rejects_collisions() {
+        let tree = Tree::new();
+        let store = tree.store();
+        let importer = tree.package(false);
+        let libs = tree.package(true);
+        let base = assemble_zzmi_runtime(
+            &store,
+            &tree.platform(),
+            &importer.manifest.id,
+            &libs.manifest.id,
+            &[],
+        )
+        .unwrap();
+        let before = directory_snapshot(&base.app_root);
+        let source = tree.0.join("shader-source");
+        fs::create_dir_all(source.join("ShaderFixes")).unwrap();
+        let relative = "ShaderFixes/02549f5219c55aa4-ps_replace.txt";
+        fs::write(source.join(relative), b"first shader").unwrap();
+        let library = crate::ModLibrary::new(store.clone());
+        let first = library
+            .import("zenless-zone-zero", "First shader", &source)
+            .unwrap();
+        library
+            .save_profile(
+                "zenless-zone-zero",
+                "Shaders",
+                std::slice::from_ref(&first.id),
+                0,
+            )
+            .unwrap();
+        let plan = crate::review_profile_activation(&store, &base, "Shaders", 1, 0).unwrap();
+        crate::activate_profile(&store, &base, "Shaders", 1, 0, &plan.plan_id).unwrap();
+        let selected = crate::resolve_profile_runtime(&store, &base).unwrap();
+        assert_eq!(
+            fs::read(selected.importer_root.join(relative)).unwrap(),
+            b"first shader"
+        );
+        assert_eq!(directory_snapshot(&base.app_root), before);
+        let launch = tree.0.join("shader-launch");
+        fs::create_dir(&launch).unwrap();
+        fs::set_permissions(&launch, std::os::unix::fs::PermissionsExt::from_mode(0o700)).unwrap();
+        crate::copy_profile_runtime_for_launch(&store, &selected, &launch).unwrap();
+        assert_eq!(
+            fs::read(launch.join("ZZMI").join(relative)).unwrap(),
+            b"first shader"
+        );
+        fs::write(source.join(relative), b"second shader").unwrap();
+        let second = library
+            .import("zenless-zone-zero", "Second shader", &source)
+            .unwrap();
+        library
+            .save_profile(
+                "zenless-zone-zero",
+                "Conflicting shaders",
+                &[first.id, second.id],
+                1,
+            )
+            .unwrap();
+        assert_eq!(
+            crate::review_profile_activation(&store, &base, "Conflicting shaders", 2, 1)
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidPackage
+        );
+        assert_eq!(
+            crate::resolve_profile_runtime(&store, &base)
+                .unwrap()
+                .runtime_id,
+            selected.runtime_id
+        );
+    }
+
+    #[test]
+    fn activation_builds_private_runtime_and_resolver_consumes_selection_with_undo() {
+        let tree = Tree::new();
+        let store = tree.store();
+        let importer = tree.package(false);
+        let libs = tree.package(true);
+        let platform = tree.platform();
+        let base = assemble_zzmi_runtime(
+            &store,
+            &platform,
+            &importer.manifest.id,
+            &libs.manifest.id,
+            &[],
+        )
+        .unwrap();
+        let original = directory_snapshot(&base.app_root);
+        let (library, _, revision) = profile_fixture(&tree, &store);
+        let plan = crate::review_profile_activation(&store, &base, "Daily", revision, 0).unwrap();
+        assert!(!plan.importer_root.exists());
+        let selection =
+            crate::activate_profile(&store, &base, "Daily", revision, 0, &plan.plan_id).unwrap();
+        assert_eq!(selection.revision, 1);
+        let selected = crate::resolve_profile_runtime(&store, &base).unwrap();
+        assert_eq!(selected.runtime_id, plan.runtime_id);
+        assert!(selected.importer_root.join("Mods").is_dir());
+        assert!(!selected.installed_into_game);
+        assert_eq!(directory_snapshot(&base.app_root), original);
+        let current_plan =
+            crate::review_profile_activation(&store, &base, "Daily", revision, 1).unwrap();
+        assert_eq!(
+            crate::activate_profile(&store, &base, "Daily", revision, 1, &current_plan.plan_id)
+                .unwrap()
+                .revision,
+            1
+        );
+        let reverted = crate::rollback_profile_activation(&store, "zenless-zone-zero", 1).unwrap();
+        assert!(reverted.current.is_none());
+        assert_eq!(
+            crate::resolve_profile_runtime(&store, &base)
+                .unwrap()
+                .runtime_id,
+            base.runtime_id
+        );
+        assert!(selected.app_root.exists());
+        let redone = crate::rollback_profile_activation(&store, "zenless-zone-zero", 2).unwrap();
+        assert_eq!(redone.current.unwrap().runtime_id, selected.runtime_id);
+        assert_eq!(library.list("zenless-zone-zero").unwrap().profiles.len(), 1);
+    }
+
+    #[test]
+    fn stale_plan_revision_wrong_binding_and_modified_derived_runtime_are_rejected() {
+        let tree = Tree::new();
+        let store = tree.store();
+        let importer = tree.package(false);
+        let libs = tree.package(true);
+        let base = assemble_zzmi_runtime(
+            &store,
+            &tree.platform(),
+            &importer.manifest.id,
+            &libs.manifest.id,
+            &[],
+        )
+        .unwrap();
+        let (library, id, revision) = profile_fixture(&tree, &store);
+        let plan = crate::review_profile_activation(&store, &base, "Daily", revision, 0).unwrap();
+        assert_eq!(
+            crate::activate_profile(&store, &base, "Daily", revision, 0, "wrong-plan")
+                .unwrap_err()
+                .code,
+            ErrorCode::Busy
+        );
+        library
+            .save_profile("zenless-zone-zero", "Daily", &[], revision)
+            .unwrap();
+        assert_eq!(
+            crate::activate_profile(&store, &base, "Daily", revision, 0, &plan.plan_id)
+                .unwrap_err()
+                .code,
+            ErrorCode::Busy
+        );
+        let state = library
+            .save_profile("zenless-zone-zero", "Daily", &[id], revision + 1)
+            .unwrap();
+        let plan =
+            crate::review_profile_activation(&store, &base, "Daily", state.revision, 0).unwrap();
+        crate::activate_profile(&store, &base, "Daily", state.revision, 0, &plan.plan_id).unwrap();
+        assert_eq!(
+            crate::rollback_profile_activation(&store, "zenless-zone-zero", 0)
+                .unwrap_err()
+                .code,
+            ErrorCode::Busy
+        );
+        let mut other_base = base.clone();
+        other_base.runtime_id = format!("zzmi-{}", "0".repeat(64));
+        assert_eq!(
+            crate::resolve_profile_runtime(&store, &other_base)
+                .unwrap_err()
+                .code,
+            ErrorCode::WrongGameIntegration
+        );
+        fs::write(plan.importer_root.join("d3dx.ini"), b"changed").unwrap();
+        assert_eq!(
+            crate::resolve_profile_runtime(&store, &base)
+                .unwrap_err()
+                .code,
+            ErrorCode::ChecksumMismatch
+        );
+        assert_eq!(
+            crate::profile_activation_status(&store, "wuthering-waves")
+                .unwrap()
+                .revision,
+            0
+        );
+    }
+
+    #[test]
+    fn wwmi_assembly_uses_payload_executable_and_never_the_bootstrap() {
+        let tree = Tree::new();
+        let store = tree.store();
+        let template = tree.package(false);
+        let libs = tree.package(true);
+        let source = tree.0.join("wwmi");
+        fs::create_dir(&source).unwrap();
+        for file in WWMI_REQUIRED_FILES {
+            let path = source.join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, b"synthetic resource").unwrap();
+        }
+        fs::write(
+            source.join("d3dx.ini"),
+            b"[Loader]\ntarget = old.exe\nloader = XXMI Launcher.exe\n[Include]\ninclude = Core\\WWMI\\WuWa-Model-Importer.ini\n",
+        )
+        .unwrap();
+        fs::write(
+            source.join("Core/WWMI/WuWa-Model-Importer.ini"),
+            b"namespace = WWMIv1\nglobal $wwmi_version = 1.100\n",
+        )
+        .unwrap();
+        let mut imported = store.import_directory(&source).unwrap();
+        imported.manifest.authenticity = PackageAuthenticity::OfficialReleaseVerified;
+        let mut provenance = template.manifest.upstream.unwrap();
+        provenance.repository = "SpectrumQT/WWMI-Package".into();
+        imported.manifest.upstream = Some(provenance);
+        fs::write(
+            store
+                .root()
+                .join("packages/xxmi")
+                .join(&imported.manifest.id)
+                .join("lxmi-package.json"),
+            serde_json::to_vec(&imported.manifest).unwrap(),
+        )
+        .unwrap();
+        let mut platform = tree.platform();
+        platform.game = lxmi_core::SUPPORTED_GAMES[0];
+        if let GameInstallationAssessment::Detected {
+            install_path,
+            executable_path,
+            steam_app_id,
+            ..
+        } = &mut platform.installation
+        {
+            let payload = install_path.join("Client/Binaries/Win64/Client-Win64-Shipping.exe");
+            fs::create_dir_all(payload.parent().unwrap()).unwrap();
+            fs::write(&payload, b"synthetic payload").unwrap();
+            let bootstrap = install_path.join("Wuthering Waves.exe");
+            fs::write(&bootstrap, b"synthetic bootstrap").unwrap();
+            *executable_path = Some(bootstrap);
+            *steam_app_id = lxmi_core::WUTHERING_WAVES_APP_ID;
+        }
+        let result = assemble_importer_runtime(
+            &store,
+            &platform,
+            &imported.manifest.id,
+            &libs.manifest.id,
+            &[],
+        )
+        .unwrap();
+        assert_eq!(result.target_process, "Client-Win64-Shipping.exe");
+        assert_eq!(result.manifest.integration, IntegrationKind::Wwmi);
+        assert!(result.importer_root.ends_with("WWMI"));
+        assert_eq!(result.manifest.import_path_from_app_root, "WWMI/");
+        assert!(fs::read_to_string(result.importer_root.join("d3dx.ini"))
+            .unwrap()
+            .contains("target= Client-Win64-Shipping.exe"));
+        assert!(assemble_zzmi_runtime(
+            &store,
+            &platform,
+            &imported.manifest.id,
+            &libs.manifest.id,
+            &[]
+        )
+        .is_err());
+        let manifest_path = result.manifest_path.clone();
+        let bytes = fs::read_to_string(&manifest_path)
+            .unwrap()
+            .replace("integration_package_id", "zzmi_package_id")
+            .replace("integration_version", "zzmi_version")
+            .replace("integration_release_tag", "zzmi_release_tag");
+        fs::write(manifest_path, bytes).unwrap();
+        assert!(existing_importer_runtime(
+            &store,
+            &platform,
+            &imported.manifest.id,
+            &libs.manifest.id,
+            &[]
+        )
+        .unwrap()
+        .is_some());
     }
 
     fn directory_snapshot(root: &Path) -> Vec<(PathBuf, Vec<u8>)> {

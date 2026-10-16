@@ -1,0 +1,68 @@
+{
+  "recorded_local_date": "2026-10-15",
+  "scope": "Primer inicio completo desde el botón «Jugar con mods» (perfil de 12 mods)",
+  "launch_dir": "launches/zenless-zone-zero/001792112316-73eb566838ff6d8c",
+  "helper_events": [
+    "launch_group",
+    "hook_library_returned 0",
+    "armed_hook_waiting_for_new_game",
+    "unhook_library_returned 0",
+    "game_observed mods_module_present=1 process_age_ms=2818",
+    "game_alive_after_load 15000 ms"
+  ],
+  "user_report": "entró al juego, cargaron todos los mods, aparecieron muchas letras rojas; tras un rato, al abrir el menú con Escape, el juego se volvió lento y se cerró",
+  "proton": "experimental-11.0-20261014 (Steam actualizó desde 20261008)",
+  "game_exit": {
+    "cause": "OOM killer del kernel",
+    "kernel_log": "21:04:39 Out of memory: Killed process 637270 (ZenlessZoneZero) total-vm:49629528kB, anon-rss:5592788kB",
+    "systemd": "app-gnome-steam-84128.scope: Failed with result 'oom-kill'",
+    "proton_log": "sin excepción no controlada del juego"
+  },
+  "host": {
+    "ram": "15 GiB",
+    "swap": "8 GiB",
+    "gpu": "Intel TigerLake-LP GT2 Iris Xe (integrada, memoria compartida)"
+  },
+  "profile": {
+    "runtime_files": 543,
+    "mods_bytes_on_disk": "2.5 GiB",
+    "largest": {
+      "Remielle_OG Variant&Seraphic Sin_v0.1_NSFW": "1.2 GiB",
+      "Lucia_Nurse_Base": "656 MiB"
+    }
+  },
+  "inference_not_proven": "El tamaño de los mods (texturas cargadas por 3DMigoto en una GPU integrada) contribuyó a agotar la memoria junto con el resto de procesos del sistema.",
+  "red_text": {
+    "explanation": "d3dx.ini tiene show_warnings = 1: 3DMigoto/ZZMI muestra en rojo los avisos al cargar los .ini de los mods. El log de ZZMI está desactivado, así que el texto exacto no se conserva.",
+    "static_findings": {
+      "resources_pointing_to_missing_files": {
+        "Remielle_OG Variant&Seraphic Sin_v0.1_NSFW": 10,
+        "Nait3D-Sunna_RoswaalLegacy400": 6,
+        "Lucia_Nurse_Base": 1,
+        "爱丽丝-里见光钻": 1
+      },
+      "duplicate_sections_same_ini": {
+        "Remielle…_NSFW.ini": [
+          "TextureOverrideBwingsEML",
+          "TextureOverrideBwingsEMR"
+        ]
+      },
+      "hash_conflicts_between_mods": 0,
+      "lxmi_loss": "Ninguna: los archivos faltantes tampoco están en el manifiesto de importación; la importación no filtra extensiones. Los ShaderFixes de censor_remover_v320 están en ZZMI/ShaderFixes (39 archivos).",
+      "correction": "Las [Constants]/[Present] repetidas de Belle, Lucia y Remielle son válidas: en INIs de mods 3DMigoto fusiona secciones globales sin aviso (IniHandler.cpp, allow_duplicate_sections). Solo las TextureOverride repetidas avisan, y 3DMigoto ignora la segunda copia."
+    }
+  },
+  "repair": {
+    "tool": "SDLC/05_Construccion/aplicacion/tools/mod-repair/repair_mod.py",
+    "output": "~/LXMI-mods-reparados/",
+    "originals_untouched": "sha256 del payload de Remielle idéntico antes y después",
+    "results": {
+      "Remielle": "2 duplicadas comentadas, 4 recursos sin uso comentados, 6 imágenes sustitutas, 15 texturas 8K→4K (960→240 MB), 1.2 GB→454 MB",
+      "Lucia_Nurse": "1 recurso sin uso comentado, 7 texturas 8K→4K (448→112 MB), 656→320 MB",
+      "Sunna": "3 recursos sin uso comentados, Texplus.ini desactivado (buffers ausentes ocultaban un objeto)",
+      "Alice": "1 imagen sustituta"
+    },
+    "post_check": "0 recursos con archivo inexistente en las cuatro copias",
+    "not_yet_verified": "Carga en el juego de las copias reparadas"
+  }
+}

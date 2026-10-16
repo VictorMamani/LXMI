@@ -1,0 +1,698 @@
+{
+  "date_local": "2026-10-14",
+  "scope": "private runtime assembly and reversible profile selection; no in-game load",
+  "wwmi": {
+    "importer": {
+      "authenticity": "official_release_verified",
+      "ecosystem": "xxmi",
+      "files": [
+        {
+          "relative_path": "Core/Debugger/Debugger.ini",
+          "sha256": "84d1a41ed7e168c1286e73f490c9ed3cb7d1e723705d796ea8cbb462a94ce4cc",
+          "size": 4988
+        },
+        {
+          "relative_path": "Core/Debugger/Fonts/LiberationSans-Bold.dds",
+          "sha256": "c84ba851f4d8ca5741f09364fc02e474c4db1acc3fcf58a77d7f43aac9f8b8ea",
+          "size": 98432
+        },
+        {
+          "relative_path": "Core/Debugger/Fonts/LiberationSans-Bold.png",
+          "sha256": "ff2945c739dde8c3d4e0873b7c51123548356a11ebdd4d68aee49901afea4947",
+          "size": 4697
+        },
+        {
+          "relative_path": "Core/Debugger/Shaders/Debugger.hlsl",
+          "sha256": "13f2609e0bc15e550f7ddc53ac2bc4d286481aebe375bf0520a6b164ba40e2ba",
+          "size": 325
+        },
+        {
+          "relative_path": "Core/Debugger/Shaders/debug_cb.hlsl",
+          "sha256": "f733d0e9d62aa8eb46bc6fbe4f10d57dc22d8f0ceb3d9ea464bc2dcf95766512",
+          "size": 10701
+        },
+        {
+          "relative_path": "Core/WWMI/API.ini",
+          "sha256": "53b610a3256257dc639aaa1c6955187c4285939937cb464aab63916c46f0a528",
+          "size": 2540
+        },
+        {
+          "relative_path": "Core/WWMI/Fonts/LiberationSans-Bold.dds",
+          "sha256": "c84ba851f4d8ca5741f09364fc02e474c4db1acc3fcf58a77d7f43aac9f8b8ea",
+          "size": 98432
+        },
+        {
+          "relative_path": "Core/WWMI/Fonts/LiberationSans-Bold.png",
+          "sha256": "ff2945c739dde8c3d4e0873b7c51123548356a11ebdd4d68aee49901afea4947",
+          "size": 4697
+        },
+        {
+          "relative_path": "Core/WWMI/KeyBindings.ini",
+          "sha256": "f46f02799b82c3f5a0c6e62d466247b3f5700348f6fbf03414392826a116b575",
+          "size": 612
+        },
+        {
+          "relative_path": "Core/WWMI/Notifications/ErrorCompatibilityModeDisabled.md",
+          "sha256": "974e8e277e2fd72fa0ec5619e862822566d5be46c2bf0469f49c2f09250ca28c",
+          "size": 166
+        },
+        {
+          "relative_path": "Core/WWMI/Notifications/ErrorOldVersionMod.md",
+          "sha256": "39acadecd5e3c53d807b5ea5d6a9cfd0e8bc0f2759ba9fc17373ceb19b7b3872",
+          "size": 158
+        },
+        {
+          "relative_path": "Core/WWMI/Notifications/ErrorOldVersionWWMI.md",
+          "sha256": "1b3888d8c3d477c071c60bad07cb77a5eb291305db2c541b48b637faa93315c8",
+          "size": 173
+        },
+        {
+          "relative_path": "Core/WWMI/Notifications/HuntingModeGuide.md",
+          "sha256": "47c298ebc3931a8e7a41009b4ec04f4b4ff25fba48a75ab3398b4cfe422fe27f",
+          "size": 1127
+        },
+        {
+          "relative_path": "Core/WWMI/Notifications/UserGuide.md",
+          "sha256": "74f58c4ffc7950519ba02039fd69c7f72bb0e2c7a31d4fc26f7f800de2551e23",
+          "size": 870
+        },
+        {
+          "relative_path": "Core/WWMI/Shaders/BlendRemapper.hlsl",
+          "sha256": "790a4ea0566e58e9da6889c34801157e9fe641aab48cd0a1105a14dc94053236",
+          "size": 1720
+        },
+        {
+          "relative_path": "Core/WWMI/Shaders/ShapeKeyApplier.hlsl",
+          "sha256": "092af60c256ebbe4bbb5844067dab3503fecdd0552a3d4b70008471785b75cba",
+          "size": 1424
+        },
+        {
+          "relative_path": "Core/WWMI/Shaders/ShapeKeyLoader.hlsl",
+          "sha256": "da6beda3b08c66ff04b2bf6a6d5f1598726cf597835efd88a825466f2257fe51",
+          "size": 4971
+        },
+        {
+          "relative_path": "Core/WWMI/Shaders/ShapeKeyMultiplier.hlsl",
+          "sha256": "064bb5fc62bcecb1ce884f948a3e71183a6ce657d114abf84706851eaf8357eb",
+          "size": 1719
+        },
+        {
+          "relative_path": "Core/WWMI/Shaders/ShapeKeyOverrider.hlsl",
+          "sha256": "eb70f50fd2825fc726f68d09f97e9195f5ca0f6245491e8c1c6f9f9198a88f90",
+          "size": 5454
+        },
+        {
+          "relative_path": "Core/WWMI/Shaders/SkapeKeySetter.hlsl",
+          "sha256": "e755a94217b78e9ad55ff9efd38ac43655d69a611f2e52b704cb520ef8cebda1",
+          "size": 3025
+        },
+        {
+          "relative_path": "Core/WWMI/Shaders/SkeletonMerger.hlsl",
+          "sha256": "5d38d4a0e6fa8267e1fde99f697b2636133889a67ceb6e8c4b515286a0dd8f6b",
+          "size": 1077
+        },
+        {
+          "relative_path": "Core/WWMI/Shaders/SkeletonRemapper.hlsl",
+          "sha256": "a12a13eaba4008929dcdbdbf93660461ef90173d2592bb283efa8c32f2fa19eb",
+          "size": 981
+        },
+        {
+          "relative_path": "Core/WWMI/Shaders/TextPrinter.hlsl",
+          "sha256": "ab360ab765184d91376da0e134623b7eae495f4371dea0aefd18646baf172ca6",
+          "size": 14333
+        },
+        {
+          "relative_path": "Core/WWMI/ShapeKeys.ini",
+          "sha256": "f5936c19e12d0739c6b1030033b46371d8e18ccdd585e01e4a58ac41c275b11c",
+          "size": 7788
+        },
+        {
+          "relative_path": "Core/WWMI/TextPrinter.ini",
+          "sha256": "de71af6a79547ae53293d4c92908374b39deb0faee0a42df0b3d6fd17ca1673b",
+          "size": 3912
+        },
+        {
+          "relative_path": "Core/WWMI/WWMI-Utilities.ini",
+          "sha256": "ec861991e396186d432427e3d6f237aab29e3ba4143848326598b6262b9e6088",
+          "size": 1673
+        },
+        {
+          "relative_path": "Core/WWMI/WuWa-Model-Importer.ini",
+          "sha256": "7d49ceb75d432443e6563c5405ac9b7a4429e4c8fe45b0a00e5e96fd5340c08d",
+          "size": 12313
+        },
+        {
+          "relative_path": "Core/WWMI/help.ini",
+          "sha256": "591e588f87a3835c51c3913db21a4b711ae39bd14acfd4baeddb050ecc62b321",
+          "size": 2954
+        },
+        {
+          "relative_path": "README.md",
+          "sha256": "2160d99a62c55793574a3adf6fad5c7e5441d5c288cc4fac7e5e3d2ddff254f2",
+          "size": 4858
+        },
+        {
+          "relative_path": "d3dx.ini",
+          "sha256": "c938142d180f2a619b8c2b205d069fdc4fdc31fc40fe92b28c15c90ee253a746",
+          "size": 52580
+        }
+      ],
+      "id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+      "imported_unix_seconds": 1792026007,
+      "kind": {
+        "game_integration": "wwmi"
+      },
+      "layout_reference": "SpectrumQT/WWMI-Package v1.1.0 release 402665953 commit 7b35c4c2478197361fbf9ccb92bb477440a9a4fe; archive authenticity verified",
+      "schema_version": 2,
+      "source": {
+        "asset": "WWMI-PACKAGE-v1.1.0.zip",
+        "kind": "official_release",
+        "repository": "SpectrumQT/WWMI-Package",
+        "tag": "v1.1.0"
+      },
+      "upstream": {
+        "asset_name": "WWMI-PACKAGE-v1.1.0.zip",
+        "asset_url": "https://github.com/SpectrumQT/WWMI-Package/releases/download/v1.1.0/WWMI-PACKAGE-v1.1.0.zip",
+        "commit": "7b35c4c2478197361fbf9ccb92bb477440a9a4fe",
+        "companion_asset_name": null,
+        "companion_asset_sha256": null,
+        "component_signatures_verified": false,
+        "download_sha256": "9c049e56b17d14f8bdc978801b9638d1869e87e6fc161e0bd83b1a37ab6d377c",
+        "downloaded_at": "2026-10-15T01:00:07Z",
+        "expected_asset_sha256": "9c049e56b17d14f8bdc978801b9638d1869e87e6fc161e0bd83b1a37ab6d377c",
+        "metadata_retrieved_at": "2026-10-15T01:00:06Z",
+        "published_at": "2026-10-03T19:48:42Z",
+        "release_id": 402665953,
+        "release_url": "https://github.com/SpectrumQT/WWMI-Package/releases/tag/v1.1.0",
+        "repository": "SpectrumQT/WWMI-Package",
+        "signature_base64": "MGQCMFR36z85gVnUCNmryyaJrRj1DNwIztlsgfiIHQmbN+ABR2jen+YfvDuDo4SqwxK8SAIwIbnEpR+Rlpuzup7VHGvc8ko+4Id3xwqIplFRP2Bosvavi03rRo/ENWYfx/El1k+Q",
+        "signature_status": "verified",
+        "tag": "v1.1.0"
+      },
+      "version": {
+        "evidence": "Core/WWMI/WuWa-Model-Importer.ini: global $wwmi_version (raw; not release tag)",
+        "raw": "1.10"
+      }
+    },
+    "libraries": {
+      "authenticity": "official_release_verified",
+      "ecosystem": "xxmi",
+      "files": [
+        {
+          "relative_path": "3dmloader.dll",
+          "sha256": "6713ad15447ed94467f6e72570b530b509f0c4e3c107c853c5e0c8bfeb8d02c4",
+          "size": 20480
+        },
+        {
+          "relative_path": "Manifest.json",
+          "sha256": "63906652cd3f271ad6bbce678e73d264f3ee8bdf54e7e915d0d4cd134b8f4631",
+          "size": 567
+        },
+        {
+          "relative_path": "d3d11.dll",
+          "sha256": "ea97846af4610b9af42beddccd7f22a5e73e85b25669cd4391ea8000962fdd7d",
+          "size": 3192832
+        },
+        {
+          "relative_path": "d3dcompiler_47.dll",
+          "sha256": "86110ac1986ff0e4f35e1a797a3ede99233c4a5bd12edacc6dd45750e22b4171",
+          "size": 4927168
+        }
+      ],
+      "id": "711ddd3312acfdd420662f5ded293e2d6386b7fcd58136f00cf7a41226c00d77",
+      "imported_unix_seconds": 1792026009,
+      "kind": "xxmi_libraries",
+      "layout_reference": "SpectrumQT/XXMI-Libs-Package v1.2.2 release 404037520 commit a7847eae82aaac32175c9a7d199673d5c9323bcd; archive authenticity verified",
+      "schema_version": 2,
+      "source": {
+        "asset": "XXMI-PACKAGE-v1.2.2.zip",
+        "kind": "official_release",
+        "repository": "SpectrumQT/XXMI-Libs-Package",
+        "tag": "v1.2.2"
+      },
+      "upstream": {
+        "asset_name": "XXMI-PACKAGE-v1.2.2.zip",
+        "asset_url": "https://github.com/SpectrumQT/XXMI-Libs-Package/releases/download/v1.2.2/XXMI-PACKAGE-v1.2.2.zip",
+        "commit": "a7847eae82aaac32175c9a7d199673d5c9323bcd",
+        "companion_asset_name": "Manifest.json",
+        "companion_asset_sha256": "63906652cd3f271ad6bbce678e73d264f3ee8bdf54e7e915d0d4cd134b8f4631",
+        "component_signatures_verified": true,
+        "download_sha256": "13034531d4855e05273d9fbaf18539ec390432950ebd5986a115e5d3e5d8e275",
+        "downloaded_at": "2026-10-15T01:00:09Z",
+        "expected_asset_sha256": "13034531d4855e05273d9fbaf18539ec390432950ebd5986a115e5d3e5d8e275",
+        "metadata_retrieved_at": "2026-10-15T01:00:07Z",
+        "published_at": "2026-10-05T19:10:00Z",
+        "release_id": 404037520,
+        "release_url": "https://github.com/SpectrumQT/XXMI-Libs-Package/releases/tag/v1.2.2",
+        "repository": "SpectrumQT/XXMI-Libs-Package",
+        "signature_base64": "MGUCMQCYWZtQCMN4vpuuYcwtVY492VgusAH1qUPijQyEyA2bvLD16AjeTAdaPWO/bGEXeEsCMApC3qVdr8LwObhBW6OR52zniXQYCs5z6Ryk9Ojs1tRswU45xzI6LETytqew1L+hBA==",
+        "signature_status": "verified",
+        "tag": "v1.2.2"
+      },
+      "version": {
+        "evidence": "Manifest.json (unverified upstream claim)",
+        "raw": "1.2.2"
+      }
+    },
+    "runtime": {
+      "app_root": "/tmp/lxmi-wwmi-official-review/lxmi/runtimes/wuthering-waves/wwmi/wwmi-f821779924e3ba5049bd0b08dfd3b140b2bc2d2b369369f330d026fee4501d2d",
+      "file_count": 32,
+      "importer_root": "/tmp/lxmi-wwmi-official-review/lxmi/runtimes/wuthering-waves/wwmi/wwmi-f821779924e3ba5049bd0b08dfd3b140b2bc2d2b369369f330d026fee4501d2d/WWMI",
+      "installed_into_game": false,
+      "integration_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+      "integration_version": "1.10",
+      "libraries_package_id": "711ddd3312acfdd420662f5ded293e2d6386b7fcd58136f00cf7a41226c00d77",
+      "libraries_version": "1.2.2",
+      "loader_library_path": "/tmp/lxmi-wwmi-official-review/lxmi/packages/xxmi/711ddd3312acfdd420662f5ded293e2d6386b7fcd58136f00cf7a41226c00d77/payload/3dmloader.dll",
+      "loader_process_identity": "XXMI Launcher.exe",
+      "manifest": {
+        "configuration": {
+          "derived_sha256": "fd17751eabd9c69a529a5a3de5d103ea0eea661fd52e1c4fa6112e14df232c96",
+          "loader_identity_change": null,
+          "loader_identity_evidence": "ZZMI upstream fija [Loader] loader = XXMI Launcher.exe; 3Dmigoto lo usa como nombre de proceso permitido para cargar su DLL.",
+          "loader_process_identity": "XXMI Launcher.exe",
+          "source_relative_path": "d3dx.ini",
+          "source_sha256": "c938142d180f2a619b8c2b205d069fdc4fdc31fc40fe92b28c15c90ee253a746",
+          "target_evidence": "Steam manifest → game scanner → archivo ejecutable regular observado; filename coincide con el registry ZZZ upstream.",
+          "target_process": "Client-Win64-Shipping.exe"
+        },
+        "created_unix_seconds": 1792026010,
+        "directories": [
+          "Mods"
+        ],
+        "evidence": [
+          "Upstream ZZMI importer_folder is relative to App.Root and equals ZZMI/.",
+          "The importer root is placed under LXMI XDG managed storage, outside the game and prefix.",
+          "XXMI Libraries deploys d3d11.dll and d3dcompiler_47.dll under importer_path; 3dmloader.dll remains in the separate Libraries package for the injector API.",
+          "The runtime package sources remain immutable; only derived copies are assembled."
+        ],
+        "files": [
+          {
+            "derived": false,
+            "destination_relative_path": "Core/Debugger/Debugger.ini",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "84d1a41ed7e168c1286e73f490c9ed3cb7d1e723705d796ea8cbb462a94ce4cc",
+            "size": 4988,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/Debugger/Debugger.ini"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/Debugger/Fonts/LiberationSans-Bold.dds",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "c84ba851f4d8ca5741f09364fc02e474c4db1acc3fcf58a77d7f43aac9f8b8ea",
+            "size": 98432,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/Debugger/Fonts/LiberationSans-Bold.dds"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/Debugger/Fonts/LiberationSans-Bold.png",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "ff2945c739dde8c3d4e0873b7c51123548356a11ebdd4d68aee49901afea4947",
+            "size": 4697,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/Debugger/Fonts/LiberationSans-Bold.png"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/Debugger/Shaders/Debugger.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "13f2609e0bc15e550f7ddc53ac2bc4d286481aebe375bf0520a6b164ba40e2ba",
+            "size": 325,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/Debugger/Shaders/Debugger.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/Debugger/Shaders/debug_cb.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "f733d0e9d62aa8eb46bc6fbe4f10d57dc22d8f0ceb3d9ea464bc2dcf95766512",
+            "size": 10701,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/Debugger/Shaders/debug_cb.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/API.ini",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "53b610a3256257dc639aaa1c6955187c4285939937cb464aab63916c46f0a528",
+            "size": 2540,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/API.ini"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Fonts/LiberationSans-Bold.dds",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "c84ba851f4d8ca5741f09364fc02e474c4db1acc3fcf58a77d7f43aac9f8b8ea",
+            "size": 98432,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Fonts/LiberationSans-Bold.dds"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Fonts/LiberationSans-Bold.png",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "ff2945c739dde8c3d4e0873b7c51123548356a11ebdd4d68aee49901afea4947",
+            "size": 4697,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Fonts/LiberationSans-Bold.png"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/KeyBindings.ini",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "f46f02799b82c3f5a0c6e62d466247b3f5700348f6fbf03414392826a116b575",
+            "size": 612,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/KeyBindings.ini"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Notifications/ErrorCompatibilityModeDisabled.md",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "974e8e277e2fd72fa0ec5619e862822566d5be46c2bf0469f49c2f09250ca28c",
+            "size": 166,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Notifications/ErrorCompatibilityModeDisabled.md"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Notifications/ErrorOldVersionMod.md",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "39acadecd5e3c53d807b5ea5d6a9cfd0e8bc0f2759ba9fc17373ceb19b7b3872",
+            "size": 158,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Notifications/ErrorOldVersionMod.md"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Notifications/ErrorOldVersionWWMI.md",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "1b3888d8c3d477c071c60bad07cb77a5eb291305db2c541b48b637faa93315c8",
+            "size": 173,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Notifications/ErrorOldVersionWWMI.md"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Notifications/HuntingModeGuide.md",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "47c298ebc3931a8e7a41009b4ec04f4b4ff25fba48a75ab3398b4cfe422fe27f",
+            "size": 1127,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Notifications/HuntingModeGuide.md"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Notifications/UserGuide.md",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "74f58c4ffc7950519ba02039fd69c7f72bb0e2c7a31d4fc26f7f800de2551e23",
+            "size": 870,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Notifications/UserGuide.md"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Shaders/BlendRemapper.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "790a4ea0566e58e9da6889c34801157e9fe641aab48cd0a1105a14dc94053236",
+            "size": 1720,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Shaders/BlendRemapper.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Shaders/ShapeKeyApplier.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "092af60c256ebbe4bbb5844067dab3503fecdd0552a3d4b70008471785b75cba",
+            "size": 1424,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Shaders/ShapeKeyApplier.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Shaders/ShapeKeyLoader.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "da6beda3b08c66ff04b2bf6a6d5f1598726cf597835efd88a825466f2257fe51",
+            "size": 4971,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Shaders/ShapeKeyLoader.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Shaders/ShapeKeyMultiplier.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "064bb5fc62bcecb1ce884f948a3e71183a6ce657d114abf84706851eaf8357eb",
+            "size": 1719,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Shaders/ShapeKeyMultiplier.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Shaders/ShapeKeyOverrider.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "eb70f50fd2825fc726f68d09f97e9195f5ca0f6245491e8c1c6f9f9198a88f90",
+            "size": 5454,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Shaders/ShapeKeyOverrider.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Shaders/SkapeKeySetter.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "e755a94217b78e9ad55ff9efd38ac43655d69a611f2e52b704cb520ef8cebda1",
+            "size": 3025,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Shaders/SkapeKeySetter.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Shaders/SkeletonMerger.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "5d38d4a0e6fa8267e1fde99f697b2636133889a67ceb6e8c4b515286a0dd8f6b",
+            "size": 1077,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Shaders/SkeletonMerger.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Shaders/SkeletonRemapper.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "a12a13eaba4008929dcdbdbf93660461ef90173d2592bb283efa8c32f2fa19eb",
+            "size": 981,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Shaders/SkeletonRemapper.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/Shaders/TextPrinter.hlsl",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "ab360ab765184d91376da0e134623b7eae495f4371dea0aefd18646baf172ca6",
+            "size": 14333,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/Shaders/TextPrinter.hlsl"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/ShapeKeys.ini",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "f5936c19e12d0739c6b1030033b46371d8e18ccdd585e01e4a58ac41c275b11c",
+            "size": 7788,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/ShapeKeys.ini"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/TextPrinter.ini",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "de71af6a79547ae53293d4c92908374b39deb0faee0a42df0b3d6fd17ca1673b",
+            "size": 3912,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/TextPrinter.ini"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/WWMI-Utilities.ini",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "ec861991e396186d432427e3d6f237aab29e3ba4143848326598b6262b9e6088",
+            "size": 1673,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/WWMI-Utilities.ini"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/WuWa-Model-Importer.ini",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "7d49ceb75d432443e6563c5405ac9b7a4429e4c8fe45b0a00e5e96fd5340c08d",
+            "size": 12313,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/WuWa-Model-Importer.ini"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "Core/WWMI/help.ini",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "591e588f87a3835c51c3913db21a4b711ae39bd14acfd4baeddb050ecc62b321",
+            "size": 2954,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "Core/WWMI/help.ini"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "README.md",
+            "reason": "Payload ZZMI verificado; se conserva su ruta relativa original.",
+            "sha256": "2160d99a62c55793574a3adf6fad5c7e5441d5c288cc4fac7e5e3d2ddff254f2",
+            "size": 4858,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "README.md"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "d3d11.dll",
+            "reason": "XXMI Launcher despliega esta DLL en importer_path; se ensambla únicamente en el root privado de LXMI.",
+            "sha256": "ea97846af4610b9af42beddccd7f22a5e73e85b25669cd4391ea8000962fdd7d",
+            "size": 3192832,
+            "source_component": "xxmi_libraries",
+            "source_package_id": "711ddd3312acfdd420662f5ded293e2d6386b7fcd58136f00cf7a41226c00d77",
+            "source_relative_path": "d3d11.dll"
+          },
+          {
+            "derived": false,
+            "destination_relative_path": "d3dcompiler_47.dll",
+            "reason": "XXMI Launcher despliega esta DLL en importer_path; se ensambla únicamente en el root privado de LXMI.",
+            "sha256": "86110ac1986ff0e4f35e1a797a3ede99233c4a5bd12edacc6dd45750e22b4171",
+            "size": 4927168,
+            "source_component": "xxmi_libraries",
+            "source_package_id": "711ddd3312acfdd420662f5ded293e2d6386b7fcd58136f00cf7a41226c00d77",
+            "source_relative_path": "d3dcompiler_47.dll"
+          },
+          {
+            "derived": true,
+            "destination_relative_path": "d3dx.ini",
+            "reason": "Copia derivada; target se resuelve al nombre del ejecutable observado en la instalación Steam de ZZZ.",
+            "sha256": "fd17751eabd9c69a529a5a3de5d103ea0eea661fd52e1c4fa6112e14df232c96",
+            "size": 52579,
+            "source_component": "wwmi",
+            "source_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+            "source_relative_path": "d3dx.ini"
+          }
+        ],
+        "game_id": "wuthering-waves",
+        "import_path_from_app_root": "WWMI/",
+        "integration": "wwmi",
+        "integration_package_id": "98cc73d31aee458b07b04776cae1f71975fb094cbce5d8b2be5c2c3c60e3c74f",
+        "integration_release_tag": "v1.1.0",
+        "integration_version": "1.10",
+        "libraries_package_id": "711ddd3312acfdd420662f5ded293e2d6386b7fcd58136f00cf7a41226c00d77",
+        "libraries_release_tag": "v1.2.2",
+        "libraries_version": "1.2.2",
+        "loader_library_sha256": "6713ad15447ed94467f6e72570b530b509f0c4e3c107c853c5e0c8bfeb8d02c4",
+        "loader_library_store_path": "packages/xxmi/711ddd3312acfdd420662f5ded293e2d6386b7fcd58136f00cf7a41226c00d77/payload/3dmloader.dll",
+        "loader_process_identity": "XXMI Launcher.exe",
+        "platform_compatibility": "unverified",
+        "runtime_id": "wwmi-f821779924e3ba5049bd0b08dfd3b140b2bc2d2b369369f330d026fee4501d2d",
+        "schema_version": 1,
+        "target_process": "Client-Win64-Shipping.exe"
+      },
+      "manifest_path": "/tmp/lxmi-wwmi-official-review/lxmi/runtimes/wuthering-waves/wwmi/wwmi-f821779924e3ba5049bd0b08dfd3b140b2bc2d2b369369f330d026fee4501d2d/runtime-manifest.json",
+      "newly_created": true,
+      "runtime_id": "wwmi-f821779924e3ba5049bd0b08dfd3b140b2bc2d2b369369f330d026fee4501d2d",
+      "target_process": "Client-Win64-Shipping.exe"
+    }
+  },
+  "native": {
+    "native-verify": {
+      "interaction": "DOM events inside the native GTK/WebKit webview; no OS keyboard injection",
+      "phase": "verify",
+      "status": "passed",
+      "steps": [
+        "restart persistence and snapshot reuse",
+        "ZIP import through native UI and real extraction",
+        "ZZZ restart persistence"
+      ],
+      "transport": "real native Tauri IPC"
+    },
+    "native-filesystem": {
+      "status": "passed",
+      "importedPayloadHashes": "PASS",
+      "preparedSnapshotHashes": "PASS",
+      "snapshotReusedAfterRestart": true,
+      "originalBytesUnchanged": true,
+      "wutheringWavesMods": 3,
+      "zenlessZoneZeroMods": 1
+    },
+    "native-activation": {
+      "game_executed": false,
+      "interaction": "DOM events scoped to native GTK/WebKit webview",
+      "phase": "activation",
+      "status": "passed",
+      "steps": [
+        "native WWMI assembly from authenticated upstream packages",
+        "native reviewed activation with official WWMI packages and selected-runtime resolution",
+        "native rollback restores base without deleting derived runtime",
+        "native redo reuses the same verified selection"
+      ],
+      "transport": "real native Tauri IPC"
+    },
+    "native-exercise": {
+      "interaction": "DOM events inside the native GTK/WebKit webview; no OS keyboard injection",
+      "phase": "exercise",
+      "status": "passed",
+      "steps": [
+        "folder import through native UI and IPC",
+        "content deduplication",
+        "save two-mod profile",
+        "dirty guard and saved-selection restore",
+        "prepare actual private snapshot",
+        "invalid mod error",
+        "independent ZZZ import and profile",
+        "game switch and restore persisted profile"
+      ],
+      "transport": "real native Tauri IPC"
+    }
+  },
+  "quality": {
+    "rust_tests_passed": 393,
+    "rust_tests_failed": 0,
+    "rust_tests_ignored": 12,
+    "fmt": "PASS",
+    "check_workspace_all_targets": "PASS",
+    "clippy_workspace_all_targets_warnings_denied": "PASS",
+    "frontend_typecheck_lint_format_build": "PASS",
+    "design_detector": []
+  },
+  "game_executed": false,
+  "prefix_experiment_consumed": false,
+  "caveat": "Official WWMI download/assembly was before correction of WWMI-specific explanatory evidence strings; native seed copied packages only and assembled fresh using final code."
+}

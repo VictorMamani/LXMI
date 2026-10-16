@@ -215,23 +215,31 @@ pub async fn run_context_reentry_test(
 
 #[tauri::command]
 pub async fn inspect_zzz_harmless_prefix_entry_history(
-) -> std::result::Result<lxmi_bridge::HarmlessEntryHistory, BridgeServiceError> {
+) -> std::result::Result<crate::prefix_recovery_service::HarmlessExperimentPanel, BridgeServiceError>
+{
     blocking_bridge(crate::prefix_recovery_service::entry_history).await
 }
 
 #[tauri::command]
+pub async fn create_zzz_harmless_prefix_entry_experiment(
+) -> std::result::Result<lxmi_bridge::EntryExperimentHistory, BridgeServiceError> {
+    blocking_bridge(crate::prefix_recovery_service::create_entry_experiment).await
+}
+#[tauri::command]
 pub async fn prepare_zzz_harmless_prefix_entry(
+    experiment_id: String,
 ) -> std::result::Result<crate::prefix_recovery_service::HarmlessEntryReviewPanel, BridgeServiceError>
 {
-    blocking_bridge(crate::prefix_recovery_service::prepare_entry).await
+    blocking_bridge(move || crate::prefix_recovery_service::prepare_entry(experiment_id)).await
 }
 #[tauri::command]
 pub async fn run_zzz_harmless_prefix_entry(
+    experiment_id: String,
     review_token: String,
     consent_accepted: bool,
 ) -> std::result::Result<lxmi_bridge::RealPrefixEntryResult, BridgeServiceError> {
     blocking_bridge(move || {
-        crate::prefix_recovery_service::run_entry(review_token, consent_accepted)
+        crate::prefix_recovery_service::run_entry(experiment_id, review_token, consent_accepted)
     })
     .await
 }

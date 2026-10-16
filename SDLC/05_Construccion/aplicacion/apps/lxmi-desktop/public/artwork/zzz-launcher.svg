@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" fill="none">
+  <!-- Original LXMI illustration: night city with a lime signal ring. No game assets. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#0b0c0a"/>
+      <stop offset=".55" stop-color="#171a10"/>
+      <stop offset="1" stop-color="#0a0b09"/>
+    </linearGradient>
+    <radialGradient id="ring" cx="0" cy="0" r="1" gradientTransform="matrix(0 430 -430 0 1110 360)" gradientUnits="userSpaceOnUse">
+      <stop offset=".52" stop-color="#d9f23a" stop-opacity="0"/>
+      <stop offset=".6" stop-color="#d9f23a" stop-opacity=".55"/>
+      <stop offset=".64" stop-color="#f4ff9a" stop-opacity=".9"/>
+      <stop offset=".7" stop-color="#d9f23a" stop-opacity=".25"/>
+      <stop offset="1" stop-color="#d9f23a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="haze" cx="0" cy="0" r="1" gradientTransform="matrix(0 520 -760 0 1110 380)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c8e033" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#c8e033" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="0" cy="0" r="1" gradientTransform="matrix(0 250 -250 0 1110 360)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#020302"/>
+      <stop offset=".85" stop-color="#0b0d07"/>
+      <stop offset="1" stop-color="#2b3313" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="1.6" fill="#d9f23a" fill-opacity=".16"/>
+    </pattern>
+    <pattern id="tape" width="46" height="46" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="23" height="46" fill="#e2f53f"/>
+      <rect x="23" width="23" height="46" fill="#121410"/>
+    </pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset=".45" stop-color="#090a08" stop-opacity="0"/>
+      <stop offset="1" stop-color="#090a08" stop-opacity=".92"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <rect width="1600" height="1000" fill="url(#haze)"/>
+  <path d="M760 0h840v720H760z" fill="url(#dots)" opacity=".7"/>
+  <circle cx="1110" cy="360" r="430" fill="url(#ring)"/>
+  <circle cx="1110" cy="360" r="252" fill="url(#core)"/>
+  <circle cx="1110" cy="360" r="300" stroke="#eaff7a" stroke-opacity=".35" stroke-width="2"/>
+  <circle cx="1110" cy="360" r="342" stroke="#d9f23a" stroke-opacity=".14" stroke-dasharray="4 14"/>
+  <path d="M1110 40v70M1110 610v70M790 360h70M1360 360h70" stroke="#eaff7a" stroke-opacity=".4" stroke-width="2"/>
+  <!-- skyline -->
+  <path fill="#11130e" d="M0 700V560h70v-90h48v60h40V430h86v130h34v-70h60v210h44V500h52v-60h70v260h38V560h60v140h40V470h58v-50h46v280h50V590h66v110h44V520h72v180h36V610h60v90h48V540h64v160h40V580h70v120h46V500h66v200h52V600h80v100h48V560h70v140H0Z"/>
+  <path fill="#0c0d0a" d="M0 760V650h96v-60h60v70h80V610h70v150h50V640h90v120h60V600h80v160h70V660h60v100h90V620h70v140h60V680h80v80h70V640h90v120h60V610h80v150h60V670h90v90h60V630h70v130H0Z"/>
+  <g fill="#e6ff4d">
+    <rect x="198" y="470" width="8" height="5" opacity=".7"/><rect x="214" y="470" width="8" height="5" opacity=".35"/>
+    <rect x="198" y="490" width="8" height="5" opacity=".25"/><rect x="465" y="520" width="8" height="5" opacity=".6"/>
+    <rect x="481" y="540" width="8" height="5" opacity=".3"/><rect x="738" y="460" width="8" height="5" opacity=".55"/>
+    <rect x="754" y="480" width="8" height="5" opacity=".25"/><rect x="1050" y="560" width="8" height="5" opacity=".5"/>
+    <rect x="1290" y="530" width="8" height="5" opacity=".6"/><rect x="1306" y="550" width="8" height="5" opacity=".3"/>
+    <rect x="1480" y="590" width="8" height="5" opacity=".45"/>
+  </g>
+  <!-- hazard tape -->
+  <path d="M-40 862 1640 700v52L-40 914Z" fill="url(#tape)" opacity=".9"/>
+  <path d="M-40 862 1640 700" stroke="#0a0b08" stroke-width="3"/>
+  <path d="M-40 914 1640 752" stroke="#0a0b08" stroke-width="3"/>
+  <rect width="1600" height="1000" fill="url(#fade)"/>
+</svg>

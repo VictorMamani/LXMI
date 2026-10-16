@@ -5,6 +5,7 @@ members = [
   "crates/lxmi-bridge",
   "crates/lxmi-bridge-protocol",
   "crates/lxmi-core",
+  "crates/lxmi-launch",
   "crates/lxmi-proton",
   "crates/lxmi-runtime",
   "crates/lxmi-xxmi",
@@ -14,3 +15,7 @@ members = [
 
 [workspace.dependencies]
 tracing = "0.1"
+
+# Keep integrity checks usable for multi-gigabyte mod profiles during development.
+[profile.dev.package.sha2]
+opt-level = 3

@@ -1,0 +1,80 @@
+{
+  "date_local": "2026-10-15",
+  "timezone": "America/La_Paz",
+  "outcome": "game_load_confirmed_by_user",
+  "user_confirmation": "ok ya carga haz el commiit al repositorio correspondiente ya funca todo",
+  "profile": {
+    "runtime_id": "profile-a49d894b92116b6ae434d81fe8f88d985327f48398904945499bec28c4041d99",
+    "base_runtime_id": "zzmi-6dc676fdfc0d30f7e69de43b9123936e7750b0e58baadb384018815a2891f052",
+    "integration_package_id": "a4336db165e16c184012e0b6c9f72467aa7bdc50dcaa3d74dacb174e4fcfd606",
+    "libraries_package_id": "ee6c9955c3684d9c701a1edf2c3fec9806e117fece3a10ef1c5e97c0299a5954",
+    "profile_name": "ZZZ — 12 mods (4 reparados)",
+    "mod_count": 12
+  },
+  "launch_id": "001792116936-345e02d7b0c7725c",
+  "launch_record": {
+    "dir": "/home/university/.local/share/lxmi/launches/zenless-zone-zero/001792116936-345e02d7b0c7725c",
+    "game_id": "zenless-zone-zero",
+    "runtime_id": "profile-a49d894b92116b6ae434d81fe8f88d985327f48398904945499bec28c4041d99",
+    "created_unix_seconds": 1792116936,
+    "file_count": 550,
+    "helper_sha256": "9e8cde155097e1c6e90c96f65755d5b1b659dd301b4bb616aa9b624453a2888a",
+    "loader_library_sha256": "44965ee51786db44fb4252671f356426ca7d879e6f7e8436b27d68e13237b0cf",
+    "restored_user_settings": true
+  },
+  "helper_events": [
+    {
+      "status": "launch_group",
+      "pgid": 723090
+    },
+    {
+      "status": "hook_library_returned",
+      "code": 0
+    },
+    {
+      "status": "armed_hook_waiting_for_new_game",
+      "timeout_seconds": 300
+    },
+    {
+      "status": "unhook_library_returned",
+      "code": 0
+    },
+    {
+      "status": "game_observed",
+      "windows_pid": 1636,
+      "mods_module_present": 1,
+      "process_age_ms": 2580
+    },
+    {
+      "status": "game_alive_after_load",
+      "observation_ms": 15000
+    }
+  ],
+  "desktop_status": {
+    "timestamp": "2026-10-16T02:16:30.991781Z",
+    "level": "INFO",
+    "fields": {
+      "message": "launch with mods finished",
+      "game": "zenless-zone-zero",
+      "phase": "Running",
+      "mods_loaded": true
+    }
+  },
+  "checks": {
+    "rust_tests_passed": 413,
+    "rust_tests_failed": 0,
+    "rust_tests_ignored": 13,
+    "rustfmt": "passed",
+    "clippy": "passed",
+    "frontend_typecheck": "passed",
+    "frontend_lint": "passed",
+    "frontend_format": "passed",
+    "frontend_build": "passed"
+  },
+  "observed_stability_ms": 15000,
+  "extended_stability_measured": false,
+  "individual_character_results_recorded": false,
+  "local_mod_payloads_in_repository": false,
+  "publication_authorized_by_user": true,
+  "prior_disk_full_error_resolved": true
+}

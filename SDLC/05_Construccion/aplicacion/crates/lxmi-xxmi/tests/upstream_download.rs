@@ -65,6 +65,7 @@ fn downloads_verifies_and_imports_pinned_official_assets_through_lxmi_pipeline()
         assert_eq!(release.release_id, release_id);
         assert_eq!(release.commit, commit);
         let asset_name = match kind {
+            OfficialPackageKind::Wwmi => "WWMI-PACKAGE-v1.1.0.zip",
             OfficialPackageKind::Zzmi => "ZZMI-PACKAGE-v1.5.0.zip",
             OfficialPackageKind::XxmiLibraries => "XXMI-PACKAGE-v1.1.7.zip",
         };

@@ -2057,6 +2057,7 @@ dependencies = [
  "libc",
  "lxmi-bridge",
  "lxmi-core",
+ "lxmi-launch",
  "lxmi-proton",
  "lxmi-runtime",
  "lxmi-steam",
@@ -2068,6 +2069,17 @@ dependencies = [
  "tauri-build",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "lxmi-launch"
+version = "0.9.0"
+dependencies = [
+ "libc",
+ "lxmi-xxmi",
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

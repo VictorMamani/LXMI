@@ -1,0 +1,44 @@
+{
+  "experiment_id": "6a3366ed9c4b456e82c3992a19c502af",
+  "events": [
+    "reservation.json",
+    "review.json"
+  ],
+  "reservation": {
+    "schema": 1,
+    "experiment_id": "6a3366ed9c4b456e82c3992a19c502af",
+    "session_nonce": "5523f0f357129c80a3ab3a8e1ed2908a",
+    "created_at": 1791057706,
+    "app_id": 4162040,
+    "source_baseline": {
+      "manifest_path": "/home/university/.local/share/lxmi/snapshots/zzz-prefix-079bb2e84becccfd4d6c6c2f21011e72.json",
+      "sha256": "85155c2d13abd9de0b2c59ab3110d17d18177988d55f1a07fa6bbbd0f0542071"
+    },
+    "recovery_backup": "2b29b84bbc592fa091950bf046b3d668",
+    "recovery_manifest_sha256": "79685d4cdf3523d6acd5ab435a33a175438f488b871d13be3dd6cae0b8770597",
+    "executor_fingerprint": "6ff2ca659cd2db24d246c4cfa321fba1788203e4c956cebddbe161d50c841aed",
+    "prefix_identity": {
+      "canonical_path": "/home/university/.local/share/Steam/steamapps/compatdata/4162040/pfx",
+      "device": 66306,
+      "inode": 11538172,
+      "uid": 1000
+    },
+    "runtime_build": "1790244902 experimental-11.0-20260924-x86_64"
+  },
+  "review": {
+    "experiment_id": "6a3366ed9c4b456e82c3992a19c502af",
+    "reviewed_at": 1791057970,
+    "review_token_sha256": "af6f5b81d03d0b5b4c3663a2286c0f0ab52307196580230a1b49bbe971ec7659",
+    "source_baseline": {
+      "manifest_path": "/home/university/.local/share/lxmi/snapshots/zzz-prefix-f5128a9ee119ff6d6f9f8090f5828175.json",
+      "sha256": "6503cdb72a0c1715d498e179d0fef45ccf8b16c67c5035a9332bb8adfe1c9d75"
+    }
+  },
+  "run_disabled_without_consent": true,
+  "consent_collected_by_agent": false,
+  "real_execution_by_agent": false,
+  "native_new_id_visible": true,
+  "native_previous_consumed_visible": true,
+  "native_qualified_visible": true,
+  "native_review_eligible": true
+}

@@ -1,0 +1,443 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T01:20:14.013030+00:00",
+  "title": "Design System: LXMI",
+  "extensions": {
+    "colorMeta": {
+      "deep": {
+        "role": "neutral",
+        "displayName": "deep",
+        "tonalRamp": [
+          "oklch(15% 0.00403 228.76)",
+          "oklch(26% 0.00403 228.76)",
+          "oklch(38% 0.00403 228.76)",
+          "oklch(49% 0.00403 228.76)",
+          "oklch(61% 0.00403 228.76)",
+          "oklch(72% 0.00403 228.76)",
+          "oklch(84% 0.00403 228.76)",
+          "oklch(95% 0.00403 228.76)"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "background",
+        "tonalRamp": [
+          "oklch(15% 0.00386 229.06)",
+          "oklch(26% 0.00386 229.06)",
+          "oklch(38% 0.00386 229.06)",
+          "oklch(49% 0.00386 229.06)",
+          "oklch(61% 0.00386 229.06)",
+          "oklch(72% 0.00386 229.06)",
+          "oklch(84% 0.00386 229.06)",
+          "oklch(95% 0.00386 229.06)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "surface",
+        "tonalRamp": [
+          "oklch(15% 0.00504 219.71)",
+          "oklch(26% 0.00504 219.71)",
+          "oklch(38% 0.00504 219.71)",
+          "oklch(49% 0.00504 219.71)",
+          "oklch(61% 0.00504 219.71)",
+          "oklch(72% 0.00504 219.71)",
+          "oklch(84% 0.00504 219.71)",
+          "oklch(95% 0.00504 219.71)"
+        ]
+      },
+      "elevated": {
+        "role": "neutral",
+        "displayName": "elevated",
+        "tonalRamp": [
+          "oklch(15% 0.00626 214.42)",
+          "oklch(26% 0.00626 214.42)",
+          "oklch(38% 0.00626 214.42)",
+          "oklch(49% 0.00626 214.42)",
+          "oklch(61% 0.00626 214.42)",
+          "oklch(72% 0.00626 214.42)",
+          "oklch(84% 0.00626 214.42)",
+          "oklch(95% 0.00626 214.42)"
+        ]
+      },
+      "soft-surface": {
+        "role": "neutral",
+        "displayName": "soft-surface",
+        "tonalRamp": [
+          "oklch(15% 0.00748 211.06)",
+          "oklch(26% 0.00748 211.06)",
+          "oklch(38% 0.00748 211.06)",
+          "oklch(49% 0.00748 211.06)",
+          "oklch(61% 0.00748 211.06)",
+          "oklch(72% 0.00748 211.06)",
+          "oklch(84% 0.00748 211.06)",
+          "oklch(95% 0.00748 211.06)"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "text",
+        "tonalRamp": [
+          "oklch(15% 0.00701 88.64)",
+          "oklch(26% 0.00701 88.64)",
+          "oklch(38% 0.00701 88.64)",
+          "oklch(49% 0.00701 88.64)",
+          "oklch(61% 0.00701 88.64)",
+          "oklch(72% 0.00701 88.64)",
+          "oklch(84% 0.00701 88.64)",
+          "oklch(95% 0.00701 88.64)"
+        ]
+      },
+      "secondary": {
+        "role": "neutral",
+        "displayName": "secondary",
+        "tonalRamp": [
+          "oklch(15% 0.00718 97.39)",
+          "oklch(26% 0.00718 97.39)",
+          "oklch(38% 0.00718 97.39)",
+          "oklch(49% 0.00718 97.39)",
+          "oklch(61% 0.00718 97.39)",
+          "oklch(72% 0.00718 97.39)",
+          "oklch(84% 0.00718 97.39)",
+          "oklch(95% 0.00718 97.39)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "muted",
+        "tonalRamp": [
+          "oklch(15% 0.01204 149.76)",
+          "oklch(26% 0.01204 149.76)",
+          "oklch(38% 0.01204 149.76)",
+          "oklch(49% 0.01204 149.76)",
+          "oklch(61% 0.01204 149.76)",
+          "oklch(72% 0.01204 149.76)",
+          "oklch(84% 0.01204 149.76)",
+          "oklch(95% 0.01204 149.76)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "border",
+        "tonalRamp": [
+          "oklch(15% 0.00595 214.39)",
+          "oklch(26% 0.00595 214.39)",
+          "oklch(38% 0.00595 214.39)",
+          "oklch(49% 0.00595 214.39)",
+          "oklch(61% 0.00595 214.39)",
+          "oklch(72% 0.00595 214.39)",
+          "oklch(84% 0.00595 214.39)",
+          "oklch(95% 0.00595 214.39)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "accent",
+        "tonalRamp": [
+          "oklch(15% 0.05717 174.17)",
+          "oklch(26% 0.05717 174.17)",
+          "oklch(38% 0.05717 174.17)",
+          "oklch(49% 0.05717 174.17)",
+          "oklch(61% 0.05717 174.17)",
+          "oklch(72% 0.05717 174.17)",
+          "oklch(84% 0.05717 174.17)",
+          "oklch(95% 0.05717 174.17)"
+        ]
+      },
+      "accent-quiet": {
+        "role": "primary",
+        "displayName": "accent-quiet",
+        "tonalRamp": [
+          "oklch(15% 0.04608 167.38)",
+          "oklch(26% 0.04608 167.38)",
+          "oklch(38% 0.04608 167.38)",
+          "oklch(49% 0.04608 167.38)",
+          "oklch(61% 0.04608 167.38)",
+          "oklch(72% 0.04608 167.38)",
+          "oklch(84% 0.04608 167.38)",
+          "oklch(95% 0.04608 167.38)"
+        ]
+      },
+      "warning": {
+        "role": "neutral",
+        "displayName": "warning",
+        "tonalRamp": [
+          "oklch(15% 0.08223 85.53)",
+          "oklch(26% 0.08223 85.53)",
+          "oklch(38% 0.08223 85.53)",
+          "oklch(49% 0.08223 85.53)",
+          "oklch(61% 0.08223 85.53)",
+          "oklch(72% 0.08223 85.53)",
+          "oklch(84% 0.08223 85.53)",
+          "oklch(95% 0.08223 85.53)"
+        ]
+      },
+      "danger": {
+        "role": "neutral",
+        "displayName": "danger",
+        "tonalRamp": [
+          "oklch(15% 0.08202 29.23)",
+          "oklch(26% 0.08202 29.23)",
+          "oklch(38% 0.08202 29.23)",
+          "oklch(49% 0.08202 29.23)",
+          "oklch(61% 0.08202 29.23)",
+          "oklch(72% 0.08202 29.23)",
+          "oklch(84% 0.08202 29.23)",
+          "oklch(95% 0.08202 29.23)"
+        ]
+      },
+      "action-light": {
+        "role": "primary",
+        "displayName": "action-light",
+        "tonalRamp": [
+          "oklch(15% 0.01077 100.83)",
+          "oklch(26% 0.01077 100.83)",
+          "oklch(38% 0.01077 100.83)",
+          "oklch(49% 0.01077 100.83)",
+          "oklch(61% 0.01077 100.83)",
+          "oklch(72% 0.01077 100.83)",
+          "oklch(84% 0.01077 100.83)",
+          "oklch(95% 0.01077 100.83)"
+        ]
+      },
+      "action-ink": {
+        "role": "neutral",
+        "displayName": "action-ink",
+        "tonalRamp": [
+          "oklch(15% 0.00717 164.25)",
+          "oklch(26% 0.00717 164.25)",
+          "oklch(38% 0.00717 164.25)",
+          "oklch(49% 0.00717 164.25)",
+          "oklch(61% 0.00717 164.25)",
+          "oklch(72% 0.00717 164.25)",
+          "oklch(84% 0.00717 164.25)",
+          "oklch(95% 0.00717 164.25)"
+        ]
+      },
+      "action-light-hover": {
+        "role": "neutral",
+        "displayName": "action-light-hover",
+        "tonalRamp": [
+          "oklch(15% 0.01212 96.42)",
+          "oklch(26% 0.01212 96.42)",
+          "oklch(38% 0.01212 96.42)",
+          "oklch(49% 0.01212 96.42)",
+          "oklch(61% 0.01212 96.42)",
+          "oklch(72% 0.01212 96.42)",
+          "oklch(84% 0.01212 96.42)",
+          "oklch(95% 0.01212 96.42)"
+        ]
+      },
+      "action-secondary": {
+        "role": "neutral",
+        "displayName": "action-secondary",
+        "tonalRamp": [
+          "oklch(15% 0.00629 179.05)",
+          "oklch(26% 0.00629 179.05)",
+          "oklch(38% 0.00629 179.05)",
+          "oklch(49% 0.00629 179.05)",
+          "oklch(61% 0.00629 179.05)",
+          "oklch(72% 0.00629 179.05)",
+          "oklch(84% 0.00629 179.05)",
+          "oklch(95% 0.00629 179.05)"
+        ]
+      },
+      "action-secondary-text": {
+        "role": "neutral",
+        "displayName": "action-secondary-text",
+        "tonalRamp": [
+          "oklch(15% 0.00968 119.60)",
+          "oklch(26% 0.00968 119.60)",
+          "oklch(38% 0.00968 119.60)",
+          "oklch(49% 0.00968 119.60)",
+          "oklch(61% 0.00968 119.60)",
+          "oklch(72% 0.00968 119.60)",
+          "oklch(84% 0.00968 119.60)",
+          "oklch(95% 0.00968 119.60)"
+        ]
+      },
+      "action-secondary-hover": {
+        "role": "neutral",
+        "displayName": "action-secondary-hover",
+        "tonalRamp": [
+          "oklch(15% 0.00746 182.38)",
+          "oklch(26% 0.00746 182.38)",
+          "oklch(38% 0.00746 182.38)",
+          "oklch(49% 0.00746 182.38)",
+          "oklch(61% 0.00746 182.38)",
+          "oklch(72% 0.00746 182.38)",
+          "oklch(84% 0.00746 182.38)",
+          "oklch(95% 0.00746 182.38)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Título del juego",
+        "purpose": "Titular sobre arte original; adaptación móvil documentada en DESIGN.md."
+      },
+      "headline": {
+        "displayName": "Encabezado de página",
+        "purpose": "Nombres de pantallas del workspace."
+      },
+      "body": {
+        "displayName": "Cuerpo",
+        "purpose": "Lectura general de la aplicación."
+      },
+      "label": {
+        "displayName": "Acción",
+        "purpose": "Etiqueta compacta de controles del shell."
+      }
+    },
+    "shadows": [
+      {
+        "name": "hero-ambient",
+        "value": "0 20px 44px -35px rgba(0, 0, 0, 0.88)",
+        "purpose": "Separación ambiental del hero; no se extiende a los paneles operativos."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Salida de presión y selección."
+      },
+      {
+        "name": "action-transition",
+        "value": "140ms",
+        "purpose": "Respuesta de acciones del shell."
+      },
+      {
+        "name": "navigation-transition",
+        "value": "150ms",
+        "purpose": "Color de navegación y respuesta del rail."
+      },
+      {
+        "name": "rail-selection-transition",
+        "value": "160ms",
+        "purpose": "Altura del indicador seleccionado."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0.01ms",
+        "purpose": "Duración cuando prefers-reduced-motion solicita reducción."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "hero-desktop",
+        "value": "1150px"
+      },
+      {
+        "name": "header-wrap",
+        "value": "1100px"
+      },
+      {
+        "name": "workspace-stack",
+        "value": "760px"
+      },
+      {
+        "name": "library-stack",
+        "value": "700px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Acción principal clara",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción compacta del shell; conserva hover, foco, presión y deshabilitado.",
+      "html": "<button class=\"ds-action ds-primary\">Revisar runtime</button>",
+      "css": ".ds-action { display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:38px; padding:0 14px; border:1px solid transparent; border-radius:var(--radius-control,5px); font-family:var(--font-ui, sans-serif); font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; transition:transform 140ms var(--ease-out,cubic-bezier(.23,1,.32,1)),border-color 140ms ease-out,background-color 140ms ease-out,color 140ms ease-out; } .ds-action:focus-visible { outline:2px solid var(--accent,#86b8a9); outline-offset:3px; } .ds-action:active:not(:disabled) { transform:scale(.97); } .ds-action:disabled { cursor:not-allowed; opacity:.55; } @media(prefers-reduced-motion:reduce){.ds-action{transition-duration:.01ms;}} .ds-primary{background:#e5e4dc;color:#171b19}.ds-primary:hover:not(:disabled){background:#f3f1e8}"
+    },
+    {
+      "name": "Acción secundaria",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Acción compacta del shell; conserva hover, foco, presión y deshabilitado.",
+      "html": "<button class=\"ds-action ds-secondary\">Revisar runtime</button>",
+      "css": ".ds-action { display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:38px; padding:0 14px; border:1px solid transparent; border-radius:var(--radius-control,5px); font-family:var(--font-ui, sans-serif); font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; transition:transform 140ms var(--ease-out,cubic-bezier(.23,1,.32,1)),border-color 140ms ease-out,background-color 140ms ease-out,color 140ms ease-out; } .ds-action:focus-visible { outline:2px solid var(--accent,#86b8a9); outline-offset:3px; } .ds-action:active:not(:disabled) { transform:scale(.97); } .ds-action:disabled { cursor:not-allowed; opacity:.55; } @media(prefers-reduced-motion:reduce){.ds-action{transition-duration:.01ms;}} .ds-secondary{border-color:#353a38;background:#191d1c;color:#d9dbd4}.ds-secondary:hover:not(:disabled){border-color:#545c57;background:#202524}"
+    },
+    {
+      "name": "Acción quieta",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Acción compacta del shell; conserva hover, foco, presión y deshabilitado.",
+      "html": "<button class=\"ds-action ds-quiet\">Revisar runtime</button>",
+      "css": ".ds-action { display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:38px; padding:0 14px; border:1px solid transparent; border-radius:var(--radius-control,5px); font-family:var(--font-ui, sans-serif); font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; transition:transform 140ms var(--ease-out,cubic-bezier(.23,1,.32,1)),border-color 140ms ease-out,background-color 140ms ease-out,color 140ms ease-out; } .ds-action:focus-visible { outline:2px solid var(--accent,#86b8a9); outline-offset:3px; } .ds-action:active:not(:disabled) { transform:scale(.97); } .ds-action:disabled { cursor:not-allowed; opacity:.55; } @media(prefers-reduced-motion:reduce){.ds-action{transition-duration:.01ms;}} .ds-quiet{background:transparent;color:#b8bcb5}.ds-quiet:hover:not(:disabled){background:#202423;color:var(--text,#f0eee9)}"
+    },
+    {
+      "name": "Acción del runtime",
+      "kind": "button",
+      "refersTo": "button-runtime",
+      "description": "Familia operativa heredada, con acento salvia; el hover conserva el fondo por precedencia del workspace.",
+      "html": "<button class=\"ds-runtime\">Revisar aplicación</button>",
+      "css": ".ds-runtime{min-height:40px;padding:0 15px;border:1px solid var(--accent,#86b8a9);border-radius:5px;background:var(--accent,#86b8a9);color:#101614;font-family:var(--font-ui,sans-serif);font-size:.86rem;font-weight:700;cursor:pointer}.ds-runtime:hover:not(:disabled){background:var(--accent,#86b8a9);border-color:var(--accent,#86b8a9)}.ds-runtime:focus-visible{outline:2px solid var(--accent,#86b8a9);outline-offset:3px}.ds-runtime:disabled{cursor:wait;opacity:.7}"
+    },
+    {
+      "name": "Campo de formulario",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo etiquetado del gestor, con foco propio de la familia de formularios.",
+      "html": "<label class=\"ds-field\">Nombre del perfil<input class=\"ds-input\" placeholder=\"Mi perfil\" /></label>",
+      "css": ".ds-field{display:grid;gap:10px;color:#e2e9e8;font-family:var(--font-ui,sans-serif);font-size:.86rem}.ds-input{min-width:0;min-height:40px;padding:8px 10px;border:1px solid #4b5550;border-radius:5px;background:var(--background,#0e1011);color:var(--text,#f0eee9);font-family:var(--font-ui,sans-serif);font-size:.88rem}.ds-input::placeholder{color:#9caaa8}.ds-input:focus-visible{outline:2px solid #9dd7bf;outline-offset:3px}"
+    },
+    {
+      "name": "Navegación superior",
+      "kind": "nav",
+      "description": "Destinos del workspace con selección subrayada.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Workspace\"><button class=\"ds-tab ds-current\" aria-current=\"page\">Inicio</button><button class=\"ds-tab\">Mods</button><button class=\"ds-tab\">Perfiles</button><button class=\"ds-tab\">Compatibilidad</button></nav>",
+      "css": ".ds-nav{display:flex;gap:clamp(8px,2vw,28px);min-height:48px}.ds-tab{position:relative;display:inline-flex;align-items:center;padding:2px 2px 0;border:0;background:transparent;color:#858a85;font-family:var(--font-ui,sans-serif);font-size:13px;font-weight:520;cursor:pointer;transition:color 150ms ease-out}.ds-tab:hover{color:#d9ddd7}.ds-tab.ds-current{color:var(--text,#f0eee9)}.ds-current::after{position:absolute;right:0;bottom:-1px;left:0;height:2px;background:var(--accent,#86b8a9);content:\"\"}.ds-tab:focus-visible{outline:2px solid var(--accent,#86b8a9);outline-offset:3px}@media(max-width:760px){.ds-nav{gap:0;overflow-x:auto}.ds-tab{gap:5px;padding-inline:7px;font-size:11px}}@media(prefers-reduced-motion:reduce){.ds-tab{transition-duration:.01ms}}"
+    },
+    {
+      "name": "Panel operativo",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Contenedor tonal del gestor, sin sombra adicional.",
+      "html": "<section class=\"ds-panel\"><h2>Revisión de aplicación</h2><p>Perfil seleccionado · runtime privado</p></section>",
+      "css": ".ds-panel{padding:23px 25px 25px;border:1px solid var(--border,#292d2e);border-radius:7px;background:var(--surface,#151819);color:var(--text,#f0eee9);font-family:var(--font-ui,sans-serif)}.ds-panel h2{margin:0;font-size:1.12rem;font-weight:620;letter-spacing:-.02em}.ds-panel p{color:#aeb5ad;line-height:1.6}@media(max-width:760px){.ds-panel{padding:20px 16px}}"
+    },
+    {
+      "name": "Fila de mod",
+      "kind": "custom",
+      "description": "Selección de biblioteca con casilla nativa y metadatos.",
+      "html": "<label class=\"ds-mod\"><input type=\"checkbox\" /><span><strong>Mod propio</strong><small>12 archivos</small></span></label>",
+      "css": ".ds-mod{display:flex;align-items:center;gap:12px;min-height:64px;padding:10px 6px;border-radius:4px;color:var(--text,#f0eee9);font-family:var(--font-ui,sans-serif);cursor:pointer;overflow-wrap:anywhere}.ds-mod:hover{background:var(--soft-surface,#202526)}.ds-mod input{width:20px;height:20px;flex:0 0 20px;accent-color:#9dd7bf}.ds-mod input:focus-visible{outline:2px solid #9dd7bf;outline-offset:4px}.ds-mod strong{font-size:.9rem;font-weight:600}.ds-mod small{display:block;margin-top:5px;color:#a6bcb6;font-size:.78rem;font-variant-numeric:tabular-nums}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Workspace LXMI del prototipo autorizado",
+    "overview": "La autoridad es el prototipo existente elegido por el usuario. Este registro describe su traslado a la aplicación operativa: una herramienta oscura, sobria y compacta, con arte geométrico original y una jerarquía clara entre contenido, estado y acción. El nombre de referencia identifica esa continuidad; no introduce una nueva identidad.\n\nLas superficies neutras sostienen controles discretos y acentos salvia. El estado funcional aporta el contenido: instalación detectada, biblioteca, perfil y runtime. La apariencia no debe implicar una carga en juego que todavía no se verificó; véase [PRODUCT.md](PRODUCT.md).",
+    "keyCharacteristics": [
+      "Campo oscuro con capas tonales y bordes finos.",
+      "Sans compacta, titulares moderados y controles de escritorio.",
+      "Acento salvia para selección y estado; acción principal clara.",
+      "Arte SVG original existente como material de la identidad."
+    ],
+    "rules": [
+      {
+        "name": "The State Rule",
+        "body": "Un color de estado acompaña información verificable; no sustituye su etiqueta ni certifica carga en juego.",
+        "section": "colors"
+      },
+      {
+        "name": "The Continuity Rule",
+        "body": "Las extensiones conservan la composición y el material del prototipo autorizado; el reflujo adapta su lectura sin inventar otro shell.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** conservar los SVG originales y el mundo visual del prototipo autorizado.",
+      "**Do** distinguir selección, preparación privada y carga en juego mediante etiquetas visibles.",
+      "**Do** mantener foco visible, etiquetas accesibles y reducción de movimiento.",
+      "**Do** permitir que rutas, acciones y metadatos se ajusten en anchos estrechos."
+    ],
+    "donts": [
+      "**Don't** sustituir el shell o el arte por un concepto visual nuevo sin un cambio de dirección autorizado.",
+      "**Don't** convertir los rótulos diminutos heredados en el estándar de información esencial.",
+      "**Don't** usar únicamente color para comunicar selección, advertencia o error.",
+      "**Don't** presentar las capturas sintéticas como prueba de ejecución nativa o de mods cargados en juego."
+    ]
+  }
+}

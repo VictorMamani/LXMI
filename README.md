@@ -4,7 +4,10 @@
 
 ## Estado
 
-- **Etapa:** construcción; LXMI 0.8.7 verificó backup del prefix inactivo y restauración solo en sandbox LXMI. Prefix preflight EligibleForReview; restore real NotTested. No se inició 0.8.8; Proton selected Unknown, loader NoDecision y gate de juego cerrado.
+- **Primera versión funcional de ZZZ (2026-10-15):** el usuario confirmó que carga y funciona con **ZZZ — 12 mods (4 reparados)**. LXMI abre el juego desde Steam, prepara la carga oficial de XXMI en el contexto de HoYoPlay y el usuario pulsa Jugar. Incluye interfaz launcher, biblioteca, perfiles reversibles, ShaderFixes y herramienta de reparación de copias. Wuthering Waves y la estabilidad prolongada siguen pendientes de validación. **[Manual de uso](MANUAL_DE_USO.md)** · [Prueba confirmada](SDLC/06_Verificacion/prueba_manual_zzz_coleccion_reparada.md) · [ADR-032](SDLC/04_Arquitectura_y_seguridad/ADR/032_jugar_con_mods_hook_oficial.md).
+- **Pruebas de carga ZZZ previas (2026-10-15, historial):** con Inject, DLL comprobada, pero sin cambio visual y con terminación del proceso de la carga temprana; la ejecución posterior ya no tenía ZZMI. El diagnóstico gráfico propio completó inicialización/configuración con y sin los mods. Sigue pendiente aislar el cierre en el juego real. [Resultados y límites](SDLC/06_Verificacion/verificacion_primera_carga_zzz.md). El runner es opt-in y no habilita el lanzamiento con mods en la aplicación.
+- **Gestor local (2026-10-14):** biblioteca independiente para WuWa/ZZZ, importación de carpeta/ZIP, deduplicación e integridad SHA-256, perfiles persistentes y preparación de copias privadas. Verificado con IPC Tauri nativo real, reinicio y hashes. [Guía de uso y límites](SDLC/05_Construccion/gestor_mods_local.md). La aplicación reversible a runtimes privados WWMI/ZZMI está implementada. La selección sin recarga sigue pendiente. [Verificación de runtime y diseño](SDLC/06_Verificacion/verificacion_activacion_runtime.md). Este trabajo no cierra el experimento 0.8.8 ni cambia la versión 0.8.7.
+- **Etapa:** construcción; versión 0.8.7. El flujo de juego con mods usa el Hook oficial y el contexto Steam de HoYoPlay observado en cada inicio. La investigación histórica 0.8.8 de entrada y restauración de prefix conserva sus registros y límites; su estado no acredita restauración real ni compatibilidad con otros entornos. [Historial de observación](SDLC/06_Verificacion/evidencias/observacion_zzz_biblioteca_externa.json).
 - **Tipo de proyecto:** herramienta técnica de escritorio y posible proyecto de portafolio; no hay validación de demanda, modelo de ingresos ni rentabilidad confirmada.
 - **Base de trabajo:** idea aportada por el usuario. Las estructuras de Proton consultadas se contrastaron con fuentes de Valve; esto no valida compatibilidad del juego, mods, ni políticas aplicables.
 - **Código:** aplicación Tauri 2 con React/TypeScript y workspace Rust. Los escaneos de Steam/juegos/tools son de solo lectura; el import explícito solo escribe en almacenamiento XDG privado de LXMI.
@@ -64,15 +67,15 @@ LXMI-0.5 pasó los quality gates del workspace con 114 tests Rust (45 nuevos) y 
 
 ## Estado actual de investigación
 
-LXMI 0.8.2 quedó completado como evidencia de filesystem/configuración. LXMI 0.8.3 observó una ejecución manual concreta, pero no resolvió compatibilidad del loader, requisito same-prefix/same-wineserver ni compatibilidad ZZMI/ZZZ. No se habilitó ni implementó una ruta de lanzamiento.
+La carga oficial mediante Hook está integrada y comprobada en ZZZ con Steam y Proton en este equipo. La colección de 12 mods con cuatro copias reparadas cargó correctamente según los registros y la confirmación del usuario. Continúan abiertas la estabilidad prolongada, Wuthering Waves y la recarga sin reiniciar. Los experimentos anteriores de Direct Inject y de prefix permanecen documentados como antecedentes.
 
 ## Estado local de Git
 
-El repositorio efectivo es esta carpeta LXMI, rama `main`, remote `origin` en `git@github.com:VictorMamani/LXMI.git`. Los cambios previos 0.8.1/0.8.2 y el incremento 0.8.3 permanecen sin commit ni push.
+El repositorio efectivo es esta carpeta LXMI, rama `main`, remote `origin` en `git@github.com:VictorMamani/LXMI.git`. El historial conserva los incrementos de investigación y la primera versión funcional del launcher y gestor local.
 
 ## Criterio de honestidad
 
-Los nombres de tecnologías, juegos, runtimes, versiones y etapas que aparecen en estos documentos son una dirección inicial propuesta, no una declaración de compatibilidad comprobada. Los requisitos y roadmap podrán cambiar con los hallazgos.
+La compatibilidad comprobada corresponde a las sesiones y combinaciones documentadas. Los resultados de ZZZ en este equipo no se extrapolan a otros juegos, versiones o entornos. Los requisitos y roadmap podrán cambiar con los hallazgos.
 
 ## LXMI 0.8.4 — Context Lab
 

@@ -6,6 +6,9 @@ use std::os::fd::{AsRawFd, IntoRawFd};
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+mod experiments;
+pub use experiments::*;
+
 const MAX_ENTRIES: usize = 100_000;
 const MAX_BYTES: u64 = 32 * 1024 * 1024 * 1024;
 const MAX_FILE: u64 = 8 * 1024 * 1024 * 1024;
@@ -1408,6 +1411,12 @@ mod tests {
         });
         let result = RealPrefixEntryResult {
             schema: 1,
+            experiment_id: None,
+            font_state_before: None,
+            font_state_after: None,
+            qualified_registry_sections: vec![],
+            qualified_metadata_before: None,
+            qualified_metadata_after: None,
             session_nonce: nonce.clone(),
             result: RealPrefixEntryState::UnexpectedMutation,
             consent_accepted: true,

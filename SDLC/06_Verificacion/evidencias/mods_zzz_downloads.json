@@ -1,0 +1,157 @@
+{
+  "source_hashes": {
+    "censor_remover_v320.zip": "38fc5e87e06b7f2c7182b9f7f0876001c5e91d57fc46134a91204f4c8bcc971a",
+    "miyabixsuzukav2.rar": "26ee44a8c996affedb2dd7453e1e9aa3a72a213901e4955e99ef2c8f9b720ca3",
+    "hide_uid_89406.zip": "56b6c26b695d927d4bb8df5f2a284a2f1e6f4478ab8731da8ac3ad6d4641749d",
+    "v78.zip": "37f9874f7de39ee91585c047757496f98d1ecb59c868501ff7831a92a5f8af22",
+    "v78/RabbitFX/RabbitFX.ini": "18968a886ec5af95dd1baf0fc830bb5f5fb2cece50fd8b91f98facc430176da2",
+    "v78/RabbitFX/IgnoreList.ini": "96a3d443a0851ced6663bee4247503816176327eb023c44a2f11bd2b6b57da88",
+    "v78/RabbitFX/deltaTime.ini": "2c8acbe54849dbdfa4665b6c77590c518e8662c74a4a973aeb94f9b4be8f819c",
+    "v78/RabbitFX/README.txt": "bace2e05a3d01f01aab1695ebbe16a3a6bd5a3ca2a1d058283a39d76a10720f6",
+    "v78/RabbitFX/DISABLED/ShaderCacheSettings.ini": "814892cdaad44145a38a520a025ba63210df4854bbe49dc11517bd361ab4c086"
+  },
+  "originals_unchanged": true,
+  "rar_extraction": "unrar stdout only; bounded bytes and checked paths; no extraction paths passed to unrar",
+  "review": {
+    "Miyabi original": {
+      "files": 36,
+      "bytes": 126444703,
+      "ini_issues": {
+        "MiyabiMod/Miyabi Patches.ini": [
+          {
+            "line": 22,
+            "issue": "unmatched_endif"
+          },
+          {
+            "line": 27,
+            "issue": "unmatched_endif"
+          },
+          {
+            "line": 32,
+            "issue": "unmatched_endif"
+          },
+          {
+            "line": 37,
+            "issue": "unmatched_endif"
+          },
+          {
+            "line": 42,
+            "issue": "unmatched_endif"
+          },
+          {
+            "line": 47,
+            "issue": "unmatched_endif"
+          },
+          {
+            "line": 52,
+            "issue": "unmatched_endif"
+          }
+        ],
+        "MiyabiMod/Miyabi.ini": []
+      }
+    },
+    "Miyabi básico": {
+      "files": 36,
+      "bytes": 126444703,
+      "ini_issues": {
+        "Miyabi.ini": []
+      }
+    },
+    "censor_remover_v320.zip": {
+      "files": 39,
+      "ini_issues": {}
+    },
+    "hide_uid_89406.zip": {
+      "files": 1,
+      "ini_issues": {
+        "hide UID/UID/HideUID.ini": [
+          {
+            "line": 7,
+            "issue": "incomplete_comparison"
+          },
+          {
+            "line": 10,
+            "issue": "unclosed_if",
+            "balance": 2
+          }
+        ]
+      }
+    },
+    "v78.zip": {
+      "files": 5,
+      "ini_issues": {
+        "RabbitFX/deltaTime.ini": [],
+        "RabbitFX/DISABLED/ShaderCacheSettings.ini": [],
+        "RabbitFX/IgnoreList.ini": [],
+        "RabbitFX/RabbitFX.ini": []
+      }
+    }
+  },
+  "test_copy_adjustment": "Miyabi Patches.ini renamed to Miyabi Patches.ini.disabled only in test copy",
+  "game_executed": false,
+  "originals_unchanged_after_actual_import": true,
+  "installed_profile": {
+    "game_id": "zenless-zone-zero",
+    "plan": {
+      "file_count": 90,
+      "game_id": "zenless-zone-zero",
+      "importer_root": "/home/university/.local/share/lxmi/profile-runtimes/zenless-zone-zero/profile-07aa9e1e20970b42822f17b382e336bfc725be7b3e3750d20f726810bb5b7a80/ZZMI",
+      "mod_count": 2,
+      "plan_id": "65f3bc4dd588820f7173243e9bb901c11ddf4312dbabaf9c30c8660466670e4d",
+      "profile_name": "ZZZ — Miyabi y RabbitFX",
+      "profile_revision": 1,
+      "required_launch_arguments": [],
+      "runtime_id": "profile-07aa9e1e20970b42822f17b382e336bfc725be7b3e3750d20f726810bb5b7a80",
+      "selection_revision": 0,
+      "total_bytes": 135700453
+    },
+    "selection_before": {
+      "current": null,
+      "game_id": "zenless-zone-zero",
+      "previous": null,
+      "revision": 0,
+      "schema_version": 1
+    },
+    "selection_after": {
+      "current": {
+        "base_runtime_id": "zzmi-6dc676fdfc0d30f7e69de43b9123936e7750b0e58baadb384018815a2891f052",
+        "integration_package_id": "a4336db165e16c184012e0b6c9f72467aa7bdc50dcaa3d74dacb174e4fcfd606",
+        "libraries_package_id": "ee6c9955c3684d9c701a1edf2c3fec9806e117fece3a10ef1c5e97c0299a5954",
+        "mod_count": 2,
+        "profile_name": "ZZZ — Miyabi y RabbitFX",
+        "runtime_id": "profile-07aa9e1e20970b42822f17b382e336bfc725be7b3e3750d20f726810bb5b7a80"
+      },
+      "game_id": "zenless-zone-zero",
+      "previous": null,
+      "revision": 1,
+      "schema_version": 1
+    },
+    "game_executed": false,
+    "prefix_modified": false,
+    "originals_modified": false,
+    "ini_compatibility_verified": false
+  },
+  "installed_mods": [
+    {
+      "name": "Miyabi-basico",
+      "id": "aeda5ac1b9970e09becbc577fda35f91eb3d06a96635b08aca71d0ba8826514a",
+      "file_count": 36,
+      "total_bytes": 126444703
+    },
+    {
+      "name": "v78",
+      "id": "0aa3a10012232bdc02798c81e46e3028b164388eaf5d42031f1a459c92fa68b6",
+      "file_count": 5,
+      "total_bytes": 64233
+    }
+  ],
+  "resolved_runtime_id": "profile-07aa9e1e20970b42822f17b382e336bfc725be7b3e3750d20f726810bb5b7a80",
+  "library_root": "/home/university/.local/share/lxmi",
+  "independent_disk_check": {
+    "active_selection_matches_report": true,
+    "all_imported_payload_hashes": "PASS",
+    "all_derived_runtime_hashes": "PASS",
+    "base_preserved": true,
+    "derived_file_count": 90
+  }
+}

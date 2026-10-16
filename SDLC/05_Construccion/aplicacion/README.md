@@ -1,8 +1,16 @@
 # LXMI — aplicación
 
-**LXMI 0.8.6 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Una observación nativa de una ejecución manual de ZZZ identificó Proton Experimental para esa sesión, AppID `4162040`, compatdata coincidente y prefix observado. El mapping configurado por AppID no apareció en la fuente inspeccionada; el mapping global sigue separado. `GameRuntimePlan.selected` continúa `Unknown`, estrategia `NoDecision`, readiness `NeedsEvidence` y gate cerrado. Context Lab ejecuta solo peers propios con consentimiento, en prefixes privados de LXMI. No se inicia el juego ni se modifica Steam, ZZZ o su prefix. El observer sigue siendo read-only.
+**LXMI 0.8.7 — Tauri 2 + React/TypeScript + Rust.** El workspace contiene `lxmi-core`, `lxmi-steam`, `lxmi-proton`, `lxmi-runtime`, `lxmi-xxmi`, `lxmi-bridge`, `lxmi-bridge-protocol` y `tools/`. Una observación nativa de una ejecución manual de ZZZ identificó Proton Experimental para esa sesión, AppID `4162040`, compatdata coincidente y prefix observado. El mapping configurado por AppID no apareció en la fuente inspeccionada; el mapping global sigue separado. `GameRuntimePlan.selected` continúa `Unknown`, estrategia `NoDecision`, readiness `NeedsEvidence` y gate cerrado. Context Lab ejecuta solo peers propios con consentimiento, en prefixes privados de LXMI. El gate de carga con mods sigue cerrado. El nuevo botón «Jugar sin mods» solicita el lanzamiento normal mediante Steam; esta acción permite a Steam realizar su inicio habitual y no se ejecutó durante la verificación del gestor. El observer sigue siendo read-only.
 
 En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para discovery y planificación de solo lectura. El workspace añadió en 0.5 `lxmi-xxmi`. No usa SQLite ni escribe en Steam, juegos, compatibility tools o prefixes; el import explícito sí conserva paquetes bajo el storage privado de LXMI.
+
+## Jugar con mods (ZZZ)
+
+`crates/lxmi-launch` inicia Zenless Zone Zero con el perfil aplicado mediante el Hook oficial de XXMI: copia de arranque verificada en `$XDG_DATA_HOME/lxmi/launches/`, contexto Steam de HoYoPlay leído de procfs (AppID, compatdata, prefix, Proton y Steam Linux Runtime), helper `tools/lxmi-mod-loader/loader.c` dentro de ese contexto, lanzado mediante el servicio de Steam (`steam-runtime-launch-client --alongside-steam`) porque AppArmor de Ubuntu impide a una app sin perfil crear el contenedor del SLR, y retirada del hook en cuanto ZZMI está en el juego. `build.rs` compila el helper con `x86_64-w64-mingw32-gcc` y lo incrusta; sin MinGW la app compila y el botón queda deshabilitado. Comandos Tauri: `start_game_with_mods`, `game_with_mods_status`, `cancel_game_with_mods`. Prueba de humo sin procesos: `cargo run -p lxmi-desktop --example prepare_mod_launch`. [Manual de uso](../../../MANUAL_DE_USO.md) · [ADR-032](../../04_Arquitectura_y_seguridad/ADR/032_jugar_con_mods_hook_oficial.md).
+
+## Gestor local de mods y perfiles
+
+La interfaz sigue el prototipo existente: **Inicio**, **Mods**, **Perfiles** y **Compatibilidad**, con los diagnósticos anteriores accesibles. Permite importar carpetas/ZIP, guardar selecciones por juego y preparar copias privadas. **Compatibilidad** ensambla WWMI o ZZMI con XXMI Libraries autenticadas y permite revisar/aplicar/revertir un perfil mediante runtimes derivados inmutables. WuWa y ZZZ usan bibliotecas separadas. La selección todavía no acredita mods cargados dentro del juego ni permite cambios live. [Guía de uso, almacenamiento y límites](../gestor_mods_local.md) · [Verificación](../../06_Verificacion/verificacion_gestor_mods_local.md).
 
 ## Requisitos de desarrollo
 
@@ -10,6 +18,7 @@ En LXMI-0.1 a 0.4, la app usó **Tauri 2 + React + TypeScript + Rust** para disc
 - Rust stable mediante rustup, con rustfmt y clippy.
 - Node.js 22.13 o posterior y npm.
 - Una sesión de escritorio Linux para abrir la ventana de Tauri.
+- MinGW-w64 (`x86_64-w64-mingw32-gcc`) para incluir el cargador de «Jugar con mods»; sin él la app compila con esa función deshabilitada.
 
 No se necesitan credenciales, permisos root, Steam en ejecución, juegos instalados ni prefixes para compilar y probar el detector.
 
@@ -24,9 +33,12 @@ No se necesitan credenciales, permisos root, Steam en ejecución, juegos instala
 | crates/lxmi-proton/ | Discovery de compatibility tools Steam/custom; parser Valve KeyValues reutilizado; metadata, clasificación y versión |
 | crates/lxmi-runtime/ | Plan declarativo por juego; agrega observaciones de instalación, Proton candidates, compatdata/prefix, requirements, evidence, issues y readiness |
 | crates/lxmi-xxmi/ | Paquetes y provenance, import seguro, assembler de ZZMI + XXMI Libraries a XDG, configuración derivada, discovery de `dosdevices` y plan de topología sin executor |
+| crates/lxmi-launch/ | «Jugar con mods»: contexto Steam por procfs, copia de arranque, `[Loader]` y máquina de estados del Hook oficial |
 | crates/lxmi-bridge/ | Validación de helper/runtime, test-prefix aislado, proceso Proton explícito y bounded, handshake y path/hash result |
 | crates/lxmi-bridge-protocol/ | Request/response JSON versionado compartido por LXMI y helper |
 | tools/lxmi-bridge-helper/ | Helper Windows inocuo: inspecciona únicamente un marker JSON dentro del storage administrado de LXMI |
+| tools/mod-repair/ | `repair_mod.py`: copia reparada de un mod (secciones duplicadas, recursos ausentes, `.ini` rotos, texturas 8K→4K); requiere Pillow y etcpak |
+| tools/lxmi-mod-loader/ | Helper Windows de producción (`HookLibrary`/`UnhookLibrary`), compilado e incrustado por `build.rs` |
 | tools/lxmi-loader-lab/ | Código MinGW del runner, proceso test y DLL inofensiva; el `3dmloader.dll` upstream no se incluye ni redistribuye |
 
 ## Instalar dependencias y ejecutar

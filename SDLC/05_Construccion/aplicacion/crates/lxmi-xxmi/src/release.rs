@@ -17,6 +17,7 @@ use std::{
 };
 
 const ZZMI_REPOSITORY: &str = "leotorrez/ZZMI-Package";
+const WWMI_REPOSITORY: &str = "SpectrumQT/WWMI-Package";
 const LIBS_REPOSITORY: &str = "SpectrumQT/XXMI-Libs-Package";
 const MAX_METADATA_BYTES: u64 = 1024 * 1024;
 const MAX_REDIRECTS: usize = 5;
@@ -348,6 +349,7 @@ impl ReleaseProvider for GitHubReleaseProvider {
 
 pub fn repository(kind: &OfficialPackageKind) -> &'static str {
     match kind {
+        OfficialPackageKind::Wwmi => WWMI_REPOSITORY,
         OfficialPackageKind::Zzmi => ZZMI_REPOSITORY,
         OfficialPackageKind::XxmiLibraries => LIBS_REPOSITORY,
     }
@@ -358,6 +360,7 @@ pub fn expected_asset_name(kind: &OfficialPackageKind, tag: &str) -> Result<&'st
     // Only the currently recognized release asset patterns are accepted. The pattern itself is
     // checked against the upstream launcher source and never supplied by the renderer.
     match kind {
+        OfficialPackageKind::Wwmi => Ok("WWMI-PACKAGE"),
         OfficialPackageKind::Zzmi => Ok("ZZMI-PACKAGE"),
         OfficialPackageKind::XxmiLibraries => Ok("XXMI-PACKAGE"),
     }

@@ -1,0 +1,63 @@
+{
+  "recorded_local_date": "2026-10-15",
+  "scope": "explicit host-bound ZZZ mod-load experiment; separate from historical 0.8.8",
+  "game_id": "zenless-zone-zero",
+  "app_id": 4162040,
+  "session": "zzz-direct-a80848d957426dc899191f57495523dd",
+  "proton_version": "1791480010 experimental-11.0-20261008-x86_64",
+  "game_started_by": "user via Steam",
+  "entry_mode": "direct inject into already-running game",
+  "backup": {
+    "entries": 2402,
+    "regular_bytes": 415857746,
+    "content_links_modes_verified": true,
+    "real_restore_tested": false
+  },
+  "profile": "ZZZ — Miyabi y RabbitFX",
+  "mod_count": 2,
+  "selected_runtime_id": "profile-07aa9e1e20970b42822f17b382e336bfc725be7b3e3750d20f726810bb5b7a80",
+  "runtime_original_files_verified_unchanged": 90,
+  "loader_sha256": "44965ee51786db44fb4252671f356426ca7d879e6f7e8436b27d68e13237b0cf",
+  "helper_sha256": "80299b9328253172fa311cc5b2c3b04856abc3ff716275bd805cf6b3c4ac4f52",
+  "inject_calls": 1,
+  "inject_code": 0,
+  "helper_exit_code": 0,
+  "exact_module_present": true,
+  "visual_result": {
+    "state": "no_visible_change_reported",
+    "source": "user",
+    "character": "Miyabi"
+  },
+  "graphics_initialization_verified": false,
+  "d3d11_log_found_in_checked_locations": false,
+  "stderr_fontconfig_diagnostics": true,
+  "prefix_immediate_diff": {
+    "added": 0,
+    "removed": 0,
+    "changed": 2,
+    "kinds": [
+      "HoYoPlay astrolabe log",
+      "HoYoPlay telemetry log"
+    ],
+    "causality": "not attributed to helper; game and launcher active"
+  },
+  "production_launch_gate_enabled": false,
+  "historical_0_8_8_consent_used": false,
+  "automatic_restore": false,
+  "subsequent_experiment": {
+    "session": "zzz-direct-1234fb6a529fcacfeb211d3629d30b9e",
+    "mode": "arm helper before manual Steam start, new target only",
+    "state": "window_expired_during_steam_update",
+    "inject_calls": 0,
+    "helper_exit_code": 1,
+    "terminal_diagnostic": "exact_target_not_visible",
+    "steam_update_reported_by_user_gb": 2
+  },
+  "raw_environment_or_command_line_saved": false,
+  "sources": [
+    "https://github.com/SpectrumQT/XXMI-Launcher/blob/v2.2.1/src/xxmi_launcher/core/utils/dll_injector.py",
+    "https://github.com/SpectrumQT/XXMI-Libs-Package/blob/v1.1.7/DirectX11/DLLMainHook.cpp",
+    "https://github.com/SpectrumQT/XXMI-Libs-Package/blob/v1.1.7/DirectX11/D3D11Wrapper.cpp"
+  ],
+  "next_step": "After Steam update: closed-prefix backup, manual Steam start to HoYoPlay only, verify launcher context, arm helper, user presses Play."
+}

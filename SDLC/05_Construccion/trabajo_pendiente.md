@@ -1,5 +1,34 @@
 # Trabajo pendiente
 
+## Gestor local priorizado — 2026-10-14
+
+Línea autorizada por el usuario al elegir el gestor como prioridad. Independiente del experimento 0.8.8; no se cambia la versión 0.8.7 ni se ejecutan helpers.
+
+- [x] Biblioteca por juego WuWa/ZZZ con importación de carpeta y ZIP, inventarios SHA-256, deduplicación y preservación de originales.
+- [x] Perfiles persistentes, selección reversible dentro de la biblioteca, bloqueo entre procesos y revisión optimista.
+- [x] Preparar copias privadas inmutables; verificación antes de reutilizar, sin apply al runtime.
+- [x] Integración Tauri/React, búsqueda, estados vacíos/errores, recuperación de selección guardada y adaptación a ventana estrecha.
+- [x] 16 pruebas nuevas de archivos/perfiles/concurrencia; workspace 390 PASS / 12 ignored y validaciones frontend completas.
+- [x] Recorrido en navegador con IPC simulado y capturas de 1280/390 px; no se presenta como prueba nativa.
+- [x] Recorrer importación/perfiles/preparación mediante IPC nativo real en GTK/WebKit con mods sintéticos; reinicio, ZIP, separación de juegos, persistencia y hashes PASS. Harness reproducible sin pulsaciones del escritorio.
+- [x] Revisar la frontera de aplicación al runtime: propuesta de runtime derivado y selección reversible, sin alterar el base; registrar que WWMI todavía no tiene ensamblador privado equivalente.
+- [x] Aplicación reversible al runtime privado WWMI/ZZMI, revisión previa, CAS, undo/redo y resolución del runtime seleccionado; assembler WWMI y adquisición oficial autenticada implementados. UI trasladada al prototipo.
+- [x] Observar el inicio manual actual de ZZZ: proceso real/AppID verificados, Proton Experimental y compatdata/pfx en `/media/university/Steam/SteamLibrary`. La ausencia anterior era previa al inicio. Evidencia resumida en `observacion_zzz_biblioteca_externa.json`; no cambia la selección configurada.
+- [x] Primera llamada experimental a `Inject` contra ZZZ real: archivo del target identificado, retorno 0 y módulo exacto presente. Runtime original de 90 archivos conservado. El usuario no vio cambios en Miyabi; no se acredita funcionamiento gráfico. [Prueba 2026-10-15](../06_Verificacion/verificacion_primera_carga_zzz.md).
+- [x] Revisar el fallo con Inject sin abrir el juego: Player.log se corta tras crear el dispositivo; la secuencia del log Proton es compatible con una carrera de carga tardía, sin causa probada. Los crudos del control en `/tmp` se perdieron.
+- [x] Fixture de aislamiento del Hook oficial en prefixes LXMI: hook confinado al wineserver, procesos ajenos rechazan ZZMI, target envuelto antes del dispositivo, unhook limpio; orden `d3d11` antes de la ventana → `0xc0000135` deliberado. Overrides DXVK necesarios bajo `runinprefix`. [Resumen](../06_Verificacion/evidencias/aislamiento_hook_fixture_20261015.json).
+- [x] Modalidad `run --arm-before-game --hook` del runner ZZZ, compilada y con guardas; **no ejecutada contra ZZZ**.
+- [x] Sesión ZZZ consentida en modo Hook: ZZMI cargado antes del dispositivo, juego estable y **mods de Miyabi visibles en partida** (usuario). Control sin inyección repetido con las mismas opciones de registro. [Resumen](../06_Verificacion/evidencias/zzz_hook_mods_visibles_20261015.json).
+- [x] «Jugar con mods» integrado en la app para ZZZ: crate `lxmi-launch`, helper incrustado, copia de arranque verificada, UI con pasos, aviso y cancelación. [ADR-032](../04_Arquitectura_y_seguridad/ADR/032_jugar_con_mods_hook_oficial.md) · [Verificación](../06_Verificacion/verificacion_jugar_con_mods.md) · [Manual](../../MANUAL_DE_USO.md).
+- [ ] Primer inicio completo desde el botón de la app con el usuario.
+- [ ] Wuthering Waves: validar la carga de WWMI (upstream usa Direct Inject) antes de habilitarla.
+- [ ] Decidir versión (propuesta 0.9.0) y commits por bloque.
+- [ ] Decidir si se retiran las opciones de lanzamiento de diagnóstico de Steam (`PROTON_LOG=1 … %command%`), todavía activas para 4162040.
+- [x] (Resuelto por Hook, ver arriba.) Validar carga visible con contexto Proton y estrategia del loader; investigar entrada durante el arranque tras la actualización Steam. El prefix de la reserva histórica 0.8.8 pertenece a otra ubicación; no reutilizar su revisión ni consentimiento. Preparar un runtime o cargar una DLL no cierra ese gate.
+- [ ] Integrar cargador validado por juego; parser INI, grupos/conflictos y cambios live son posteriores.
+
+[Guía](gestor_mods_local.md) · [Verificación](../06_Verificacion/verificacion_gestor_mods_local.md). Las secciones siguientes conservan el historial de los incrementos anteriores.
+
 ## LXMI-0.1 a 0.5.3 — estado
 
 - [x] Workspace Tauri 2/React/TypeScript/Rust con `lxmi-core`, `lxmi-steam`, `lxmi-proton` y `lxmi-runtime`.
@@ -368,3 +397,16 @@ Las listas0.8.8.1–0.8.8.3 anteriores conservan el estado histórico de sus che
 - [ ] Cerrar/bump0.8.8 únicamente tras una entrada real nueva autorizada y exitosa. Permanece versión0.8.7; no0.8.9/0.9.
 
 Esta sección es el pendiente actual; las listas anteriores conservan sus checkpoints históricos. [Evidencia y propuesta concreta](../01_Descubrimiento/transicion_fuentes_backup_privado_0_8_8.md).
+
+## Nuevo experimento independiente autorizado — 2026-10-03
+
+- [x] Autorización explícita del usuario para UN experimento nuevo; la reserva anterior permanece histórica y consumida.
+- [x] Journal privado append-only por ID, slot único para esta autorización, bindings a backup actual/receta/baseline/nonce y consentimiento ID/token; no reset ni tercer experimento.
+- [x] UI separa ambos experimentos, consentimiento nuevo desmarcado; historial verificado no concede una capability de ejecución.
+- [x] Tests nuevos de reserva/consumo/concurrencia/seguridad y fonts; 374 PASS / 12 ignored, quality Rust/frontend PASS.
+- [x] Calificación de sesión `55aaaedf…`: dos helpers privados PASS, fonts estables y solo cuatro ContainerId estrechos por run; mismo recovery/receta.
+- [x] Nuevo experimento `6a3366ed9c4b456e82c3992a19c502af`, nonce/baselines nuevos, preflight EligibleForReview y ReadyForConsent en Tauri. Historia original intacta.
+- [ ] Consentimiento explícito nuevo por el usuario en Tauri y una única ejecución bajo política existente.
+- [ ] Cierre/versionado/commit de 0.8.8 únicamente si el resultado independiente pasa todos los gates; ante fallo preservar y consumir, sin retry/restore/tercer experimento.
+
+Este es el pendiente vigente. Versión 0.8.7; 0.8.9/0.9 no autorizados.

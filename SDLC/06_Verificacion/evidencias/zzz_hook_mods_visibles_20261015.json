@@ -1,0 +1,76 @@
+{
+  "recorded_local_date": "2026-10-15",
+  "scope": "First consented ZZZ session with the official 3dmloader Hook (global WH_CBT) installed before the game started",
+  "session": "zzz-direct-f8acde73c92b4a6559573efd2831c484",
+  "profile": "ZZZ — Miyabi y RabbitFX",
+  "mod_count": 2,
+  "libraries_version": "1.1.7",
+  "proton_version": "1791480010 experimental-11.0-20261008-x86_64",
+  "backup_entries": 2420,
+  "start_sequence": [
+    "prepare with ZZZ/HoYoPlay closed",
+    "user opened HoYoPlay through Steam",
+    "launcher context verified",
+    "helper armed hook (HookLibrary 0)",
+    "user pressed Play",
+    "ZZMI seen by exact path in the new ZZZ",
+    "UnhookLibrary 0",
+    "original process alive after 15 s"
+  ],
+  "helper_reports": [
+    {
+      "status": "hook_library_returned",
+      "code": 0
+    },
+    {
+      "status": "armed_hook_waiting_for_new_zzz",
+      "timeout_seconds": 300
+    },
+    {
+      "status": "unhook_library_returned",
+      "code": 0
+    },
+    {
+      "status": "hook_target_observed",
+      "windows_pid": 1868,
+      "creation_time": "134365596773182160",
+      "exact_module_present": 1,
+      "graphics_libraries_already_mapped": true,
+      "process_age_ms": 3210,
+      "visual_result": "pending_user"
+    },
+    {
+      "status": "original_game_alive_after_load",
+      "observation_ms": 15000
+    }
+  ],
+  "status": "module_loaded_health_window_passed_visual_pending",
+  "steam_game_context_verified_after_entry": true,
+  "zzmi_log": {
+    "bytes": 1955,
+    "error_lines": 0,
+    "config_reloads_logged": true,
+    "log_level": "warning"
+  },
+  "proton_log": {
+    "private_copy": "proton-log-snapshot.txt in the session",
+    "bytes": 1287884,
+    "sha256": "9cbfd513890e8b4b19a7e70cbb43e2acd06e8f64236b9b1fb8d880b051d579b0",
+    "contains_c0000005_c0000409_c0000135": false
+  },
+  "user_visual_result": {
+    "state": "mods_visible",
+    "character": "Miyabi",
+    "entered_gameplay": true,
+    "user_statement": "Miyabi tenia los mods aplicados, y todo funciona correctamente"
+  },
+  "inject_called": false,
+  "historical_0_8_8_consent_used": false,
+  "automatic_restore": false,
+  "conclusion": "Hook mode loads ZZMI early enough under Steam + Proton Experimental on this host: stable game, gameplay reached and mods visible. Late Direct Inject is not a viable strategy for ZZZ.",
+  "limitations": [
+    "One session, one host, one Proton build",
+    "Long-term stability and other mods not established",
+    "Policy/anti-cheat review remains the user's responsibility"
+  ]
+}

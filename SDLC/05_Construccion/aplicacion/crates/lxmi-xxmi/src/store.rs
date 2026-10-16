@@ -378,14 +378,14 @@ impl ManagedStore {
                     "XXMI Libraries requiere su asset Manifest.json separado.",
                 ));
             }
-            (OfficialPackageKind::Zzmi, Some(_)) => {
+            (OfficialPackageKind::Wwmi | OfficialPackageKind::Zzmi, Some(_)) => {
                 return Err(XxmiError::new(
                     ErrorCode::InvalidMetadata,
                     None,
-                    "ZZMI no declara un asset companion.",
+                    "El importer no declara un asset companion.",
                 ));
             }
-            (OfficialPackageKind::Zzmi, None) => None,
+            (OfficialPackageKind::Wwmi | OfficialPackageKind::Zzmi, None) => None,
         };
 
         let root = self.initialize()?;
@@ -408,6 +408,7 @@ impl ManagedStore {
             }
             let staged = inspect_package(&payload, self.limits)?;
             let expected_kind = match release.package_kind {
+                OfficialPackageKind::Wwmi => PackageKind::GameIntegration(IntegrationKind::Wwmi),
                 OfficialPackageKind::Zzmi => PackageKind::GameIntegration(IntegrationKind::Zzmi),
                 OfficialPackageKind::XxmiLibraries => PackageKind::XxmiLibraries,
             };

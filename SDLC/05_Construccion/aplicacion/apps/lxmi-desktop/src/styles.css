@@ -598,6 +598,171 @@ h3 {
 .xxmi-form button {
   justify-self: start;
 }
+
+.mod-game-picker {
+  max-width: 26rem;
+  margin-bottom: 18px;
+}
+
+.mod-library-toolbar,
+.mod-profile-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.mod-library-toolbar {
+  justify-content: space-between;
+}
+
+.mod-library-toolbar p {
+  margin: 0;
+}
+
+.mod-feedback {
+  margin: 14px 0 0;
+  color: #b9dccb;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.mod-feedback:empty {
+  display: none;
+}
+
+.mod-import-form {
+  padding-block: 24px;
+  border-block: 1px solid #2a393a;
+}
+
+.mod-import-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 16px;
+}
+
+.mod-import-fields > div {
+  display: grid;
+  gap: 8px;
+}
+
+.mod-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px;
+}
+
+.mod-filter,
+.mod-profile-form {
+  margin: 0;
+  align-content: start;
+}
+
+.mod-list {
+  max-height: 380px;
+  margin: 16px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  scrollbar-color: #526460 #101719;
+  list-style: none;
+}
+
+.mod-list li {
+  border-bottom: 1px solid #2a393a;
+}
+
+.mod-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 6px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.mod-row:hover {
+  background: #1b2b2b;
+}
+
+.mod-row input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  accent-color: #9dd7bf;
+}
+
+.mod-row input:focus-visible {
+  outline: 2px solid #9dd7bf;
+  outline-offset: 4px;
+}
+
+.mod-row strong {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.mod-file-count {
+  display: block;
+  margin-top: 5px;
+  color: #a6bcb6;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mod-empty {
+  margin: 20px 0;
+  color: #adbab7;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.mod-prepared {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #2a393a;
+}
+
+.mod-limits {
+  margin-top: 24px;
+  color: #adbab7;
+  font-size: 0.85rem;
+}
+
+.mod-limits summary {
+  cursor: pointer;
+}
+
+.mod-limits p {
+  margin-block: 12px 0;
+}
+
+.mod-manager ::selection {
+  background: #9dd7bf;
+  color: #101719;
+}
+
+.mod-manager input {
+  caret-color: #9dd7bf;
+}
+
+.mod-manager button:disabled,
+.mod-manager input:disabled {
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .mod-import-fields,
+  .mod-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mod-profile-form {
+    padding-top: 24px;
+    border-top: 1px solid #2a393a;
+  }
+}
 .xxmi-form .discovery-note {
   margin-top: 0;
   color: #adbab7;

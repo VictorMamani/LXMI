@@ -21,7 +21,9 @@ pub fn verify_release_signature(
     };
     let public_key = match kind {
         OfficialPackageKind::Zzmi => ZZMI_PUBLIC_KEY_DER_B64,
-        OfficialPackageKind::XxmiLibraries => LIBRARIES_PUBLIC_KEY_DER_B64,
+        OfficialPackageKind::Wwmi | OfficialPackageKind::XxmiLibraries => {
+            LIBRARIES_PUBLIC_KEY_DER_B64
+        }
     };
     verify_payload(public_key, signature, payload)
 }
@@ -53,7 +55,9 @@ pub fn verify_release_file(
     };
     let public_key = match kind {
         OfficialPackageKind::Zzmi => ZZMI_PUBLIC_KEY_DER_B64,
-        OfficialPackageKind::XxmiLibraries => LIBRARIES_PUBLIC_KEY_DER_B64,
+        OfficialPackageKind::Wwmi | OfficialPackageKind::XxmiLibraries => {
+            LIBRARIES_PUBLIC_KEY_DER_B64
+        }
     };
     verify_file(public_key, signature, path)
 }

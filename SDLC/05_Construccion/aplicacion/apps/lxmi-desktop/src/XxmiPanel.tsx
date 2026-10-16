@@ -117,7 +117,7 @@ type ManagedRuntime = {
   importer_root: string;
   manifest_path: string;
   loader_library_path: string;
-  zzmi_version: string | null;
+  integration_version: string | null;
   libraries_version: string | null;
   target_process: string;
   loader_process_identity: string;
@@ -132,9 +132,9 @@ type AssemblyPlan = {
   app_root: string;
   importer_root: string;
   import_path_from_app_root: string;
-  zzmi_package_id: string;
+  integration_package_id: string;
   libraries_package_id: string;
-  zzmi_version: string | null;
+  integration_version: string | null;
   libraries_version: string | null;
   target_process: string;
   loader_library_source: string;
@@ -356,7 +356,7 @@ type ZzzLaunchReadiness = {
   prefix_path: string | null;
   steam_process_context: SteamProtonProcessContextEvidence | null;
   managed_runtime_root: string | null;
-  zzmi_version: string | null;
+  integration_version: string | null;
   xxmi_libraries_version: string | null;
   upstream_default_loader_mode: string;
   upstream_loader_strategy: string;
@@ -833,7 +833,7 @@ export default function XxmiPanel() {
     if (gameId !== "zenless-zone-zero" || !selected || !libraries) return;
     if (
       !assemblyPlan ||
-      assemblyPlan.zzmi_package_id !== selected ||
+      assemblyPlan.integration_package_id !== selected ||
       assemblyPlan.libraries_package_id !== libraries
     ) {
       setError(
@@ -1118,7 +1118,7 @@ export default function XxmiPanel() {
     .sort((a, b) => b.imported_unix_seconds - a.imported_unix_seconds);
   const reviewedAssemblyMatchesSelection = Boolean(
     assemblyPlan &&
-    assemblyPlan.zzmi_package_id === selected &&
+    assemblyPlan.integration_package_id === selected &&
     assemblyPlan.libraries_package_id === libraries,
   );
   return (
@@ -1522,7 +1522,8 @@ export default function XxmiPanel() {
                 {managedRuntime.file_count} archivos
               </summary>
               <p>
-                ZZMI {managedRuntime.zzmi_version ?? "versión desconocida"} ·
+                ZZMI{" "}
+                {managedRuntime.integration_version ?? "versión desconocida"} ·
                 XXMI Libraries{" "}
                 {managedRuntime.libraries_version ?? "versión desconocida"}
               </p>
@@ -2635,8 +2636,8 @@ export default function XxmiPanel() {
                   {zzzReadiness.prefix}
                   <br />
                   Runtime administrado {zzzReadiness.managed_runtime}
-                  {zzzReadiness.zzmi_version &&
-                    ` · ZZMI ${zzzReadiness.zzmi_version}`}
+                  {zzzReadiness.integration_version &&
+                    ` · ZZMI ${zzzReadiness.integration_version}`}
                   {zzzReadiness.xxmi_libraries_version &&
                     ` · XXMI Libraries ${zzzReadiness.xxmi_libraries_version}`}
                 </p>

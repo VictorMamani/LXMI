@@ -1,5 +1,55 @@
 # Registro de cambios
 
+## Primera versión funcional de ZZZ confirmada — 2026-10-15
+
+El usuario confirmó la carga y funcionamiento de **ZZZ — 12 mods (4 reparados)** y pidió publicar el código. La selección incluye las copias reparadas de Remielle, Lucia Nurse, Sunna y Alice, con 1,46 GiB y 550 archivos en el runtime privado. El último arranque registró carga y retirada correctas del hook, ZZMI presente y juego vivo tras la observación; LXMI alcanzó `Running` con mods cargados. Se documentó la interfaz launcher, la gestión de perfiles y ShaderFixes y la herramienta de reparación. Workspace: 413 pruebas aprobadas, 13 ignoradas, formato y Clippy correctos; frontend: tipos, lint, formato y build correctos. Versión del producto conservada en 0.8.7. [Prueba manual](../06_Verificacion/prueba_manual_zzz_coleccion_reparada.md).
+
+## Interfaz estilo launcher y reparación de mods — 2026-10-15
+
+Nueva interfaz inspirada en XXMI Launcher: ilustraciones originales a pantalla completa por juego (no arte oficial), barra superior translúcida con selector de juego, título y estado abajo a la izquierda, y panel de inicio con perfil, contador de mods y un botón «Jugar con mods» grande en el color del juego; las demás pantallas usan el fondo difuminado. Frontend typecheck/lint/format/build PASS; revisión nativa GTK/WebKit con IPC real PASS (harness ahora independiente del perfil aplicado). Nueva herramienta `tools/mod-repair` (copia reparada: duplicadas, recursos ausentes, `.ini` rotos, texturas 8K→4K) basada en el comportamiento de 3DMigoto; Remielle pasa de 1,2 GB a 454 MB sin recursos ausentes, pendiente de probar en el juego. [Evidencia UI](../06_Verificacion/evidencias/interfaz_launcher_nativo_20261015.json) · [Evidencia mods](../06_Verificacion/evidencias/jugar_con_mods_boton_12_mods_20261015.json).
+
+## Primer inicio desde el botón «Jugar con mods» — 2026-10-15
+
+El botón cargó un perfil de 12 mods (543 archivos) y el usuario vio todos los mods en el juego. Después, el kernel cerró ZZZ por falta de memoria (15 GiB, GPU integrada, 2,5 GiB de mods). Las letras rojas son avisos de 3DMigoto; los `.ini` de cuatro mods nombran 18 archivos que sus paquetes no traen. No hubo pérdida de archivos en LXMI. Manual actualizado. [Evidencia](../06_Verificacion/evidencias/jugar_con_mods_boton_12_mods_20261015.json).
+
+## Corrección: «Jugar con mods» en Ubuntu con AppArmor — 2026-10-15
+
+El primer intento desde el botón abrió el juego sin mods: Ubuntu (`apparmor_restrict_unprivileged_userns`) impidió que la app, sin perfil AppArmor, creara el contenedor del Steam Linux Runtime (`bwrap: setting up uid map: Permission denied`), y el cargador no llegó a ejecutarse. Ahora se lanza mediante el servicio de Steam (`steam-runtime-launch-client --alongside-steam`); Cancelar termina el grupo anunciado por el comando y los fallos sin eventos muestran su causa. Prueba sin perfil en el prefix de fixture: `HookLibrary` 0, armado y cancelación limpia. 413 PASS / 13 ignored. [Evidencia](../06_Verificacion/evidencias/jugar_con_mods_apparmor_20261015.json).
+
+## «Jugar con mods» en ZZZ — 2026-10-15
+
+Primera carga correcta: con el Hook oficial instalado en el contexto de HoYoPlay antes de pulsar Jugar, ZZMI entró antes del dispositivo, el juego siguió estable y el usuario vio los mods de Miyabi en partida. Se integró en la aplicación: crate `lxmi-launch` (contexto procfs de Steam, copia de arranque verificada, máquina de estados), helper `tools/lxmi-mod-loader` compilado e incrustado por `build.rs`, comandos Tauri `start_game_with_mods`/`game_with_mods_status`/`cancel_game_with_mods` y tarjeta «Jugar con mods» con pasos, aviso y cancelación. Solo ZZZ; WuWa queda bloqueado. 409 PASS / 12 ignored, Clippy y frontend PASS; revisión nativa GTK/WebKit PASS. [ADR-032](../04_Arquitectura_y_seguridad/ADR/032_jugar_con_mods_hook_oficial.md) · [Verificación](../06_Verificacion/verificacion_jugar_con_mods.md) · [Manual](../../MANUAL_DE_USO.md). Versión 0.8.7 pendiente de decisión.
+
+## Aislamiento del Hook oficial y modalidad Hook para ZZZ — 2026-10-15
+
+Revisión de los logs privados del cierre con Inject: el juego cae justo después de crear el dispositivo y la secuencia es compatible con una carrera de carga tardía, sin causa probada. Nuevo fixture `hook_isolation.py`/`hook_fixture.c`: `HookLibrary` oficial con el runtime ZZMI seleccionado en dos prefixes Proton propiedad de LXMI. El hook quedó confinado a su wineserver, los procesos ajenos rechazaron ZZMI, el target recibió ZZMI antes del dispositivo (envuelto, Present OK) y `UnhookLibrary` detuvo nuevas cargas. Si `d3d11` se resuelve antes de la ventana, ZZMI sale con `0xc0000135`. `runinprefix` necesita los overrides DXVK explícitos. El runner ZZZ añade `--hook`; no se ejecutó contra el juego. Rust 393 PASS / 12 ignored, fmt y Clippy PASS. [Verificación](../06_Verificacion/verificacion_primera_carga_zzz.md). Versión 0.8.7; gate de producción cerrado.
+
+## Primera entrada del loader en ZZZ — 2026-10-15
+
+Runner opt-in separado de la aplicación y de la reserva histórica 0.8.8: backup del prefix externo con el juego cerrado, runtime de trabajo con dos mods, helper limitado al archivo exacto de ZZZ, Steam Runtime 4 y export oficial `Inject`. Una llamada devolvió 0 y se verificó el módulo por su ruta exacta; el usuario no vio cambios en Miyabi. Se conserva como carga de DLL comprobada con resultado visual negativo. Se preparó una espera de proceso nuevo para investigar la inicialización gráfica; Steam está actualizando el juego. [Evidencia](../06_Verificacion/verificacion_primera_carga_zzz.md). Versión 0.8.7; gate de producción cerrado.
+
+## Runtime reversible, assembler WWMI y diseño del prototipo — 2026-10-14
+
+Adquisición oficial WWMI autenticada, ensamblador compartido WWMI/ZZMI y copias derivadas con mods. Revisión vinculada a inventarios y revisiones, selección atómica, undo/redo y resolución verificada del runtime seleccionado. Se conserva el runtime base. Nuevo workspace basado en el prototipo local; diagnósticos anteriores disponibles. Botón explícito «Jugar sin mods» usa Steam; no se ha probado una ejecución real del juego en este incremento.
+
+Se incorporó el perfil real **ZZZ — Miyabi y RabbitFX** a la biblioteca habitual, conservando Downloads; los parches defectuosos se desactivaron únicamente en la copia de prueba. GTK/WebKit + IPC real confirmó restauración del perfil/paquetes y resolución del derivado de 90 archivos. Readiness actual detecta ZZZ en la biblioteca externa con compatdata/pfx ausentes; tampoco está el prefix histórico del home. [Evidencia ZZZ](../06_Verificacion/evidencias/mods_zzz_nativo.json).
+
+WWMI v1.1.0 + Libraries v1.2.2: descarga, firma y ensamblado reales, 32 archivos. GTK/WebKit + IPC Tauri real: preparar WWMI, revisar/aplicar, revertir y rehacer PASS. Workspace: 393 PASS / 12 ignored, fmt/check/Clippy y frontend completo PASS. La carga con mods y no-reload siguen pendientes; versión 0.8.7 y experimento 0.8.8 intactos. [Verificación](../06_Verificacion/verificacion_activacion_runtime.md). Las entradas siguientes conservan el estado histórico de cada checkpoint.
+
+## Continuación del gestor — IPC nativo y reinicio (2026-10-14)
+
+Se cerró la prueba pendiente con una aplicación GTK/WebKit real, eventos DOM limitados a su propia ventana y comandos Tauri compartidos con producción. Pasaron importación de carpeta/ZIP, deduplicación, error por ausencia de INI, guardado/recuperación de perfiles, separación por juego, persistencia al reiniciar y reutilización del snapshot. La inspección de disco verificó hashes y originales intactos. Se añadió un harness opt-in reproducible; no forma parte de los tests normales y no envía pulsaciones al escritorio. La automatización inicial de teclado se abandonó y no se incorporó.
+
+Se extrajo `desktop_builder()` para compartir el registro real de comandos con el ejemplo sin cambiar el comportamiento normal de la aplicación. Workspace 390 PASS / 12 ignored, fmt/check all-targets/Clippy all-targets y frontend completo PASS. Aplicación/reversión en runtime todavía no implementadas; [diseño revisable](../04_Arquitectura_y_seguridad/aplicacion_reversible_perfiles.md). WWMI aún necesita ensamblador privado. Sin Proton/Wine, loaders, juego o experimento de prefix. Versión 0.8.7.
+
+[Evidencia nativa](../06_Verificacion/evidencias/gestor_mods_nativo.json) · [Guía de reproducción](gestor_mods_local.md).
+
+## Gestor local de mods y perfiles — 2026-10-14
+
+Bibliotecas WuWa/ZZZ con importación de carpetas y ZIP, inventario e integridad, deduplicación por contenido, perfiles guardados con bloqueo/revisión y copias preparadas inmutables bajo XDG/LXMI. Panel React inicial integrado con comandos Tauri; no hay activación en el juego ni selección live. Se reutilizan helpers de filesystem/ZIP y las fronteras del store existente, sin dependencias nuevas.
+
+Verificados 16 tests nuevos, workspace 390 PASS / 12 ignored, fmt/check/Clippy, frontend typecheck/lint/format/build y recorrido Playwright con IPC simulado en 1280/390 px. IPC nativo de este panel pendiente. Versión 0.8.7 e historial de 0.8.8 conservados. [Guía](gestor_mods_local.md) · [Verificación](../06_Verificacion/verificacion_gestor_mods_local.md).
+
 Las entradas 0.1 y 0.2 registran el estado de verificación de esos incrementos en su momento; las validaciones posteriores se indican en la entrada 0.3 y en la guía vigente.
 
 ## LXMI-0.1 — primer incremento técnico (2026-09-27)
@@ -514,3 +564,10 @@ HOST TEST integrado: seed + dos runs medidos PASS, fonts estables, cambios conoc
 - Refresh de recuperación permitido solo tras reconciliación aceptada y verificación de la generación anterior; reutiliza si todavía cubre el source. Preserva/lista historia; prueba sintética de generaciones y tests de binding/refresh.
 - Tauri: nuevo backup `2b29b84bbc592fa091950bf046b3d668` Verified/restore Verified off-target; dos helpers privados PASS con fonts estables/solo cuatro ContainerId volátiles por run; Qualified y preflight EligibleForReview. Historial real consumido intacto, Review/Run disabled.
 - Quality365PASS/12ignored y frontend completo. Versión0.8.7; sin nueva entry/consentimiento real, restore, loader,0.8.9/0.9. Falta autorización de experimento independiente para superar el límite one-shot anterior y posteriormente consentimiento en Tauri.
+
+## 2026-10-03 — Experimento independiente autorizado (0.8.8 abierta)
+
+- Añade una única reserva nueva, ID/nonce/baseline independientes y journal append-only privado; conserva el intento fallido y sus artefactos originales. No reset, reutilización ni tercer experimento.
+- Review/consentimiento nativos vinculados al ID/token nuevo; backend vuelve a verificar receta/recovery/current source y consume antes del preflight de ejecución. Authorized/Running interrumpidos y estados terminales son irreutilizables.
+- Resultado nuevo conserva evidencia de fonts/registry/metadata; exige las tres tablas estables y las reglas estrechas ya calificadas. Historial valida bindings y recibo SHA, sin reactivar consentimiento.
+- 374 tests PASS / 12 ignored; Rust/frontend/diff PASS. Ejecución independiente todavía pendiente de calificación de sesión y consentimiento nuevo. Versión 0.8.7, sin cierre ni 0.8.9/0.9.
