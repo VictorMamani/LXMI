@@ -1,9 +1,0 @@
-{
-  "experiment_id": "6a3366ed9c4b456e82c3992a19c502af",
-  "reviewed_at": 1791057970,
-  "review_token_sha256": "af6f5b81d03d0b5b4c3663a2286c0f0ab52307196580230a1b49bbe971ec7659",
-  "source_baseline": {
-    "manifest_path": "/home/university/.local/share/lxmi/snapshots/zzz-prefix-f5128a9ee119ff6d6f9f8090f5828175.json",
-    "sha256": "6503cdb72a0c1715d498e179d0fef45ccf8b16c67c5035a9332bb8adfe1c9d75"
-  }
-}

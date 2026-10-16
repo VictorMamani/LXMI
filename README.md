@@ -1,96 +1,187 @@
-# Proyecto 19 — LXMI
+# LXMI — Linux Model Importer
 
-**LXMI** significa *Linux Model Importer & Live Mod Manager* (nombre de trabajo, según la propuesta inicial). Es un único proyecto para explorar una aplicación de escritorio Linux que ayude a preparar runtimes XXMI compatibles con Wine/Proton y administrar mods locales. El nombre, el alcance y la compatibilidad todavía son propuestas.
+Gestor de mods para **Zenless Zone Zero** y **Wuthering Waves** en Linux, inspirado en
+[XXMI Launcher](https://github.com/SpectrumQT/XXMI-Launcher). Organiza tus mods en una
+biblioteca privada, los agrupa en perfiles y abre el juego desde Steam con el perfil
+elegido usando la carga oficial de XXMI (ZZMI/WWMI), sin modificar la instalación del
+juego, Steam ni el prefix de Proton.
 
-## Estado
+![LXMI](.github/assets/lxmi-launcher.png)
 
-- **Primera versión funcional de ZZZ (2026-10-15):** el usuario confirmó que carga y funciona con **ZZZ — 12 mods (4 reparados)**. LXMI abre el juego desde Steam, prepara la carga oficial de XXMI en el contexto de HoYoPlay y el usuario pulsa Jugar. Incluye interfaz launcher, biblioteca, perfiles reversibles, ShaderFixes y herramienta de reparación de copias. Wuthering Waves y la estabilidad prolongada siguen pendientes de validación. **[Manual de uso](MANUAL_DE_USO.md)** · [Prueba confirmada](SDLC/06_Verificacion/prueba_manual_zzz_coleccion_reparada.md) · [ADR-032](SDLC/04_Arquitectura_y_seguridad/ADR/032_jugar_con_mods_hook_oficial.md).
-- **Pruebas de carga ZZZ previas (2026-10-15, historial):** con Inject, DLL comprobada, pero sin cambio visual y con terminación del proceso de la carga temprana; la ejecución posterior ya no tenía ZZMI. El diagnóstico gráfico propio completó inicialización/configuración con y sin los mods. Sigue pendiente aislar el cierre en el juego real. [Resultados y límites](SDLC/06_Verificacion/verificacion_primera_carga_zzz.md). El runner es opt-in y no habilita el lanzamiento con mods en la aplicación.
-- **Gestor local (2026-10-14):** biblioteca independiente para WuWa/ZZZ, importación de carpeta/ZIP, deduplicación e integridad SHA-256, perfiles persistentes y preparación de copias privadas. Verificado con IPC Tauri nativo real, reinicio y hashes. [Guía de uso y límites](SDLC/05_Construccion/gestor_mods_local.md). La aplicación reversible a runtimes privados WWMI/ZZMI está implementada. La selección sin recarga sigue pendiente. [Verificación de runtime y diseño](SDLC/06_Verificacion/verificacion_activacion_runtime.md). Este trabajo no cierra el experimento 0.8.8 ni cambia la versión 0.8.7.
-- **Etapa:** construcción; versión 0.8.7. El flujo de juego con mods usa el Hook oficial y el contexto Steam de HoYoPlay observado en cada inicio. La investigación histórica 0.8.8 de entrada y restauración de prefix conserva sus registros y límites; su estado no acredita restauración real ni compatibilidad con otros entornos. [Historial de observación](SDLC/06_Verificacion/evidencias/observacion_zzz_biblioteca_externa.json).
-- **Tipo de proyecto:** herramienta técnica de escritorio y posible proyecto de portafolio; no hay validación de demanda, modelo de ingresos ni rentabilidad confirmada.
-- **Base de trabajo:** idea aportada por el usuario. Las estructuras de Proton consultadas se contrastaron con fuentes de Valve; esto no valida compatibilidad del juego, mods, ni políticas aplicables.
-- **Código:** aplicación Tauri 2 con React/TypeScript y workspace Rust. Los escaneos de Steam/juegos/tools son de solo lectura; el import explícito solo escribe en almacenamiento XDG privado de LXMI.
+> **Estado: primera versión (0.8.7).** «Jugar con mods» está validado en ZZZ con Steam +
+> Proton Experimental. Wuthering Waves ya gestiona biblioteca y perfiles, pero su carga
+> en el juego todavía no está validada y el botón aparece deshabilitado.
 
-## Concepto
+## Qué hace
 
-LXMI se mantiene como un proyecto con dos subsistemas relacionados:
+| Función | Detalle |
+|---|---|
+| Biblioteca de mods | Importa carpetas o ZIP, guarda una copia privada con inventario SHA-256 y evita duplicados |
+| Perfiles | Selecciones de mods guardadas por juego; se aplican, revierten y rehacen sin borrar nada |
+| Paquetes oficiales | Descarga ZZMI/WWMI y XXMI Libraries de sus releases oficiales y verifica firma y hash |
+| Runtime privado | Ensambla el importador y el perfil en `~/.local/share/lxmi/`, nunca dentro del juego |
+| Jugar con mods (ZZZ) | Abre el juego desde Steam y carga ZZMI con el hook oficial de XXMI justo a tiempo |
+| Jugar sin mods | Pide a Steam el inicio normal (`steam -applaunch`) |
+| Diagnósticos | Detección de Steam, Proton, Steam Linux Runtime, compatdata y paquetes |
 
-1. **Integración de plataforma y runtimes:** detectar juegos y describir la preparación de compatibilidad con Wine/Proton; después ayudar a configurar XXMI/WWMI/ZZMI. Proton es infraestructura de plataforma, no el dominio principal del producto.
-2. **Mod Manager:** biblioteca local, instalación segura de archivos, activación/desactivación y perfiles. Más adelante se investigaría un administrador live y un puente IPC, sujeto a viabilidad técnica y permisos.
+## Cómo funciona «Jugar con mods»
 
-La posible separación en otro repositorio solo se evaluaría si en el futuro se modifica o mantiene un fork de código upstream. No forma parte del arranque.
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant L as LXMI
+    participant S as Steam / HoYoPlay
+    participant H as LXMI Loader.exe
+    participant G as ZZZ
+    U->>L: Jugar con mods
+    L->>L: Copia de arranque verificada del perfil
+    L->>S: steam -applaunch (si HoYoPlay no está abierto)
+    L->>S: Lee de /proc el AppID, prefix, Proton y Steam Linux Runtime de HoYoPlay
+    L->>H: Lo lanza en ese mismo contexto mediante el servicio de Steam
+    H->>H: HookLibrary de 3dmloader.dll (oficial)
+    L-->>U: «Listo: pulsa Jugar en HoYoPlay»
+    U->>S: Jugar
+    S->>G: Inicia el juego
+    G->>G: ZZMI se carga antes de crear el dispositivo D3D11
+    H->>H: UnhookLibrary y 15 s de vigilancia
+    L-->>U: En juego con los mods del perfil
+```
 
-## Incrementos de descubrimiento
+Puntos clave:
 
-LXMI-0.1 prepara una aplicación Tauri 2 con React/TypeScript y Rust, muestra información básica del sistema, localiza Steam y lista las bibliotecas de `libraryfolders.vdf`. LXMI-0.2 lee manifests `appmanifest_*.acf`, identifica juegos del catálogo y consulta `compatdata/<AppID>/pfx` de manera pasiva. LXMI-0.3 descubre herramientas de compatibilidad mediante metadata estructural. LXMI-0.4 construye un plan declarativo por juego, con requisitos, evidencia, candidatos disponibles, selección desconocida y readiness. Todos estos incrementos son de solo lectura.
+- **Copia de arranque.** Cada inicio usa una copia privada del perfil en
+  `~/.local/share/lxmi/launches/<juego>/<id>/` con `[Loader] loader = LXMI Loader.exe`.
+  3DMigoto solo se activa en el proceso del juego (`target`) y en el cargador.
+- **Mismo contexto que Steam.** El cargador se ejecuta con el Proton y el Steam Linux
+  Runtime que Steam eligió para HoYoPlay, en su wineserver. En Ubuntu,
+  `apparmor_restrict_unprivileged_userns` impide a una app sin perfil crear el contenedor
+  del runtime, así que LXMI lo pide al servicio de Steam
+  (`steam-runtime-launch-client --alongside-steam`).
+- **Carga mínima.** El hook se retira en cuanto ZZMI aparece en el juego, si no pulsas
+  Jugar en 5 minutos o al cancelar.
 
-El AppID `3513350` se verificó en la [página oficial de Wuthering Waves en Steam](https://store.steampowered.com/app/3513350/Wuthering_Waves/). El discovery de Proton sigue la estructura documentada por [Valve Proton](https://github.com/ValveSoftware/Proton) y su [plantilla de `compatibilitytool.vdf`](https://github.com/ValveSoftware/Proton/blob/proton_11.0/compatibilitytool.vdf.template). Detectar un manifest o una carpeta `pfx` no demuestra compatibilidad ni salud del prefix. Tener candidatos instalados tampoco demuestra cuál seleccionó Steam para Wuthering Waves. LXMI-0.4 no ejecuta procesos ni modifica configuraciones.
+## Requisitos
 
-LXMI-0.5 integra paquetes XXMI/WWMI bajo XDG; 0.5.1 agrega Zenless Zone Zero y ZZMI; 0.5.2 consulta/descarga releases oficiales y las autentica. LXMI-0.5.3 resuelve `App.Root/importer_path` como un runtime administrado por LXMI fuera del juego, ensambla ZZMI + XXMI Libraries y crea un plan de topología Linux/Windows. El dry-run 0.5.2 contra la carpeta candidata del ejecutable es una comparación histórica, no un destino autorizado. No se lanza ni inyecta nada, y no se modifica juego, Steam, compatdata o prefix. La selección Proton, helper y requisito de mismo prefix siguen desconocidos; Steam/Linux/Proton no están verificados. Fuentes: [adquisición oficial de paquetes 0.5.2](SDLC/01_Descubrimiento/adquisicion_paquetes_xxmi_0_5_2.md), [topología runtime XXMI Linux 0.5.3](SDLC/01_Descubrimiento/topologia_runtime_xxmi_linux.md), y los antecedentes de [XXMI/ZZMI](SDLC/01_Descubrimiento/ecosistema_xxmi_zzmi.md) y [XXMI/WWMI](SDLC/01_Descubrimiento/ecosistema_xxmi_wwmi.md).
+| Necesitas | Para qué |
+|---|---|
+| Linux con Steam nativo (no Flatpak) | Bibliotecas de Steam y `steam -applaunch` |
+| El juego instalado desde Steam y abierto una vez sin mods | Crea su `compatdata` |
+| Rust estable (`rust-toolchain.toml`) | Backend y Tauri |
+| Node.js 22 y npm | Frontend |
+| Dependencias de Tauri 2 para Linux (WebKitGTK 4.1, etc.) | Ventana nativa; ver la [guía de Tauri](https://tauri.app/start/prerequisites/) |
+| `x86_64-w64-mingw32-gcc` (`gcc-mingw-w64-x86-64`) | Compila `LXMI Loader.exe`. Sin MinGW la app compila, pero «Jugar con mods» queda deshabilitado |
 
-LXMI-0.6 agrega un helper Windows inocuo y un bridge de diagnóstico por stdin/stdout JSON, con Proton explícita y prefix aislado. MinGW enlazó el `.exe`; Proton Experimental ejecutó el helper, que devolvió el nonce, leyó el runtime marker mediante una ruta Windows y coincidió el hash. Un caso negativo devolvió JSON estructurado. La ventana Tauri nativa mostró los resultados. Esta prueba no carga XXMI ni demuestra compatibilidad de ZZZ/Steam/Linux/Proton; la selección de runtime del juego sigue desconocida. Ver [verificación del bridge 0.6](SDLC/06_Verificacion/verificacion_0_6.md).
+## Lanzar en desarrollo
 
-LXMI-0.7 añade un Loader Lab avanzado aislado: target y DLL propios para Windows, más el `3dmloader.dll` oficial verificado. En Proton Experimental explícito, la ruta Direct Inject cargó la DLL de prueba desde una ubicación separada y verificó marker/nonce; también pasaron los casos de baseline, target ausente, DLL ausente y nonce incorrecto. La interacción se recorrió en una ventana Tauri nativa. La ruta default Hook de ZZMI, `3dmloader.exe`, ZZZ, Steam y la compatibilidad Linux/Proton del juego no se probaron. Ver [investigación del loader](SDLC/01_Descubrimiento/loader_xxmi.md), [ADR-027](SDLC/04_Arquitectura_y_seguridad/ADR/027_xxmi_loader_strategy_for_lxmi.md) y [verificación 0.7](SDLC/06_Verificacion/verificacion_0_7.md).
+```bash
+git clone git@github.com:VictorMamani/LXMI.git
+cd LXMI/apps/lxmi-desktop
+npm install
+npm run tauri:dev
+```
 
-LXMI-0.8 evalúa readiness de manera declarativa y conserva un guard fail-closed para Hook porque su aislamiento a un proceso no está demostrado. LXMI-0.8.1 fija la lectura de XXMI Launcher v2.2.1: ZZMI hereda Hook como modo estándar; Custom Launch expone Hook, Inject y Bypass, y Direct Inject utiliza una ruta genérica de `3dmloader.dll`. La prueba 0.7 demuestra solo el mecanismo contra el fixture LXMI, no que ZZMI funcione con ZZZ en Steam Linux/Proton. No se estableció que ZZMI requiera exclusivamente Hook, pero eso tampoco demuestra que Direct Inject sea compatible. Por ello LXMI mantiene `LoaderStrategyDecision = NoDecision`, `GameRuntimePlan.selected = Unknown`, readiness `NeedsEvidence` y gate cerrado. Ver [investigación de estrategia](SDLC/01_Descubrimiento/estrategia_loader_zzmi_linux.md), [flujo Steam/Linux](SDLC/01_Descubrimiento/launch_zzmi_steam_linux.md), [ADR-027](SDLC/04_Arquitectura_y_seguridad/ADR/027_xxmi_loader_strategy_for_lxmi.md) y [verificación 0.8.1](SDLC/06_Verificacion/verificacion_0_8.md).
+`tauri:dev` arranca Vite en `http://127.0.0.1:1420` y la ventana nativa con recarga en
+caliente. Para generar el paquete de la aplicación: `npm run tauri build`.
 
-LXMI-0.8.2 lee de forma acotada y read-only `config/config.vdf`, e informa por separado mapping por AppID, default global, runtimes instalados y paths `compatdata/pfx` detectados. En la fuente local inspeccionada no se encontró mapping por AppID; eso no determina el runtime efectivo. El resultado de ese incremento está documentado en [evidencia de contexto Steam/Proton](SDLC/01_Descubrimiento/evidencia_contexto_steam_proton_0_8_2.md) y [verificación 0.8.2](SDLC/06_Verificacion/verificacion_0_8_2.md).
+## Uso rápido
 
-LXMI-0.8.3 añade observación efímera de procfs con consentimiento. En la validación manual desde Tauri, el observer detectó una ejecución Steam de ZZZ con Proton Experimental y prefix/compatdata coincidentes. Esta evidencia describe esa sesión; no actualiza la selección configurada, no demuestra compatibilidad ZZMI ni habilita lanzamiento. Ver [observación local](SDLC/01_Descubrimiento/observacion_runtime_zzz_steam_0_8_3.md) y [verificación 0.8.3](SDLC/06_Verificacion/verificacion_0_8_3.md).
+1. **Compatibilidad →** Consultar paquetes oficiales, descargar ZZMI y XXMI Libraries y
+   pulsar «Preparar runtime administrado».
+2. **Mods → Importar mod** con la ruta de una carpeta o ZIP de mod.
+3. **Perfiles →** marca mods y guarda el perfil.
+4. **Compatibilidad →** Revisar aplicación del perfil y Aplicar perfil al runtime.
+5. **Inicio → Jugar con mods.** Cuando aparezca «Listo: pulsa Jugar en HoYoPlay», pulsa
+   Jugar.
 
-## Documentos SDLC
+Para cambiar de mods: cierra el juego, aplica otro perfil y vuelve a pulsar «Jugar con
+mods». La recarga sin reiniciar todavía no existe.
 
-- [Fuentes e hipótesis](SDLC/01_Descubrimiento/fuentes_e_hipotesis.md)
-- [Product brief](SDLC/02_Planificacion/product_brief.md)
-- [Alcance MVP](SDLC/02_Planificacion/alcance_mvp.md)
-- [Requisitos funcionales](SDLC/02_Planificacion/requisitos_funcionales.md)
-- [Requisitos no funcionales](SDLC/02_Planificacion/requisitos_no_funcionales.md)
-- [Matriz inicial de riesgos](SDLC/02_Planificacion/matriz_de_riesgos.md)
-- [Flujos propuestos](SDLC/03_Diseno/flujos_de_usuario.md)
-- [Arquitectura conceptual](SDLC/04_Arquitectura_y_seguridad/arquitectura.md)
-- [Decisiones técnicas pendientes](SDLC/04_Arquitectura_y_seguridad/decisiones_tecnicas.md)
-- [Plan de trabajo de construcción](SDLC/05_Construccion/trabajo_pendiente.md)
-- [Estrategia de verificación](SDLC/06_Verificacion/estrategia_de_calidad.md)
+## Estructura del repositorio
 
-## Estado verificado
+| Ruta | Contenido |
+|---|---|
+| `apps/lxmi-desktop/src/` | Frontend React + TypeScript |
+| `apps/lxmi-desktop/src-tauri/` | Aplicación Tauri: comandos IPC, `build.rs` y ejemplos de prueba nativa |
+| `crates/lxmi-core` | Tipos compartidos: juegos, Steam y sistema |
+| `crates/lxmi-steam` | Detección de Steam: bibliotecas, manifests, compatdata y herramientas de compatibilidad |
+| `crates/lxmi-proton` | Descubrimiento de Proton y Steam Linux Runtime |
+| `crates/lxmi-runtime` | Planificación de runtime por juego |
+| `crates/lxmi-xxmi` | Paquetes XXMI, biblioteca de mods, perfiles, ensamblado y activación de runtimes |
+| `crates/lxmi-launch` | «Jugar con mods»: contexto Steam por procfs, copia de arranque y máquina de estados |
+| `crates/lxmi-bridge`, `crates/lxmi-bridge-protocol` | Puente con helpers Windows en prefixes de prueba propios de LXMI (diagnósticos) |
+| `tools/lxmi-mod-loader/` | `LXMI Loader.exe` (`HookLibrary`/`UnhookLibrary`); lo compila e incrusta `build.rs` |
+| `tools/lxmi-bridge-helper/`, `tools/lxmi-context-peers/`, `tools/lxmi-loader-lab/` | Helpers Windows de los diagnósticos |
 
-La validación host-only de 0.5.3 detectó ZZZ Steam/AppID `4162040`, encontró `ZenlessZoneZero.exe` y `compatdata/4162040/pfx`, e inspeccionó sus drive mappings sin escritura. Ensambló 49 archivos desde ZZMI v1.5.0 + XXMI Libraries v1.1.7 bajo `/home/university/.local/share/lxmi/runtimes/.../ZZMI`; la ruta quedó mapeada por `Z:`. La selección Proton permaneció `unknown`; no se ejecutó launcher, helper, Proton, Wine ni ZZZ. Capturas puntuales antes/después confirmaron que las rutas candidatas del juego y `dosdevices` no cambiaron. Detalles: [verificación 0.5.3](SDLC/06_Verificacion/verificacion_0_5_3.md).
+## Frontend (para trabajar la interfaz)
 
-LXMI-0.4 pasó `cargo fmt`, `cargo check`, Clippy con `-D warnings`, 69 tests Rust y typecheck/lint/format/build del frontend. `npm run tauri:dev` inició la ventana Tauri y ejecutó un escaneo local en modo de solo lectura.
+| Archivo | Qué es |
+|---|---|
+| `App.tsx` | Estructura y pantallas: Inicio, Mods, Perfiles, Compatibilidad, Configuración |
+| `components/Chrome.tsx` | Barra superior (`LauncherBar`), botones y piezas comunes |
+| `ModLaunchCard.tsx` | Botón «Jugar con mods», pasos del inicio, aviso y Cancelar |
+| `ModManagerPanel.tsx`, `RuntimePanel.tsx` | Biblioteca, perfiles, paquetes y aplicación de perfiles |
+| `DiagnosticsApp.tsx`, `XxmiPanel.tsx`, `*Panel.tsx` | Diagnósticos |
+| `gameCatalog.ts` | Juegos, importador y arte de cada uno |
+| `tokens.css` | Colores, tipografía y radios |
+| `launcher.css` | Estilo launcher: fondo a pantalla completa, barra superior y panel de inicio |
+| `styles.css`, `prototype.css`, `workspace.css` | Estilos base y de paneles |
+| `runtimeTypes.ts` | Tipos de las respuestas de los comandos Tauri |
+| `public/artwork/*.svg` | Ilustraciones originales de LXMI (no se usa arte oficial de los juegos) |
 
-En el scan real de LXMI-0.4 (2026-09-27) se encontró Wuthering Waves (AppID `3513350`) con directorio presente, compatdata/pfx ausentes, dos candidatos Proton (Experimental y Hotfix), tres Steam Linux Runtime, selección desconocida y readiness `NeedsInitialization`. Ese resultado es una observación histórica del host. El escaneo quedó completo; un symlink irrelevante `Steam.dll` fue omitido sin seguirlo y como observación informativa. No se encontró una herramienta custom.
+Toda la comunicación con el backend pasa por `invoke` de `@tauri-apps/api`. Los comandos
+están registrados en `apps/lxmi-desktop/src-tauri/src/lib.rs`; los principales son
+`list_mod_library`, `import_local_mod`, `save_mod_profile`, `inspect_game_mod_runtime`,
+`activate_mod_profile`, `start_game_with_mods`, `game_with_mods_status`,
+`cancel_game_with_mods` y `launch_game_without_mods`.
 
-La política `Expected` de Wuthering Waves expresa una expectativa de planificación, no una afirmación de compatibilidad. La selección sigue desconocida aunque exista un candidato único. Compatdata/pfx ausentes son estados válidos y no se crean. La completitud del juego no se infiere del directorio presente. No se ejecuta Steam, Proton, Wine ni el juego.
+`npm run dev` solo sirve el frontend: fuera de la ventana de Tauri las llamadas a
+`invoke` fallan. Para probar la interfaz con datos reales usa `npm run tauri:dev`.
 
-LXMI-0.5 pasó los quality gates del workspace con 114 tests Rust (45 nuevos) y las validaciones frontend. El validador se probó con fixtures sintéticos y directorios extraídos de releases oficiales WWMI v1.0.0 y XXMI Libraries v1.1.7 en `/tmp`. El import/plan de ejemplo no ejecutó binarios ni modificó el juego. La ventana Tauri v0.5 inició; la UI visual se inspeccionó, pero el flujo IPC de importación no se recorrió clic a clic en la ventana nativa. En un nuevo scan read-only (2026-09-28), el host no mostró Wuthering Waves en los manifests de la biblioteca detectada; las carpetas Proton vistas carecían de metadata/entrypoint suficientes para validar una herramienta, y el plan quedó `Blocked`. El estado puede cambiar con Steam. Ver [verificación 0.5](SDLC/06_Verificacion/verificacion_0_5.md).
+## Comprobaciones antes de subir cambios
 
-## Estado actual de investigación
+Desde la raíz:
 
-La carga oficial mediante Hook está integrada y comprobada en ZZZ con Steam y Proton en este equipo. La colección de 12 mods con cuatro copias reparadas cargó correctamente según los registros y la confirmación del usuario. Continúan abiertas la estabilidad prolongada, Wuthering Waves y la recarga sin reiniciar. Los experimentos anteriores de Direct Inject y de prefix permanecen documentados como antecedentes.
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
 
-## Estado local de Git
+Desde `apps/lxmi-desktop`:
 
-El repositorio efectivo es esta carpeta LXMI, rama `main`, remote `origin` en `git@github.com:VictorMamani/LXMI.git`. El historial conserva los incrementos de investigación y la primera versión funcional del launcher y gestor local.
+```bash
+npm run typecheck && npm run lint && npm run format:check && npm run build
+```
 
-## Criterio de honestidad
+Pruebas nativas opcionales (abren una ventana real y no lanzan juegos):
 
-La compatibilidad comprobada corresponde a las sesiones y combinaciones documentadas. Los resultados de ZZZ en este equipo no se extrapolan a otros juegos, versiones o entornos. Los requisitos y roadmap podrán cambiar con los hallazgos.
+- `tools/test-mod-manager-native.sh` (con `npm run dev` en marcha): biblioteca y perfiles
+  en un `XDG_DATA_HOME` temporal, sin tocar tus datos.
+- `LXMI_CONFIRM_NATIVE_PROFILE_REVIEW=YES cargo run -p lxmi-desktop --example selected_profile_native_review`:
+  revisa el perfil aplicado sin pulsar «Jugar con mods».
 
-## LXMI 0.8.4 — Context Lab
+## Dónde guarda LXMI los datos
 
-Advanced permite probar mismo prefix y prefixes distintos con Proton explícito y peers propios. No usa compatdata 4162040 ni loaders. La relación de evento, mappings, prefix y candidato wineserver se informa por separado; no se crea un launcher de juego. [Investigación y host evidence](SDLC/01_Descubrimiento/contexto_wine_proton_0_8_4.md) · [Verificación](SDLC/06_Verificacion/verificacion_0_8_4.md).
+Todo vive en `~/.local/share/lxmi/` (o `$XDG_DATA_HOME/lxmi/`):
 
-## LXMI 0.8.5 — Direct Inject target binding
+| Carpeta | Contenido |
+|---|---|
+| `mods/<juego>/` | Biblioteca de mods y perfiles |
+| `packages/` | Paquetes oficiales verificados |
+| `runtimes/`, `profile-runtimes/` | Runtime base y copias inmutables por perfil |
+| `launches/<juego>/<id>/` | Copia de cada inicio con mods; `helper.stdout.jsonl` registra los pasos del cargador |
 
-El Context Lab solo admite fixtures LXMI en prefixes privados. El target reporta su identidad; el runner consulta únicamente ese PID con PROCESS_QUERY_LIMITED_INFORMATION y compara ruta exacta y FILETIME antes de cargar el loader oficial. No PID/path/DLL arbitrarios.
+## Límites y aviso
 
-Same-prefix verificó identidad y marker + nonce tras Inject 0; cross-prefix no pudo resolver el target mediante query limitada (Win32 87) y bloqueó la operación de manera concluyente. Ambos leyeron filesystem, evidencia distinta de acceso al proceso. [Verificación](SDLC/06_Verificacion/verificacion_0_8_5.md). Ningún experimento de juego está autorizado.
+- Validado en una combinación: ZZZ de Steam, Proton Experimental, Steam Linux Runtime 4,
+  ZZMI y XXMI Libraries oficiales. Otras versiones pueden comportarse distinto.
+- LXMI no evita ni modifica los sistemas de protección de los juegos.
+- ZZZ y Wuthering Waves son juegos online. Usar mods puede infringir sus condiciones de
+  uso; el riesgo sobre tu cuenta es tuyo.
 
-## LXMI 0.8.6 — Existing Context Re-entry
+## Créditos
 
-Context Lab inicia el target propio primero y un helper independiente después. Same-prefix verificó evento y PID/image/creation/nonce; different-prefix no verificó el contexto aunque compartía filesystem. No DLLs copiadas/cargadas ni game prefix utilizado. Endpoint candidato y dev/inode no se confunden con wineserver PID. [Verificación](SDLC/06_Verificacion/verificacion_0_8_6.md).
-
-## LXMI 0.8.7 — Prefix Backup & Restore Qualification
-
-Backup completo del árbol pfx sin seguir symlinks, manifiesto SHA-256 y copia recuperable verificada. Restauración independiente VerifiedOffTarget, sin ejecutar Wine/Proton ni restaurar el prefix real. El gate de preflight alcanza EligibleForReview; consentimiento/ejecución de 0.8.8 siguen fuera de este incremento. Ver [preflight](SDLC/01_Descubrimiento/preflight_prefix_zzz_0_8_7.md) y [verificación](SDLC/06_Verificacion/verificacion_0_8_7.md).
+- [XXMI Launcher](https://github.com/SpectrumQT/XXMI-Launcher), ZZMI, WWMI y XXMI
+  Libraries de SpectrumQT y colaboradores: LXMI descarga y usa sus paquetes oficiales sin
+  redistribuirlos.
+- [3DMigoto](https://github.com/bo3b/3Dmigoto), base de los importadores XXMI.
