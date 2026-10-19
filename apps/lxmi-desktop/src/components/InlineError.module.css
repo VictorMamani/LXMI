@@ -1,0 +1,19 @@
+.error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-left: 2px solid var(--rf-danger);
+  background: #ff7a6b10;
+  color: var(--rf-text);
+  font-size: 12px;
+}
+
+.error svg {
+  flex: none;
+  color: var(--rf-danger);
+}
+
+.error p {
+  flex: 1;
+}

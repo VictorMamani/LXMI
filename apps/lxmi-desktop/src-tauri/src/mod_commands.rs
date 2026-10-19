@@ -11,7 +11,11 @@ fn library() -> Result<ModLibrary> {
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
     tauri::async_runtime::spawn_blocking(f).await.map_err(|_| {
-        XxmiError::new(ErrorCode::Io, None, "La operación de mods terminó inesperadamente. Actualiza la biblioteca antes de repetirla.")
+        XxmiError::new(
+            ErrorCode::Io,
+            None,
+            "The mod operation ended unexpectedly. Refresh the library before retrying.",
+        )
     })?
 }
 

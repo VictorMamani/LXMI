@@ -48,7 +48,7 @@ impl LaunchStatus {
             game_id: game_id.into(),
             profile_name,
             phase: LaunchPhase::Preparing,
-            message: "Preparando la copia de arranque del perfil…".into(),
+            message: "Preparing the profile launch copy…".into(),
             finished: false,
             mods_loaded: false,
             launch_dir: None,
@@ -108,30 +108,30 @@ impl Shared<'_> {
 fn failure_message(status: &str) -> String {
     match status {
         "existing_game_rejected" => {
-            "El juego ya estaba abierto antes de armar la carga. Ciérralo y vuelve a intentarlo."
+            "The game was already open before the hook was armed. Close it and try again."
                 .into()
         }
         "game_not_started" => {
-            "No se pulsó Jugar en HoYoPlay en 5 minutos. La carga se retiró; no se cambió nada."
+            "Play was not pressed in HoYoPlay within 5 minutes. The hook was removed; nothing was changed."
                 .into()
         }
         "ambiguous_target" => {
-            "Hay más de un proceso del juego. Ciérralos y vuelve a intentarlo.".into()
+            "More than one game process is running. Close them and try again.".into()
         }
         "game_executable_not_visible" => {
-            "Proton no ve el ejecutable del juego desde el prefix.".into()
+            "Proton cannot see the game executable from the prefix.".into()
         }
         "loader_load_failed" | "hook_exports_missing" => {
-            "No se pudo cargar 3dmloader.dll de XXMI Libraries.".into()
+            "Could not load 3dmloader.dll from XXMI Libraries.".into()
         }
-        other => format!("El cargador terminó con «{other}»."),
+        other => format!("The loader exited with '{other}'."),
     }
 }
 
 fn exit_message(hex: &str) -> String {
     match hex {
-        "0xc0000135" => "El juego se cerró al cargar los mods (0xc0000135): ZZMI detectó un dispositivo D3D11 creado antes de su carga. Vuelve a intentarlo pulsando Jugar en cuanto LXMI lo indique.".into(),
-        _ => format!("El juego se cerró durante los primeros 15 segundos con los mods cargados ({hex}). Revisa los mods del perfil o prueba «Jugar sin mods»."),
+        "0xc0000135" => "The game exited while loading mods (0xc0000135): ZZMI detected a D3D11 device created before it loaded. Try again and press Play as soon as LXMI prompts you.".into(),
+        _ => format!("The game exited within the first 15 seconds after mods loaded ({hex}). Review the profile mods or try 'Play without mods'."),
     }
 }
 
@@ -146,7 +146,7 @@ pub fn run_launch(
     match host.game_running() {
         Ok(false) => {}
         Ok(true) => {
-            return fail("El juego ya está abierto. Ciérralo para iniciarlo con mods.".into())
+            return fail("The game is already running. Close it to start with mods.".into())
         }
         Err(e) => return fail(e),
     }
@@ -158,25 +158,30 @@ pub fn run_launch(
         Err(e) => return fail(e),
         Ok(Some(found)) => found,
         Ok(None) => {
-            shared.set(LaunchPhase::OpeningLauncher, "Abriendo el juego en Steam…");
+            shared.set(LaunchPhase::OpeningLauncher, "Opening the game in Steam…");
             if let Err(e) = host.request_steam_launch() {
                 return fail(e);
             }
             shared.set(
                 LaunchPhase::WaitingForLauncher,
-                "Esperando a que Steam abra el launcher. No pulses Jugar todavía.",
+                "Waiting for Steam to open the launcher. Do not press Play yet.",
             );
             let started = Instant::now();
             loop {
                 if cancel.load(Ordering::SeqCst) {
-                    return shared.set(LaunchPhase::Cancelled, "Cancelado antes de cargar nada.");
+                    return shared.set(
+                        LaunchPhase::Cancelled,
+                        "Cancelled before anything was loaded.",
+                    );
                 }
                 match host.find_launcher() {
                     Ok(Some(found)) => break found,
                     Ok(None) if started.elapsed() < LAUNCHER_WAIT => {
                         host.pause(Duration::from_secs(1))
                     }
-                    Ok(None) => return fail("Steam no abrió el launcher en 3 minutos.".into()),
+                    Ok(None) => {
+                        return fail("Steam did not open the launcher within 3 minutes.".into())
+                    }
                     Err(e) => return fail(e),
                 }
             }
@@ -186,17 +191,20 @@ pub fn run_launch(
         Ok(false) => {}
         Ok(true) => {
             return fail(
-                "El juego se abrió antes de armar la carga. Ciérralo y vuelve a intentarlo.".into(),
+                "The game opened before the hook was armed. Close it and try again.".into(),
             )
         }
         Err(e) => return fail(e),
     }
     if cancel.load(Ordering::SeqCst) {
-        return shared.set(LaunchPhase::Cancelled, "Cancelado antes de cargar nada.");
+        return shared.set(
+            LaunchPhase::Cancelled,
+            "Cancelled before anything was loaded.",
+        );
     }
     shared.set(
         LaunchPhase::Arming,
-        "Preparando la carga de mods en el contexto de Steam…",
+        "Preparing mod loading in the Steam context…",
     );
     let mut helper = match host.spawn_helper(&launcher) {
         Ok(helper) => helper,
@@ -209,13 +217,13 @@ pub fn run_launch(
             helper.terminate();
             shared.set(
                 LaunchPhase::Cancelled,
-                "Cancelado. La carga se retiró con el cargador.",
+                "Cancelled. The loader removed the hook.",
             );
             break;
         }
         if started.elapsed() > HELPER_WAIT {
             helper.terminate();
-            fail("El cargador no respondió a tiempo y se detuvo.".into());
+            fail("The loader timed out and was stopped.".into());
             break;
         }
         let line = match helper.read_line(Duration::from_millis(500)) {
@@ -225,9 +233,9 @@ pub fn run_launch(
                 let _ = helper.wait();
                 fail(match helper.exit_detail() {
                     Some(detail) => {
-                        format!("El cargador terminó sin informar un resultado: {detail}")
+                        format!("The loader exited without reporting a result: {detail}")
                     }
-                    None => "El cargador terminó sin informar un resultado.".into(),
+                    None => "The loader exited without reporting a result.".into(),
                 });
                 break;
             }
@@ -244,13 +252,13 @@ pub fn run_launch(
             HelperEvent::HookInstalled { code: 0 } | HelperEvent::Unhooked { .. } => {}
             HelperEvent::HookInstalled { code } => {
                 fail(format!(
-                    "No se pudo instalar la carga de XXMI (HookLibrary {code})."
+                    "Could not install the XXMI hook (HookLibrary {code})."
                 ));
                 terminal = true;
             }
             HelperEvent::Armed { .. } => shared.set(
                 LaunchPhase::WaitingForPlay,
-                "Listo: pulsa Jugar en HoYoPlay ahora (tienes 5 minutos).",
+                "Ready: press Play in HoYoPlay now (you have 5 minutes).",
             ),
             HelperEvent::GameObserved {
                 mods_module_present: true,
@@ -259,20 +267,20 @@ pub fn run_launch(
                 shared.update(|s| s.mods_loaded = true);
                 shared.set(
                     LaunchPhase::CheckingStability,
-                    "Mods cargados. Comprobando que el juego sigue abierto…",
+                    "Mods loaded. Checking that the game stays open…",
                 );
             }
             HelperEvent::GameObserved {
                 mods_module_present: false,
                 ..
             } => {
-                fail("El juego arrancó, pero los mods no se cargaron en 30 segundos. Ciérralo y vuelve a intentarlo.".into());
+                fail("The game started, but mods did not load within 30 seconds. Close it and try again.".into());
                 terminal = true;
             }
             HelperEvent::GameAlive { .. } => {
                 shared.set(
                     LaunchPhase::Running,
-                    "Juego en marcha con los mods del perfil.",
+                    "The game is running with the profile mods.",
                 );
                 terminal = true;
             }
@@ -444,7 +452,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        assert!(run(&mut host, false).message.contains("5 minutos"));
+        assert!(run(&mut host, false).message.contains("5 minutes"));
         let mut host = FakeHost {
             lines: vec![r#"{"status":"hook_library_returned","code":300}"#],
             ..Default::default()
@@ -454,7 +462,7 @@ mod tests {
             lines: vec![SUCCESS[0]],
             ..Default::default()
         };
-        assert!(run(&mut host, false).message.contains("sin informar"));
+        assert!(run(&mut host, false).message.contains("without reporting"));
     }
 
     #[test]

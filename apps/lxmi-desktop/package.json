@@ -4,17 +4,22 @@
   "version": "0.8.7",
   "type": "module",
   "scripts": {
+    "test": "node --import ./tests/register-typescript.mjs tests/profile-workflows.test.mjs",
     "dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format:check": "prettier --check index.html src vite.config.ts tsconfig.json eslint.config.js package.json src-tauri/tauri.conf.json src-tauri/capabilities/default.json",
+    "format:check": "prettier --check index.html src tests vite.config.ts tsconfig.json eslint.config.js package.json src-tauri/tauri.conf.json src-tauri/capabilities/default.json src-tauri/examples/ui_native_smoke.js",
     "tauri": "tauri",
     "tauri:dev": "tauri dev"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/share-tech-mono": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
     "@tauri-apps/api": "^2.12.0",
+    "lucide-react": "^1.59.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

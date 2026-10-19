@@ -49,7 +49,7 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'sta
         XxmiError::new(
             ErrorCode::Io,
             None,
-            format!("La operación terminó inesperadamente: {e}"),
+            format!("The operation ended unexpectedly: {e}"),
         )
     })?
 }
@@ -61,7 +61,7 @@ async fn blocking_bridge<T: Send + 'static>(
         .await
         .map_err(|error| BridgeServiceError {
             code: "bridge_task_failed".into(),
-            detail: format!("La tarea del bridge terminó inesperadamente: {error}"),
+            detail: format!("The bridge task ended unexpectedly: {error}"),
             stderr: None,
         })?
 }

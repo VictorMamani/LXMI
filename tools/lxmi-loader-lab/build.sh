@@ -6,7 +6,7 @@ out="$app_root/target/x86_64-pc-windows-gnu/release/lxmi-loader-lab"
 cc="${MINGW_CC:-x86_64-w64-mingw32-gcc}"
 
 if ! command -v "$cc" >/dev/null 2>&1; then
-  printf 'No se encontró el compilador MinGW: %s\n' "$cc" >&2
+  printf 'MinGW compiler not found: %s\n' "$cc" >&2
   exit 1
 fi
 

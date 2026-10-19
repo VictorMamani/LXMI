@@ -116,13 +116,13 @@ struct Matches {
 
 fn matching_processes(proc_root: &Path, uid: u32, query: &ProcessQuery) -> Result<Matches, String> {
     let executable = canonical(&query.executable)
-        .ok_or_else(|| format!("No se encontró {}.", query.executable.display()))?;
+        .ok_or_else(|| format!("{} was not found.", query.executable.display()))?;
     let compat = canonical(&query.compat_data).ok_or_else(|| {
-        "No existe el compatdata del juego. Ábrelo una vez desde Steam sin mods.".to_string()
+        "The game compatdata does not exist. Open it once from Steam without mods.".to_string()
     })?;
     let prefix = compat.join("pfx");
     let comm_prefix = query.comm_prefix();
-    let entries = fs::read_dir(proc_root).map_err(|e| format!("No se pudo leer procfs: {e}"))?;
+    let entries = fs::read_dir(proc_root).map_err(|e| format!("Could not read procfs: {e}"))?;
     let mut matches = Vec::new();
     for entry in entries.flatten() {
         let Ok(pid) = entry.file_name().to_string_lossy().parse::<u32>() else {
@@ -181,14 +181,14 @@ pub fn find_steam_process(
         1 => matches.remove(0),
         n => {
             return Err(format!(
-                "Hay {n} procesos de {comm_prefix}; cierra los duplicados."
+                "There are {n} processes matching {comm_prefix}; close the duplicates."
             ))
         }
     };
     let env = read_environment(&dir);
     let app = query.app_id.to_string();
     if env.get("SteamAppId") != Some(&app) && env.get("SteamGameId") != Some(&app) {
-        return Err("El proceso no fue iniciado por Steam para este juego.".into());
+        return Err("The process was not started by Steam for this game.".into());
     }
     let same = |key: &str, expected: &Path| {
         env.get(key)
@@ -196,18 +196,18 @@ pub fn find_steam_process(
             .is_some_and(|p| p == expected)
     };
     if !same("STEAM_COMPAT_DATA_PATH", &compat) || !same("WINEPREFIX", &prefix) {
-        return Err("El proceso usa otro compatdata o prefix.".into());
+        return Err("The process uses different compatdata or a different prefix.".into());
     }
     let (proton_dir, runtime_dir) = env
         .get("STEAM_COMPAT_TOOL_PATHS")
         .and_then(|paths| tool_dirs(paths))
         .ok_or_else(|| {
-            "No se identificaron Proton y Steam Linux Runtime en el contexto de Steam.".to_string()
+            "Proton and Steam Linux Runtime were not identified in the Steam context.".to_string()
         })?;
     let start_ticks = fs::read_to_string(dir.join("stat"))
         .ok()
         .and_then(|s| start_ticks(&s))
-        .ok_or_else(|| "El proceso terminó durante la comprobación.".to_string())?;
+        .ok_or_else(|| "The process exited during the check.".to_string())?;
     Ok(Some(SteamProcessContext {
         pid,
         start_ticks,
@@ -358,7 +358,7 @@ mod tests {
         );
         assert!(find_steam_process(&w.proc, uid(), &w.query)
             .unwrap_err()
-            .contains("2 procesos"));
+            .contains("2 processes"));
     }
 
     #[test]

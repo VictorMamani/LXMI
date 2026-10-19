@@ -390,7 +390,7 @@ fn stage_loader_lab_verified(
         test_id: "loader-v1".into(),
         build_target: "x86_64-pc-windows-gnu".into(),
         component_license: LoaderComponentLicenseState::VerifiedExecutableOnly,
-        component_license_evidence: "3dmloader.dll procede del paquete oficial verificado XXMI Libraries; fuente 3Dmigoto publicada bajo GPLv3. LXMI permite ejecución local de esta prueba y no redistribuye el binario upstream.".into(),
+        component_license_evidence: "3dmloader.dll comes from the verified official XXMI Libraries package; the 3Dmigoto source is published under GPLv3. LXMI permits local execution of this test and does not redistribute the upstream binary.".into(),
         upstream: artifacts.provenance,
         upstream_loader_sha256: artifacts.upstream_loader_sha256,
         runner_sha256: artifacts.runner_sha256,
@@ -480,13 +480,13 @@ pub fn run_loader_experiment(
     if config.mode == LoaderExperimentMode::Hook {
         return Err(BridgeError::new(
             BridgeErrorCode::HookScopeNotIsolated,
-            "Hook de XXMI bloqueado: 3dmloader instala un Windows hook global y la DLL puede mapearse en otros procesos antes de aplicar [Loader]target. El laboratorio LXMI exige limitar toda carga al proceso de prueba propio.",
+            "XXMI Hook blocked: 3dmloader installs a global Windows hook and the DLL may be mapped into other processes before [Loader]target is applied. The LXMI laboratory requires all loading to stay within its own test process.",
         ));
     }
     if !config.side_effects_acknowledged {
         return Err(BridgeError::new(
             BridgeErrorCode::UserAcknowledgementRequired,
-            "La prueba requiere aceptar que Proton escriba únicamente en el prefix aislado loader-v1 de LXMI.",
+            "The test requires consent for Proton to write only to the isolated LXMI loader-v1 prefix.",
         ));
     }
     let root = canonical_managed_root(&config.managed_root)?;
@@ -495,7 +495,7 @@ pub fn run_loader_experiment(
         return Err(BridgeError::new(
             BridgeErrorCode::LoaderArtifactsMissing,
             format!(
-                "Loader Lab no está preparado: {}",
+                "Loader Lab is not prepared: {}",
                 status.missing_or_invalid.join("; ")
             ),
         ));
@@ -512,7 +512,7 @@ pub fn run_loader_experiment(
     {
         return Err(BridgeError::new(
             BridgeErrorCode::LoaderProvenanceInvalid,
-            "El 3dmloader.dll staged ya no coincide con el paquete oficial que acaba de verificarse.",
+            "The staged 3dmloader.dll no longer matches the official package that was just verified.",
         ));
     }
     let expected_nonce = random_nonce()?;
@@ -542,7 +542,7 @@ pub fn run_loader_experiment(
     if !actual_loader_sha256.eq_ignore_ascii_case(&config.verified_loader_sha256) {
         return Err(BridgeError::new(
             BridgeErrorCode::LoaderProvenanceInvalid,
-            "3dmloader.dll no coincide con los bytes del package store revalidado.",
+            "3dmloader.dll does not match the revalidated package store bytes.",
         ));
     }
 
@@ -816,10 +816,10 @@ pub fn run_loader_experiment(
         dosdevices,
         capabilities,
         warnings: vec![
-            "La prueba llama el export Direct Inject upstream solo con el PID del hijo creado en esta ejecución; no busca ni abre otros procesos.".into(),
-            "La ruta Hook ZZMI instala un hook global y no forma parte de este test.".into(),
-            "Esto no verifica ZZMI, ZZZ, Steam, mods ni compatibilidad del juego bajo Linux/Proton.".into(),
-            "Proton puede escribir y mantener únicamente test-prefixes/loader-v1; no se usa compatdata del juego.".into(),
+            "The test calls the upstream Direct Inject export only with the PID of the child created in this execution; it does not search for or open other processes.".into(),
+            "The ZZMI Hook path installs a global hook and is not part of this test.".into(),
+            "This does not verify ZZMI, ZZZ, Steam, mods, or game compatibility under Linux/Proton.".into(),
+            "Proton may write to and maintain only test-prefixes/loader-v1; game compatdata is not used.".into(),
         ],
     })
 }

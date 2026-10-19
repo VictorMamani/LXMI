@@ -1,0 +1,99 @@
+.screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  overflow: hidden;
+  color: var(--home-paper);
+}
+
+.top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: max(25px, calc(var(--titlebar-height) + 8px)) 27px 0 23px;
+}
+
+.top > nav {
+  margin-top: 18px;
+}
+
+.settings {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid #e7eee51c;
+  border-radius: 14px;
+  background: #11191bc9;
+  color: #e7ece8;
+  transition: border-color 120ms;
+}
+
+.settings:hover {
+  border-color: #e7eee550;
+}
+
+.bottom {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 0 27px 38px 80px;
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-bottom: 52px;
+}
+
+.channel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 2.5px;
+  color: #e4e8e9cc;
+  white-space: pre;
+}
+
+.channelMark {
+  width: 14px;
+  height: 2px;
+  background: var(--rf-cyan);
+}
+
+.title {
+  margin: 14px 0 22px -4px;
+  font-family: var(--font-title);
+  font-size: clamp(44px, 5.3vw, 72px);
+  font-weight: 700;
+  letter-spacing: -2px;
+  line-height: 1.05;
+  color: var(--home-paper);
+  animation: rise 500ms var(--ease-out);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.meta {
+  max-width: 960px;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  color: #e4e8e966;
+  min-height: 16px;
+}

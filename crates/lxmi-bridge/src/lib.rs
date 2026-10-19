@@ -1045,13 +1045,18 @@ fn run_helper_bridge(
     info!("Runtime bridge test completed");
 
     let mut warnings = vec![
-        "Este runtime fue seleccionado solo para la prueba; GameRuntimePlan.selected permanece Unknown.".into(),
-        "El nonce correlaciona request/response y no autentica al helper.".into(),
-        if real.is_some() { "Harmless helper only: real ZZZ prefix may receive normal Wine metadata writes; game/loader not executed.".into() } else { "Proton crea o actualiza el prefix exclusivo de LXMI. Nunca se utiliza compatdata de ZZZ.".into() },
+        "This runtime was selected only for the test; GameRuntimePlan.selected remains Unknown."
+            .into(),
+        "The nonce correlates requests and responses; it does not authenticate the helper.".into(),
+        if real.is_some() {
+            "Harmless helper only: real ZZZ prefix may receive normal Wine metadata writes; game/loader not executed.".into()
+        } else {
+            "Proton creates or updates the LXMI-only prefix. ZZZ compatdata is never used.".into()
+        },
     ];
     if !stderr.trim().is_empty() {
         warnings.push(
-            "Proton/helper escribieron diagnósticos en stderr; están disponibles en el resultado."
+            "Proton or the helper wrote diagnostics to stderr; they are available in the result."
                 .into(),
         );
     }

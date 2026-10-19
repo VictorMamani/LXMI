@@ -14,18 +14,18 @@ pub(crate) fn map_zzmi_installation(
         return Err(XxmiError::new(
             ErrorCode::WrongGameIntegration,
             None,
-            "El mapeo objetivo de 0.5.2 requiere un paquete ZZMI.",
+            "The 0.5.2 target mapping requires a ZZMI package.",
         ));
     }
     if libraries.is_some_and(|package| package.manifest.kind != PackageKind::XxmiLibraries) {
         return Err(XxmiError::new(
             ErrorCode::InvalidPackage,
             None,
-            "Se esperaba el paquete separado XXMI Libraries.",
+            "The separate XXMI Libraries package was expected.",
         ));
     }
 
-    let root_basis = "XXMI Launcher ModelImporterConfig.importer_path; es configurable y separado de game_folder";
+    let root_basis = "XXMI Launcher ModelImporterConfig.importer_path; configurable and separate from game_folder";
     let mut mappings = Vec::new();
     for file in &integration.manifest.files {
         validate_relative_path(&file.relative_path)?;
@@ -59,7 +59,7 @@ pub(crate) fn map_zzmi_installation(
     // The executable-directory comparison performed by 0.5.2 is historical only.
     // The active importer root is now assembled under LXMI-managed XDG storage.
     let comparison_root_candidate: Option<std::path::PathBuf> = None;
-    let comparison_root_evidence = "Comparación de 0.5.2 contra la carpeta del ejecutable: antecedente histórico solamente, no target aprobado ni usado. El importer root activo de LXMI 0.5.3 queda bajo XDG/lxmi/runtimes/zenless-zone-zero/zzmi/<runtime-id>/ZZMI.".to_owned();
+    let comparison_root_evidence = "Version 0.5.2 comparison against the executable directory: historical context only, not an approved or used target. The active LXMI 0.5.3 importer root is under XDG/lxmi/runtimes/zenless-zone-zero/zzmi/<runtime-id>/ZZMI.".to_owned();
 
     let mut dry_run_files = Vec::with_capacity(mappings.len());
     for mapping in &mappings {
@@ -70,7 +70,7 @@ pub(crate) fn map_zzmi_installation(
                 XxmiError::new(
                     ErrorCode::InvalidPackage,
                     None,
-                    "No está disponible el paquete origen del mapeo.",
+                    "The source package for the mapping is unavailable.",
                 )
             })?
         };
@@ -87,7 +87,7 @@ pub(crate) fn map_zzmi_installation(
                 XxmiError::new(
                     ErrorCode::InvalidPackage,
                     Some(source.clone()),
-                    "El archivo de mapeo no está en el inventario validado.",
+                    "The mapping file is not in the validated inventory.",
                 )
             })?;
         dry_run_files.push(DryRunFile {
@@ -126,13 +126,13 @@ fn inspect_candidate(
         Ok(None) => (
             DryRunStatus::WouldCreate,
             None,
-            "El archivo no existe en la carpeta candidata; todavía no es un target aprobado."
+            "The file does not exist in the candidate directory; it is not yet an approved target."
                 .into(),
         ),
         Err(error) if missing(&error) => (
             DryRunStatus::WouldCreate,
             None,
-            "Falta el archivo o un subdirectorio en la carpeta candidata.".into(),
+            "The file or a subdirectory is missing from the candidate directory.".into(),
         ),
         Err(error) if error.code == ErrorCode::PermissionDenied => {
             (DryRunStatus::PermissionIssue, None, error.detail)
@@ -144,7 +144,7 @@ fn inspect_candidate(
         Ok(Some(metadata)) if metadata.is_dir() => (
             DryRunStatus::Conflict,
             None,
-            "La ruta candidata existe como directorio.".into(),
+            "The candidate path exists as a directory.".into(),
         ),
         Ok(Some(_)) => match crate::package::hash_file(
             directory,
@@ -154,12 +154,12 @@ fn inspect_candidate(
             Ok((_, current)) if current == expected => (
                 DryRunStatus::AlreadyMatches,
                 Some(current),
-                "El hash del archivo candidato coincide; no se modificó.".into(),
+                "The candidate file hash matches; it was not modified.".into(),
             ),
             Ok((_, current)) => (
                 DryRunStatus::WouldReplace,
                 Some(current),
-                "El hash del archivo candidato difiere; un apply requeriría backup y revisión."
+                "The candidate file hash differs; applying would require a backup and review."
                     .into(),
             ),
             Err(error) if error.code == ErrorCode::PermissionDenied => {

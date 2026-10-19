@@ -1,4 +1,4 @@
-//! «Jugar con mods»: one launch at a time through `lxmi-launch`. Paths, AppID and the
+//! «Play with mods»: one launch at a time through `lxmi-launch`. Paths, AppID and the
 //! runtime are derived here from discovery and the saved selection, never the webview.
 use lxmi_core::{GameExecutableStatus, GameInstallationStatus};
 use lxmi_launch::{run_launch, LaunchStatus, ModLaunchTarget, SteamModLaunchHost};
@@ -33,19 +33,19 @@ fn error(message: impl Into<String>) -> XxmiError {
     XxmiError::new(ErrorCode::Busy, None, message)
 }
 
-/// Reasons «Jugar con mods» cannot start; empty when it can.
+/// Reasons «Play with mods» cannot start; empty when it can.
 pub(crate) fn launch_blockers(game_id: &str, selection: &ActiveProfileSelection) -> Vec<String> {
     let mut blockers = Vec::new();
     if game_id != SUPPORTED_GAME {
-        blockers.push("La carga de mods en este juego todavía no se ha validado con Steam + Proton. Por ahora solo Zenless Zone Zero.".into());
+        blockers.push("Mod loading for this game has not been validated with Steam + Proton. Only Zenless Zone Zero is currently supported.".into());
     }
     if HELPER.is_none() {
         blockers.push(
-            "Esta compilación no incluye el cargador de Windows (falta MinGW al compilar).".into(),
+            "This build does not include the Windows loader (MinGW was unavailable during compilation).".into(),
         );
     }
     if selection.current.is_none() {
-        blockers.push("Aplica un perfil de mods antes de jugar con mods.".into());
+        blockers.push("Apply a mod profile before playing with mods.".into());
     }
     blockers
 }
@@ -60,12 +60,12 @@ fn target(discovery: &SteamDiscoveryResult, game_id: &str) -> Result<ModLaunchTa
                 && g.installation.status == GameInstallationStatus::Installed
                 && g.installation.executable_status == GameExecutableStatus::Found
         })
-        .ok_or_else(|| error("No se encontró una instalación lista en Steam."))?;
+        .ok_or_else(|| error("No ready Steam installation was found."))?;
     let game_executable = game
         .installation
         .executable_path
         .clone()
-        .ok_or_else(|| error("No se encontró el ejecutable del juego."))?;
+        .ok_or_else(|| error("The game executable was not found."))?;
     let steam_root = discovery
         .steam
         .installations
@@ -73,7 +73,7 @@ fn target(discovery: &SteamDiscoveryResult, game_id: &str) -> Result<ModLaunchTa
         .find(|i| i.libraries.iter().any(|l| l.path == game.steam_library))
         .or(discovery.steam.installations.first())
         .map(|i| i.root_path.clone())
-        .ok_or_else(|| error("No se encontró Steam."))?;
+        .ok_or_else(|| error("Steam was not found."))?;
     Ok(ModLaunchTarget {
         game_id: game_id.into(),
         steam_app_id: game.steam_app_id,
@@ -92,7 +92,7 @@ fn selected_runtime(
     let selection = profile_activation_status(store, game_id)?;
     let current = selection
         .current
-        .ok_or_else(|| error("Aplica un perfil de mods antes de jugar con mods."))?;
+        .ok_or_else(|| error("Apply a mod profile before playing with mods."))?;
     let platform = crate::xxmi_service::platform_plan(discovery, game_id)?;
     let base = existing_importer_runtime(
         store,
@@ -102,7 +102,9 @@ fn selected_runtime(
         &crate::xxmi_service::protected_paths(discovery),
     )?
     .ok_or_else(|| {
-        error("Falta el runtime base del perfil. Prepara el runtime y vuelve a aplicar el perfil.")
+        error(
+            "The profile base runtime is missing. Prepare the runtime and apply the profile again.",
+        )
     })?;
     Ok((resolve_profile_runtime(store, &base)?, current.profile_name))
 }
@@ -112,7 +114,7 @@ pub(crate) fn prepare_copy(game_id: &str) -> Result<lxmi_launch::PreparedLaunch>
     let discovery = SteamDiscoveryScanner::from_environment().scan();
     let store = crate::xxmi_service::store_for(&discovery)?;
     let (runtime, _) = selected_runtime(&discovery, &store, game_id)?;
-    let helper = HELPER.ok_or_else(|| error("Cargador no incluido."))?;
+    let helper = HELPER.ok_or_else(|| error("Loader not included."))?;
     lxmi_launch::prepare_launch_directory(&store, &runtime, helper).map_err(error)
 }
 
@@ -130,7 +132,7 @@ pub async fn start_game_with_mods(
                 .unwrap_or_else(|e| e.into_inner())
                 .finished
             {
-                return Err(error("Ya hay un inicio con mods en curso."));
+                return Err(error("A launch with mods is already in progress."));
             }
         }
     }
@@ -144,7 +146,7 @@ pub async fn start_game_with_mods(
         }
         let (runtime, profile) = selected_runtime(&discovery, &store, &id)?;
         let helper = HELPER
-            .ok_or_else(|| error("Cargador no incluido."))?
+            .ok_or_else(|| error("Loader not included."))?
             .to_vec();
         Ok((
             SteamModLaunchHost::new(target(&discovery, &id)?, store, runtime, helper),
@@ -152,7 +154,7 @@ pub async fn start_game_with_mods(
         ))
     })
     .await
-    .map_err(|_| error("La preparación terminó inesperadamente."))??;
+    .map_err(|_| error("Preparation ended unexpectedly."))??;
 
     let status = Arc::new(Mutex::new(LaunchStatus::new(&game_id, Some(profile))));
     let cancel = Arc::new(AtomicBool::new(false));

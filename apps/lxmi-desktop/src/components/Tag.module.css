@@ -1,0 +1,13 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background: var(--rf-rust);
+  color: var(--rf-bg);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  line-height: 12px;
+  white-space: nowrap;
+  text-transform: uppercase;
+}

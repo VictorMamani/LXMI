@@ -1,0 +1,26 @@
+.json {
+  border: 1px solid var(--rf-faint);
+  border-radius: var(--radius);
+  background: var(--rf-surface);
+}
+
+.json summary {
+  padding: 8px 12px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--rf-muted);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.json pre {
+  max-height: 320px;
+  margin: 0;
+  padding: 0 12px 12px;
+  overflow: auto;
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--rf-text);
+}

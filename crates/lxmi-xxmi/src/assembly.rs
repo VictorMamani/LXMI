@@ -43,7 +43,7 @@ fn spec_for(game: &str) -> Result<AssemblySpec> {
         _ => Err(XxmiError::new(
             ErrorCode::UnsupportedIntegration,
             None,
-            "No hay ensamblador para este juego.",
+            "No assembler exists for this game.",
         )),
     }
 }
@@ -171,7 +171,7 @@ fn require_zzz(platform: &GameRuntimePlan) -> Result<()> {
         return Err(XxmiError::new(
             ErrorCode::WrongGameIntegration,
             None,
-            "Esta operación requiere Zenless Zone Zero.",
+            "This operation requires Zenless Zone Zero.",
         ));
     }
     Ok(())
@@ -247,7 +247,7 @@ pub fn assemble_importer_runtime(
             XxmiError::new(
                 ErrorCode::ChecksumMismatch,
                 Some(plan.app_root.clone()),
-                "Ya existe un runtime con el mismo ID, pero su manifest o contenido no coincide.",
+                "A runtime with the same ID already exists, but its manifest or content differs.",
             )
         });
     }
@@ -273,7 +273,7 @@ pub fn assemble_importer_runtime(
                 return Err(XxmiError::new(
                     ErrorCode::ChecksumMismatch,
                     Some(pending_file.file.source_relative_path.clone().into()),
-                    "El paquete fuente cambió después de calcular el plan.",
+                    "The source package changed after the plan was calculated.",
                 ));
             }
             importer.write_new(&pending_file.file.destination_relative_path, &bytes)?;
@@ -283,7 +283,9 @@ pub fn assemble_importer_runtime(
 
         let created_unix_seconds = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|_| XxmiError::new(ErrorCode::Io, None, "Reloj anterior a Unix epoch."))?
+            .map_err(|_| {
+                XxmiError::new(ErrorCode::Io, None, "The clock is before the Unix epoch.")
+            })?
             .as_secs();
         let manifest = RuntimeManifest {
             schema_version: 1,
@@ -320,7 +322,7 @@ pub fn assemble_importer_runtime(
             XxmiError::new(
                 ErrorCode::ChecksumMismatch,
                 Some(plan.app_root.clone()),
-                "El runtime promovido no superó su verificación posterior.",
+                "The promoted runtime failed its subsequent verification.",
             )
         })?;
         result.newly_created = true;
@@ -372,7 +374,7 @@ fn build_plan(
         _ => return Err(XxmiError::new(
             ErrorCode::InvalidPackage,
             None,
-            "Se necesita el juego detectado desde Steam, directorio presente y ejecutable reconocido.",
+            "The game must be detected through Steam, its directory must exist, and its executable must be recognized.",
         )),
     };
     // WWMI attaches to the payload process, never the bootstrap executable.
@@ -390,7 +392,7 @@ fn build_plan(
             XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(executable.clone()),
-                "Nombre de ejecutable no válido.",
+                "Invalid executable name.",
             )
         })?
         .to_owned();
@@ -402,14 +404,14 @@ fn build_plan(
         return Err(XxmiError::new(
             ErrorCode::WrongGameIntegration,
             Some(executable.clone()),
-            "El ejecutable observado no está en el registro de este juego.",
+            "The observed executable is not in the registry for this game.",
         ));
     }
     let executable_parent = executable.parent().ok_or_else(|| {
         XxmiError::new(
             ErrorCode::UnsafePath,
             Some(executable.clone()),
-            "Ejecutable sin carpeta padre.",
+            "The executable has no parent directory.",
         )
     })?;
     let executable_directory = Directory::open_absolute(executable_parent)?;
@@ -419,14 +421,14 @@ fn build_plan(
             XxmiError::new(
                 ErrorCode::NotFound,
                 Some(executable.clone()),
-                "El ejecutable detectado ya no existe.",
+                "The detected executable no longer exists.",
             )
         })?;
     if !executable_metadata.is_file() {
         return Err(XxmiError::new(
             ErrorCode::UnsafePath,
             Some(executable.clone()),
-            "El target no es un archivo regular.",
+            "The target is not a regular file.",
         ));
     }
 
@@ -436,7 +438,7 @@ fn build_plan(
         return Err(XxmiError::new(
             ErrorCode::WrongGameIntegration,
             None,
-            "El runtime requiere el importer de su juego y XXMI Libraries separados.",
+            "The runtime requires its game importer and separate XXMI Libraries.",
         ));
     }
     require_official_package(zzmi, spec.official, false)?;
@@ -462,7 +464,7 @@ fn build_plan(
             XxmiError::new(
                 ErrorCode::MissingRequiredFile,
                 None,
-                "XXMI Libraries no contiene 3dmloader.dll.",
+                "XXMI Libraries does not contain 3dmloader.dll.",
             )
         })?;
     let (loader_size, loader_hash) = hash_file(
@@ -474,7 +476,7 @@ fn build_plan(
         return Err(XxmiError::new(
             ErrorCode::ChecksumMismatch,
             Some(libraries.payload_path.join("3dmloader.dll")),
-            "El loader de Libraries no coincide con el inventario verificado.",
+            "The Libraries loader does not match the verified inventory.",
         ));
     }
 
@@ -488,7 +490,7 @@ fn build_plan(
             XxmiError::new(
                 ErrorCode::MissingRequiredFile,
                 None,
-                "ZZMI no contiene d3dx.ini.",
+                "ZZMI does not contain d3dx.ini.",
             )
         })?;
     let source_config = zzmi_root.read_file("d3dx.ini", 2 * 1024 * 1024)?;
@@ -496,7 +498,7 @@ fn build_plan(
         return Err(XxmiError::new(
             ErrorCode::ChecksumMismatch,
             Some(zzmi.payload_path.join("d3dx.ini")),
-            "d3dx.ini cambió después de validar el paquete.",
+            "d3dx.ini changed after package validation.",
         ));
     }
     let (derived_config, loader_identity) = derive_d3dx_config(&source_config, &target_process)?;
@@ -504,7 +506,7 @@ fn build_plan(
         return Err(XxmiError::new(
             ErrorCode::InvalidPackage,
             Some(zzmi.payload_path.join("d3dx.ini")),
-            "La identidad loader del paquete no coincide con la configuración upstream fijada.",
+            "The package loader identity does not match the pinned upstream configuration.",
         ));
     }
 
@@ -532,7 +534,7 @@ fn build_plan(
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(source.relative_path.clone().into()),
-                "Colisión de archivos ZZMI ignorando mayúsculas.",
+                "Case-insensitive ZZMI file collision.",
             ));
         }
         let bytes = if source.relative_path == "d3dx.ini" {
@@ -553,11 +555,11 @@ fn build_plan(
             sha256: digest,
             derived: bytes.is_some(),
             reason: if spec.integration == IntegrationKind::Wwmi {
-                if bytes.is_some() { "Copia derivada; target es el proceso payload Client-Win64-Shipping.exe, no el bootstrap." } else { "Payload WWMI verificado; se conserva su ruta relativa original." }
+                if bytes.is_some() { "Derived copy; the target is the Client-Win64-Shipping.exe payload process, not the bootstrap." } else { "Verified WWMI payload; its original relative path is preserved." }
             } else if bytes.is_some() {
-                "Copia derivada; target se resuelve al nombre del ejecutable observado en la instalación Steam de ZZZ."
+                "Derived copy; the target resolves to the executable name observed in the ZZZ Steam installation."
             } else {
-                "Payload ZZMI verificado; se conserva su ruta relativa original."
+                "Verified ZZMI payload; its original relative path is preserved."
             }
             .into(),
         };
@@ -573,14 +575,14 @@ fn build_plan(
                 XxmiError::new(
                     ErrorCode::MissingRequiredFile,
                     None,
-                    format!("XXMI Libraries no contiene {name}."),
+                    format!("XXMI Libraries does not contain {name}."),
                 )
             })?;
         if !targets.insert(name.to_lowercase()) {
             return Err(XxmiError::new(
                 ErrorCode::InvalidPackage,
                 Some((*name).into()),
-                "Colisión de archivos entre ZZMI y XXMI Libraries.",
+                "File collision between ZZMI and XXMI Libraries.",
             ));
         }
         pending.push(PlannedBytes {
@@ -592,7 +594,7 @@ fn build_plan(
                 size: source.size,
                 sha256: source.sha256.clone(),
                 derived: false,
-                reason: "XXMI Launcher despliega esta DLL en importer_path; se ensambla únicamente en el root privado de LXMI."
+                reason: "XXMI Launcher deploys this DLL to importer_path; it is assembled only in the private LXMI root."
                     .into(),
             },
             bytes: None,
@@ -612,9 +614,9 @@ fn build_plan(
         source_sha256: config_entry.sha256.clone(),
         derived_sha256: sha256(&derived_config),
         target_process: target_process.clone(),
-        target_evidence: if spec.integration == IntegrationKind::Wwmi { "Steam manifest y payload regular en Client/Binaries/Win64; process_exe_names de WWMI v2.2.1." } else { "Steam manifest → game scanner → archivo ejecutable regular observado; filename coincide con el registry ZZZ upstream." }.into(),
+        target_evidence: if spec.integration == IntegrationKind::Wwmi { "Steam manifest and regular payload in Client/Binaries/Win64; process_exe_names from WWMI v2.2.1." } else { "The Steam manifest and game scanner identify an observed regular executable file whose name matches the upstream ZZZ registry." }.into(),
         loader_process_identity: loader_identity,
-        loader_identity_evidence: if spec.integration == IntegrationKind::Wwmi { "WWMI upstream fija [Loader] loader = XXMI Launcher.exe; identidad conservada en la copia derivada." } else { "ZZMI upstream fija [Loader] loader = XXMI Launcher.exe; 3Dmigoto lo usa como nombre de proceso permitido para cargar su DLL." }.into(),
+        loader_identity_evidence: if spec.integration == IntegrationKind::Wwmi { "Upstream WWMI pins [Loader] loader = XXMI Launcher.exe; the identity is preserved in the derived copy." } else { "Upstream ZZMI pins [Loader] loader = XXMI Launcher.exe; 3Dmigoto uses it as an allowed process name for loading its DLL." }.into(),
         loader_identity_change: None,
     };
     let plan = RuntimeAssemblyPlan {
@@ -667,7 +669,7 @@ fn source_bytes_for_pending(
         return Err(XxmiError::new(
             ErrorCode::InvalidMetadata,
             Some("d3dx.ini".into()),
-            "La configuración derivada debe provenir del plan, no de una copia directa.",
+            "The derived configuration must come from the plan, not a direct copy.",
         ));
     }
     Ok(bytes)
@@ -682,7 +684,7 @@ fn require_official_package(
         XxmiError::new(
             ErrorCode::MissingSignature,
             None,
-            "El paquete administrado no conserva provenance upstream.",
+            "The managed package does not retain upstream provenance.",
         )
     })?;
     let expected_repository = crate::official_repository(&kind);
@@ -695,7 +697,7 @@ fn require_official_package(
         return Err(XxmiError::new(
             ErrorCode::InvalidSignature,
             None,
-            format!("Se requiere un paquete autenticado desde {expected_repository} con las firmas necesarias verificadas."),
+            format!("An authenticated package from {expected_repository} with the required verified signatures is required."),
         ));
     }
     Ok(())
@@ -731,7 +733,7 @@ fn read_runtime(plan: &RuntimeAssemblyPlan) -> Result<Option<ManagedRuntime>> {
         return Err(XxmiError::new(
             ErrorCode::ChecksumMismatch,
             Some(plan.app_root.clone()),
-            "runtime-manifest.json no corresponde al plan actual.",
+            "runtime-manifest.json does not match the current plan.",
         ));
     }
     let importer = app_root.child(spec.folder)?;
@@ -739,14 +741,14 @@ fn read_runtime(plan: &RuntimeAssemblyPlan) -> Result<Option<ManagedRuntime>> {
         XxmiError::new(
             ErrorCode::MissingRequiredFile,
             Some(plan.importer_root.join("Mods")),
-            "El runtime no contiene Mods/.",
+            "The runtime does not contain Mods/.",
         )
     })?;
     if !mods_meta.is_dir() {
         return Err(XxmiError::new(
             ErrorCode::InvalidPackage,
             Some(plan.importer_root.join("Mods")),
-            "Mods debe ser un directorio.",
+            "Mods must be a directory.",
         ));
     }
     for file in &manifest.files {
@@ -760,7 +762,7 @@ fn read_runtime(plan: &RuntimeAssemblyPlan) -> Result<Option<ManagedRuntime>> {
             return Err(XxmiError::new(
                 ErrorCode::ChecksumMismatch,
                 Some(plan.importer_root.join(&file.destination_relative_path)),
-                "El archivo ensamblado no coincide con runtime-manifest.json.",
+                "The assembled file does not match runtime-manifest.json.",
             ));
         }
     }
@@ -788,7 +790,7 @@ fn derive_d3dx_config(input: &[u8], target_process: &str) -> Result<(Vec<u8>, St
         XxmiError::new(
             ErrorCode::InvalidMetadata,
             Some("d3dx.ini".into()),
-            "d3dx.ini no es UTF-8.",
+            "d3dx.ini is not UTF-8.",
         )
     })?;
     if target_process.is_empty()
@@ -798,7 +800,7 @@ fn derive_d3dx_config(input: &[u8], target_process: &str) -> Result<(Vec<u8>, St
         return Err(XxmiError::new(
             ErrorCode::UnsafePath,
             Some(target_process.into()),
-            "Target process debe ser solo un filename.",
+            "The target process must be a filename only.",
         ));
     }
     let mut in_loader = false;
@@ -841,7 +843,7 @@ fn derive_d3dx_config(input: &[u8], target_process: &str) -> Result<(Vec<u8>, St
                             return Err(XxmiError::new(
                                 ErrorCode::InvalidMetadata,
                                 Some("d3dx.ini".into()),
-                                "No se puede derivar target con comentario inline ambiguo.",
+                                "Cannot derive a target with an ambiguous inline comment.",
                             ));
                         }
                         output.push_str(key.trim_end());
@@ -865,7 +867,7 @@ fn derive_d3dx_config(input: &[u8], target_process: &str) -> Result<(Vec<u8>, St
         return Err(XxmiError::new(
             ErrorCode::InvalidMetadata,
             Some("d3dx.ini".into()),
-            "Se requiere exactamente una sección [Loader] con un target y una identidad loader.",
+            "Exactly one [Loader] section with a target and loader identity is required.",
         ));
     }
     let identity = loader_identity
@@ -874,7 +876,7 @@ fn derive_d3dx_config(input: &[u8], target_process: &str) -> Result<(Vec<u8>, St
             XxmiError::new(
                 ErrorCode::InvalidMetadata,
                 Some("d3dx.ini".into()),
-                "La identidad loader está vacía.",
+                "The loader identity is empty.",
             )
         })?;
     Ok((output.into_bytes(), identity))
@@ -1321,6 +1323,36 @@ mod tests {
         let plan =
             crate::review_profile_activation(&store, &base, "Daily", state.revision, 0).unwrap();
         crate::activate_profile(&store, &base, "Daily", state.revision, 0, &plan.plan_id).unwrap();
+        let applied_profile =
+            crate::profile_runtime_profile(&store, "zenless-zone-zero", &plan.runtime_id).unwrap();
+        assert_eq!(applied_profile.mod_ids, state.profiles[0].mod_ids);
+        // Saving another selection under the same name must not change the
+        // identity returned for the already-applied immutable runtime.
+        library
+            .save_profile("zenless-zone-zero", "Daily", &[], state.revision)
+            .unwrap();
+        assert_eq!(
+            crate::profile_runtime_profile(&store, "zenless-zone-zero", &plan.runtime_id,)
+                .unwrap()
+                .mod_ids,
+            applied_profile.mod_ids
+        );
+        let record_path = plan
+            .importer_root
+            .parent()
+            .unwrap()
+            .join("lxmi-profile-runtime.json");
+        let original_record = fs::read(&record_path).unwrap();
+        let mut forged: serde_json::Value = serde_json::from_slice(&original_record).unwrap();
+        forged["profile"]["mod_ids"] = serde_json::json!([]);
+        fs::write(&record_path, serde_json::to_vec(&forged).unwrap()).unwrap();
+        assert_eq!(
+            crate::profile_runtime_profile(&store, "zenless-zone-zero", &plan.runtime_id,)
+                .unwrap_err()
+                .code,
+            ErrorCode::ChecksumMismatch
+        );
+        fs::write(record_path, original_record).unwrap();
         assert_eq!(
             crate::rollback_profile_activation(&store, "zenless-zone-zero", 0)
                 .unwrap_err()

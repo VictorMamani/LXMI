@@ -171,7 +171,7 @@ pub fn inspect_prefix_dosdevices(prefix_path: &Path) -> DosDevicesReport {
                 directory_path,
                 state: DosDevicesState::NotFound,
                 mappings: Vec::new(),
-                issues: vec!["El directorio dosdevices no está presente.".into()],
+                issues: vec!["The dosdevices directory is missing.".into()],
             };
         }
         Err(error) => {
@@ -193,7 +193,8 @@ pub fn inspect_prefix_dosdevices(prefix_path: &Path) -> DosDevicesReport {
             for (index, entry) in read_dir.enumerate() {
                 if index >= 4096 {
                     issues.push(
-                        "dosdevices contiene más de 4096 entradas; se detuvo la inspección.".into(),
+                        "dosdevices contains more than 4096 entries; inspection was stopped."
+                            .into(),
                     );
                     break;
                 }
@@ -205,11 +206,11 @@ pub fn inspect_prefix_dosdevices(prefix_path: &Path) -> DosDevicesReport {
                             }
                         }
                     }
-                    Err(error) => issues.push(format!("No se pudo listar dosdevices: {error}")),
+                    Err(error) => issues.push(format!("Could not list dosdevices: {error}")),
                 }
             }
         }
-        Err(error) => issues.push(format!("No se pudo listar dosdevices: {error}")),
+        Err(error) => issues.push(format!("Could not list dosdevices: {error}")),
     }
     entries.sort();
     for entry in entries {
@@ -220,7 +221,7 @@ pub fn inspect_prefix_dosdevices(prefix_path: &Path) -> DosDevicesReport {
         let metadata = match fs::symlink_metadata(directory.path().join(&entry)) {
             Ok(metadata) => metadata,
             Err(error) => {
-                issues.push(format!("No se pudo inspeccionar {entry}: {error}"));
+                issues.push(format!("Could not inspect {entry}: {error}"));
                 mappings.push(DosDeviceMapping {
                     drive_letter,
                     link_path,
@@ -248,7 +249,7 @@ pub fn inspect_prefix_dosdevices(prefix_path: &Path) -> DosDevicesReport {
         let raw_target = match fs::read_link(directory.path().join(&entry)) {
             Ok(target) => target,
             Err(error) => {
-                issues.push(format!("No se pudo leer el target de {entry}: {error}"));
+                issues.push(format!("Could not read the target of {entry}: {error}"));
                 mappings.push(DosDeviceMapping {
                     drive_letter,
                     link_path,
@@ -521,8 +522,8 @@ pub fn inspect_launch_topology(
         .collect::<Vec<_>>();
 
     let mut evidence = vec![
-        "La topología es un plan de datos; no ejecuta Steam, Proton, Wine, helper ni juego.".into(),
-        "La raíz App.Root de LXMI se calcula bajo XDG y la ruta relativa upstream ZZMI/ resuelve al importer root.".into(),
+        "The topology is a data plan; it does not execute Steam, Proton, Wine, a helper, or the game.".into(),
+        "LXMI App.Root is computed under XDG and the relative upstream ZZMI/ path resolves to the importer root.".into(),
     ];
     if let Some(report) = &dosdevices {
         evidence.push(format!(

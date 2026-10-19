@@ -1,0 +1,140 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 333px;
+  padding: 20px;
+  border: 1px solid #f3f5f12e;
+  border-radius: 4px;
+  background: #0f1011cc;
+  backdrop-filter: blur(24px);
+  animation: enter 220ms var(--ease-out);
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 2.5px;
+}
+
+.title[data-state="failed"] {
+  color: #f0b38a;
+}
+
+.step {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  color: var(--rf-cyan);
+}
+
+.bar {
+  display: flex;
+  gap: 4px;
+}
+
+.segment {
+  flex: 1;
+  height: 4px;
+  background: #f3f5f126;
+  transition: background-color 300ms;
+}
+
+.segment[data-state="done"] {
+  background: var(--rf-cyan);
+}
+.segment[data-state="current"] {
+  background: #19e3ff80;
+  animation: pulse 1.2s ease-in-out infinite alternate;
+}
+.segment[data-state="failed"] {
+  background: var(--rf-rust);
+}
+
+@keyframes pulse {
+  to {
+    background: #19e3ffcc;
+  }
+}
+
+.phases {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.phase {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12.5px;
+  color: #e4e8e959;
+}
+
+.phaseIcon {
+  flex: none;
+  color: #f3f5f14d;
+}
+
+.phase[data-state="done"] {
+  color: #e4e8e999;
+}
+.phase[data-state="done"] .phaseIcon {
+  color: var(--rf-cyan);
+}
+
+.phase[data-state="current"] {
+  color: var(--rf-text);
+}
+.phase[data-state="current"] .phaseIcon {
+  color: var(--rf-text);
+  animation: spin 1.1s linear infinite;
+}
+
+.phase[data-state="failed"] {
+  color: var(--rf-text);
+}
+.phase[data-state="failed"] .phaseIcon {
+  color: var(--rf-rust);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.footer button {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.note {
+  flex: 1;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #e4e8e980;
+}

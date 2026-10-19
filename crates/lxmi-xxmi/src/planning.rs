@@ -225,7 +225,7 @@ pub fn plan_installation_for_integration(
         return Err(XxmiError::new(
             ErrorCode::WrongGameIntegration,
             None,
-            "La integración solicitada no está asignada a este juego.",
+            "The requested integration is not assigned to this game.",
         ));
     }
     let package = store.verify(package_id)?;
@@ -233,7 +233,7 @@ pub fn plan_installation_for_integration(
         return Err(XxmiError::new(
             ErrorCode::WrongGameIntegration,
             None,
-            "El paquete no corresponde a la integración de este juego.",
+            "The package does not match this game integration.",
         ));
     }
     let libraries = libs_id.map(|id| store.verify(id)).transpose()?;
@@ -244,7 +244,7 @@ pub fn plan_installation_for_integration(
         return Err(XxmiError::new(
             ErrorCode::InvalidPackage,
             None,
-            "Se esperaba el paquete separado XXMI Libraries.",
+            "The separate XXMI Libraries package was expected.",
         ));
     }
     let assessment =
@@ -283,7 +283,7 @@ pub fn plan_installation_for_integration(
                 return Err(XxmiError::new(
                     ErrorCode::InvalidPackage,
                     None,
-                    "Colisión de destinos entre paquetes.",
+                    "Destination collision between packages.",
                 ));
             }
             validate_relative_path(&file.relative_path)?;
@@ -327,7 +327,7 @@ pub fn plan_installation_for_integration(
                 configured_target_root: None,
                 comparison_root_candidate: None,
                 comparison_root_evidence:
-                    "El mapeo de destino real solo se investigó para ZZMI en 0.5.2.".into(),
+                    "Actual destination mapping was only investigated for ZZMI in 0.5.2.".into(),
                 root_is_authoritative: false,
                 files: Vec::new(),
                 safety: InstallSafetyState::NeedsReview,
@@ -349,15 +349,15 @@ pub fn plan_installation_for_integration(
         deployment_mapping,
         dry_run,
         configuration_changes: vec![
-            "El destino de este plan genérico pertenece al almacenamiento LXMI y es una referencia histórica de 0.5.2; no es el ManagedImporterRoot activo de 0.5.3.".into(),
-            "Steam y Linux/Proton permanecen sin verificar para la integración seleccionada.".into(),
-            "Upstream resuelve importer_path relativo a App.Root; para ZZMI es ZZMI/. LXMI ensambla ahora esa raíz dentro de su almacenamiento XDG, fuera del juego y del prefix.".into(),
+            "The generic plan destination belongs to LXMI storage and is a historical 0.5.2 reference; it is not the active 0.5.3 ManagedImporterRoot.".into(),
+            "Steam and Linux/Proton remain unverified for the selected integration.".into(),
+            "Upstream resolves importer_path relative to App.Root; for ZZMI it is ZZMI/. LXMI now assembles that root in its XDG storage, outside the game and prefix.".into(),
         ],
         warnings: vec![
-            "Mapping genérico de 0.5.2 conservado únicamente para trazabilidad; no existe una operación apply y no es el target de runtime activo.".into(),
-            "SHA-256 local detecta cambios; la procedencia oficial solo se atribuye si la firma del asset y, para Libraries, las firmas de sus DLLs pasan.".into(),
-            "La compatibilidad del paquete con esta distribución y Linux/Proton no está verificada.".into(),
-            "La comparación de 0.5.2 contra el directorio del ejecutable se conserva solo como antecedente histórico; no se inspecciona ni propone ningún target dentro de ZZZ.".into(),
+            "Generic 0.5.2 mapping retained only for traceability; no apply operation exists and this is not the active runtime target.".into(),
+            "Local SHA-256 detects changes; official provenance is assigned only if the asset signature and, for Libraries, its DLL signatures pass verification.".into(),
+            "Package compatibility with this distribution and Linux/Proton is unverified.".into(),
+            "The 0.5.2 executable-directory comparison is retained only as historical context; no target inside ZZZ is inspected or proposed.".into(),
         ],
         executable: false,
     })
