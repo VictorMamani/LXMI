@@ -1,4 +1,4 @@
-//! «Jugar con mods»: one launch at a time through `lxmi-launch`. Paths, AppID and the
+//! «Play with mods»: one launch at a time through `lxmi-launch`. Paths, AppID and the
 //! runtime are derived here from discovery and the saved selection, never the webview.
 use lxmi_core::{GameExecutableStatus, GameInstallationStatus};
 use lxmi_launch::{
@@ -17,14 +17,14 @@ const HELPER: Option<&[u8]> = Some(include_bytes!(concat!(env!("OUT_DIR"), "/lxm
 #[cfg(not(lxmi_mod_loader))]
 const HELPER: Option<&[u8]> = None;
 
-/// Everything «Jugar con mods» needs for one game. Fixed here: nothing is taken from the
+/// Everything «Play with mods» needs for one game. Fixed here: nothing is taken from the
 /// webview or from the saved profile.
 struct LaunchSpec {
     game_id: &'static str,
     /// Launcher Steam starts, relative to the install directory; the player presses Play in it.
     launcher: &'static str,
     label: &'static str,
-    /// Game process the hook waits for, relative to the install directory. `None` keeps
+    /// Game process the loader waits for, relative to the install directory. `None` keeps
     /// the executable discovery found (ZZZ).
     game: Option<&'static str>,
     /// Importer folder inside the launch copy, as laid out by the assembler.
@@ -36,8 +36,8 @@ struct LaunchSpec {
     experimental: bool,
 }
 
-/// Games whose hook path is in place. ZZZ is validated end to end on Steam + Proton;
-/// Wuthering Waves uses the same hook path and is not validated in game yet.
+/// ZZZ uses the validated hook path on Steam + Proton. Wuthering Waves uses
+/// experimental Direct Inject and has not been validated in gameplay.
 const LAUNCH_SPECS: &[LaunchSpec] = &[
     LaunchSpec {
         game_id: "zenless-zone-zero",
@@ -67,7 +67,7 @@ fn launch_spec(game_id: &str) -> Option<&'static LaunchSpec> {
     LAUNCH_SPECS.iter().find(|spec| spec.game_id == game_id)
 }
 
-/// True when «Jugar con mods» for this game is not yet validated in game.
+/// True when «Play with mods» for this game is not yet validated in gameplay.
 pub(crate) fn launch_is_experimental(game_id: &str) -> bool {
     launch_spec(game_id).is_some_and(|spec| spec.experimental)
 }
@@ -103,25 +103,26 @@ fn error(message: impl Into<String>) -> XxmiError {
     XxmiError::new(ErrorCode::Busy, None, message)
 }
 
-/// Reasons «Jugar con mods» cannot start; empty when it can.
+/// Reasons «Play with mods» cannot start; empty when it can.
 pub(crate) fn launch_blockers(game_id: &str, selection: &ActiveProfileSelection) -> Vec<String> {
     let mut blockers = Vec::new();
     if launch_spec(game_id).is_none() {
-        blockers.push("La carga de mods todavía no está disponible para este juego.".into());
+        blockers.push("Mod loading is not available for this game yet.".into());
     }
     if HELPER.is_none() {
         blockers.push(
-            "Esta compilación no incluye el cargador de Windows (falta MinGW al compilar).".into(),
+            "This build does not include the Windows loader (MinGW was unavailable during compilation).".into(),
         );
     }
     if selection.current.is_none() {
-        blockers.push("Aplica un perfil de mods antes de jugar con mods.".into());
+        blockers.push("Apply a mod profile before playing with mods.".into());
     }
     blockers
 }
 
 fn target(discovery: &SteamDiscoveryResult, game_id: &str) -> Result<ModLaunchTarget> {
-    let spec = launch_spec(game_id).ok_or_else(|| error("Juego sin carga de mods."))?;
+    let spec =
+        launch_spec(game_id).ok_or_else(|| error("Mod loading is unavailable for this game."))?;
     let game = discovery
         .games
         .games
@@ -131,18 +132,18 @@ fn target(discovery: &SteamDiscoveryResult, game_id: &str) -> Result<ModLaunchTa
                 && g.installation.status == GameInstallationStatus::Installed
                 && g.installation.executable_status == GameExecutableStatus::Found
         })
-        .ok_or_else(|| error("No se encontró una instalación lista en Steam."))?;
+        .ok_or_else(|| error("No ready Steam installation was found."))?;
     let game_executable = match spec.game {
         Some(relative) => game.installation.install_path.join(relative),
         None => game
             .installation
             .executable_path
             .clone()
-            .ok_or_else(|| error("No se encontró el ejecutable del juego."))?,
+            .ok_or_else(|| error("The game executable was not found."))?,
     };
     if !game_executable.is_file() {
         return Err(error(
-            "No se encontró el proceso del juego en la instalación de Steam.",
+            "The game process executable was not found in the Steam installation.",
         ));
     }
     let steam_root = discovery
@@ -152,7 +153,7 @@ fn target(discovery: &SteamDiscoveryResult, game_id: &str) -> Result<ModLaunchTa
         .find(|i| i.libraries.iter().any(|l| l.path == game.steam_library))
         .or(discovery.steam.installations.first())
         .map(|i| i.root_path.clone())
-        .ok_or_else(|| error("No se encontró Steam."))?;
+        .ok_or_else(|| error("Steam was not found."))?;
     Ok(ModLaunchTarget {
         game_id: game_id.into(),
         steam_app_id: game.steam_app_id,
@@ -175,7 +176,7 @@ fn selected_runtime(
     let selection = profile_activation_status(store, game_id)?;
     let current = selection
         .current
-        .ok_or_else(|| error("Aplica un perfil de mods antes de jugar con mods."))?;
+        .ok_or_else(|| error("Apply a mod profile before playing with mods."))?;
     let platform = crate::xxmi_service::platform_plan(discovery, game_id)?;
     let base = existing_importer_runtime(
         store,
@@ -185,7 +186,9 @@ fn selected_runtime(
         &crate::xxmi_service::protected_paths(discovery),
     )?
     .ok_or_else(|| {
-        error("Falta el runtime base del perfil. Prepara el runtime y vuelve a aplicar el perfil.")
+        error(
+            "The profile base runtime is missing. Prepare the runtime and apply the profile again.",
+        )
     })?;
     Ok((resolve_profile_runtime(store, &base)?, current.profile_name))
 }
@@ -195,7 +198,7 @@ pub(crate) fn prepare_copy(game_id: &str) -> Result<lxmi_launch::PreparedLaunch>
     let discovery = SteamDiscoveryScanner::from_environment().scan();
     let store = crate::xxmi_service::store_for(&discovery)?;
     let (runtime, _) = selected_runtime(&discovery, &store, game_id)?;
-    let helper = HELPER.ok_or_else(|| error("Cargador no incluido."))?;
+    let helper = HELPER.ok_or_else(|| error("Loader not included."))?;
     lxmi_launch::prepare_launch_directory(&store, &runtime, helper).map_err(error)
 }
 
@@ -213,7 +216,7 @@ pub async fn start_game_with_mods(
                 .unwrap_or_else(|e| e.into_inner())
                 .finished
             {
-                return Err(error("Ya hay un inicio con mods en curso."));
+                return Err(error("A launch with mods is already in progress."));
             }
         }
     }
@@ -244,7 +247,7 @@ pub async fn start_game_with_mods(
             "launch with mods: preflight passed"
         );
         let helper = HELPER
-            .ok_or_else(|| error("Cargador no incluido."))?
+            .ok_or_else(|| error("Loader not included."))?
             .to_vec();
         Ok((
             SteamModLaunchHost::new(launch_target, store, runtime, helper),
@@ -252,7 +255,7 @@ pub async fn start_game_with_mods(
         ))
     })
     .await
-    .map_err(|_| error("La preparación terminó inesperadamente."))??;
+    .map_err(|_| error("Preparation ended unexpectedly."))??;
 
     let status = Arc::new(Mutex::new(LaunchStatus::new(&game_id, Some(profile))));
     let cancel = Arc::new(AtomicBool::new(false));
@@ -328,17 +331,15 @@ mod tests {
 
     #[test]
     fn unknown_games_have_no_launch_spec_and_a_blocker() {
-        assert!(launch_spec("otro-juego").is_none());
+        assert!(launch_spec("unknown-game").is_none());
         let selection = ActiveProfileSelection {
             schema_version: 1,
-            game_id: "otro-juego".into(),
+            game_id: "unknown-game".into(),
             revision: 0,
             current: None,
             previous: None,
         };
-        let blockers = launch_blockers("otro-juego", &selection);
-        assert!(blockers
-            .iter()
-            .any(|b| b.contains("todavía no está disponible")));
+        let blockers = launch_blockers("unknown-game", &selection);
+        assert!(blockers.iter().any(|b| b.contains("not available")));
     }
 }

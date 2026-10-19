@@ -1,0 +1,112 @@
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 76px;
+  flex: none;
+  padding: 0 var(--page-gutter);
+  border-bottom: 1px solid var(--rf-line);
+}
+
+.key {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--rf-faint);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--rf-muted);
+  flex: none;
+}
+
+.key:hover {
+  border-color: var(--rf-muted);
+  color: var(--rf-text);
+}
+
+.cartridges {
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+}
+
+.cartridge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 14px 0 4px;
+  border: 1px solid var(--rf-faint);
+  border-radius: var(--radius);
+  background: transparent;
+  opacity: 0.7;
+  min-width: 0;
+  transition:
+    opacity 150ms,
+    background-color 150ms,
+    border-color 150ms;
+}
+
+.cartridge:hover {
+  opacity: 1;
+}
+
+.cartridge[aria-selected="true"] {
+  border-color: transparent;
+  border-bottom-color: var(--rf-cyan);
+  border-bottom-width: 2px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--rf-surface-2);
+  opacity: 1;
+}
+
+.thumb {
+  width: 52px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex: none;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.channel {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--rf-muted);
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  color: var(--rf-muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cartridge[aria-selected="true"] .channel {
+  color: var(--rf-cyan);
+}
+.cartridge[aria-selected="true"] .name {
+  color: var(--rf-text);
+}
+
+.status {
+  margin-left: auto;
+  padding-left: 16px;
+}

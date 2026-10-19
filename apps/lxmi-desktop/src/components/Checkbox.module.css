@@ -1,0 +1,44 @@
+.box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--rf-faint);
+  flex: none;
+  transition: border-color 120ms;
+}
+
+.box[data-checked="true"] {
+  border-color: var(--rf-cyan);
+}
+
+.input {
+  position: absolute;
+  inset: -6px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.input:disabled {
+  cursor: default;
+}
+
+.box:has(.input:focus-visible) {
+  outline: 1px solid var(--rf-cyan);
+  outline-offset: 2px;
+}
+
+.mark {
+  width: 8px;
+  height: 8px;
+  background: var(--rf-cyan);
+  transform: scale(0);
+  transition: transform 120ms var(--ease-out);
+}
+
+.box[data-checked="true"] .mark {
+  transform: scale(1);
+}

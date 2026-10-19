@@ -48,7 +48,7 @@ impl LaunchStatus {
             game_id: game_id.into(),
             profile_name,
             phase: LaunchPhase::Preparing,
-            message: "Preparando la copia de arranque del perfil…".into(),
+            message: "Preparing the profile launch copy…".into(),
             finished: false,
             mods_loaded: false,
             launch_dir: None,
@@ -77,7 +77,7 @@ pub trait HelperProcess: Send {
 pub trait LaunchHost: Send {
     /// Name of the launcher the player presses Play in, for user-facing messages.
     fn launcher_label(&self) -> String {
-        "el launcher del juego".into()
+        "the game launcher".into()
     }
     fn game_running(&self) -> Result<bool, String>;
     fn prepare(&mut self) -> Result<PathBuf, String>;
@@ -112,47 +112,46 @@ impl Shared<'_> {
 fn failure_message(status: &str, launcher: &str) -> String {
     match status {
         "existing_game_rejected" => {
-            "El juego ya estaba abierto antes de armar la carga. Ciérralo y vuelve a intentarlo."
-                .into()
+            "The game was already open before mod loading was armed. Close it and try again.".into()
         }
         "game_not_started" => {
-            format!("No se pulsó Jugar en {launcher} en 5 minutos. La carga se retiró; no se cambió nada.")
+            format!("Play was not pressed in {launcher} within 5 minutes. The loader stopped; nothing was changed.")
         }
         "ambiguous_target" => {
-            "Hay más de un proceso del juego. Ciérralos y vuelve a intentarlo.".into()
+            "More than one game process is running. Close them and try again.".into()
         }
         "game_executable_not_visible" => {
-            "Proton no ve el ejecutable del juego desde el prefix.".into()
+            "Proton cannot see the game executable from the prefix.".into()
         }
         "loader_load_failed" | "hook_exports_missing" => {
-            "No se pudo cargar 3dmloader.dll de XXMI Libraries.".into()
+            "Could not load 3dmloader.dll from XXMI Libraries.".into()
         }
-        other => format!("El cargador terminó con «{other}»."),
+        other => format!("The loader exited with '{other}'."),
     }
 }
 
 /// Documented `Inject` return codes (upstream `dll_injector.py`, v2.2.1).
 fn inject_message(code: i64) -> String {
     let cause = match code {
-        100 => "no se encontró el proceso del juego",
-        110 => "la ruta de la DLL no es válida para el juego",
-        120 => "no se resolvió kernel32 dentro del juego",
-        130 => "no se resolvió LoadLibraryW dentro del juego",
-        200 => "no se pudo reservar memoria en el juego",
-        300 => "no se pudo escribir en el juego",
-        400 => "no se pudo crear el hilo remoto en el juego",
-        500 => "el hilo remoto no terminó a tiempo",
-        510 => "no se pudo esperar al hilo remoto",
-        600 => "la inyección falló",
-        _ => "error desconocido",
+        100 => "the game process was not found",
+        110 => "the DLL path is invalid for the game",
+        120 => "kernel32 could not be resolved inside the game",
+        130 => "LoadLibraryW could not be resolved inside the game",
+        200 => "memory could not be allocated in the game",
+        300 => "memory could not be written in the game",
+        400 => "the remote thread could not be created in the game",
+        500 => "the remote thread timed out",
+        510 => "waiting for the remote thread failed",
+        600 => "injection failed",
+        _ => "unknown error",
     };
-    format!("La carga de WWMI por inyección no se completó (código {code}: {cause}). No se confirma ningún mod cargado.")
+    format!("WWMI injection did not complete (code {code}: {cause}). No mods are confirmed loaded.")
 }
 
 fn exit_message(hex: &str) -> String {
     match hex {
-        "0xc0000135" => "El juego se cerró al cargar los mods (0xc0000135): el importador detectó un dispositivo D3D11 creado antes de su carga. Vuelve a intentarlo pulsando Jugar en cuanto LXMI lo indique.".into(),
-        _ => format!("El juego se cerró durante los primeros 15 segundos con los mods cargados ({hex}). Revisa los mods del perfil o prueba «Jugar sin mods»."),
+        "0xc0000135" => "The game exited while loading mods (0xc0000135): the importer detected a D3D11 device created before it loaded. Try again and press Play as soon as LXMI prompts you.".into(),
+        _ => format!("The game exited within the first 15 seconds after mods loaded ({hex}). Review the profile mods or try 'Play without mods'."),
     }
 }
 
@@ -168,7 +167,7 @@ pub fn run_launch(
     match host.game_running() {
         Ok(false) => {}
         Ok(true) => {
-            return fail("El juego ya está abierto. Ciérralo para iniciarlo con mods.".into())
+            return fail("The game is already running. Close it to start with mods.".into())
         }
         Err(e) => return fail(e),
     }
@@ -180,25 +179,30 @@ pub fn run_launch(
         Err(e) => return fail(e),
         Ok(Some(found)) => found,
         Ok(None) => {
-            shared.set(LaunchPhase::OpeningLauncher, "Abriendo el juego en Steam…");
+            shared.set(LaunchPhase::OpeningLauncher, "Opening the game in Steam…");
             if let Err(e) = host.request_steam_launch() {
                 return fail(e);
             }
             shared.set(
                 LaunchPhase::WaitingForLauncher,
-                "Esperando a que Steam abra el launcher. No pulses Jugar todavía.",
+                "Waiting for Steam to open the launcher. Do not press Play yet.",
             );
             let started = Instant::now();
             loop {
                 if cancel.load(Ordering::SeqCst) {
-                    return shared.set(LaunchPhase::Cancelled, "Cancelado antes de cargar nada.");
+                    return shared.set(
+                        LaunchPhase::Cancelled,
+                        "Cancelled before anything was loaded.",
+                    );
                 }
                 match host.find_launcher() {
                     Ok(Some(found)) => break found,
                     Ok(None) if started.elapsed() < LAUNCHER_WAIT => {
                         host.pause(Duration::from_secs(1))
                     }
-                    Ok(None) => return fail("Steam no abrió el launcher en 3 minutos.".into()),
+                    Ok(None) => {
+                        return fail("Steam did not open the launcher within 3 minutes.".into())
+                    }
                     Err(e) => return fail(e),
                 }
             }
@@ -208,17 +212,20 @@ pub fn run_launch(
         Ok(false) => {}
         Ok(true) => {
             return fail(
-                "El juego se abrió antes de armar la carga. Ciérralo y vuelve a intentarlo.".into(),
+                "The game opened before mod loading was armed. Close it and try again.".into(),
             )
         }
         Err(e) => return fail(e),
     }
     if cancel.load(Ordering::SeqCst) {
-        return shared.set(LaunchPhase::Cancelled, "Cancelado antes de cargar nada.");
+        return shared.set(
+            LaunchPhase::Cancelled,
+            "Cancelled before anything was loaded.",
+        );
     }
     shared.set(
         LaunchPhase::Arming,
-        "Preparando la carga de mods en el contexto de Steam…",
+        "Preparing mod loading in the Steam context…",
     );
     let mut helper = match host.spawn_helper(&launcher) {
         Ok(helper) => helper,
@@ -231,13 +238,13 @@ pub fn run_launch(
             helper.terminate();
             shared.set(
                 LaunchPhase::Cancelled,
-                "Cancelado. La carga se retiró con el cargador.",
+                "Cancelled. The mod loader was stopped.",
             );
             break;
         }
         if started.elapsed() > HELPER_WAIT {
             helper.terminate();
-            fail("El cargador no respondió a tiempo y se detuvo.".into());
+            fail("The loader timed out and was stopped.".into());
             break;
         }
         let line = match helper.read_line(Duration::from_millis(500)) {
@@ -247,9 +254,9 @@ pub fn run_launch(
                 let _ = helper.wait();
                 fail(match helper.exit_detail() {
                     Some(detail) => {
-                        format!("El cargador terminó sin informar un resultado: {detail}")
+                        format!("The loader exited without reporting a result: {detail}")
                     }
-                    None => "El cargador terminó sin informar un resultado.".into(),
+                    None => "The loader exited without reporting a result.".into(),
                 });
                 break;
             }
@@ -271,13 +278,13 @@ pub fn run_launch(
             }
             HelperEvent::HookInstalled { code } => {
                 fail(format!(
-                    "No se pudo instalar la carga de XXMI (HookLibrary {code})."
+                    "Could not install the XXMI hook (HookLibrary {code})."
                 ));
                 terminal = true;
             }
             HelperEvent::Armed { .. } => shared.set(
                 LaunchPhase::WaitingForPlay,
-                format!("Listo: pulsa Jugar en {launcher_name} ahora (tienes 5 minutos)."),
+                format!("Ready: press Play in {launcher_name} now (you have 5 minutes)."),
             ),
             HelperEvent::GameObserved {
                 mods_module_present: true,
@@ -286,20 +293,20 @@ pub fn run_launch(
                 shared.update(|s| s.mods_loaded = true);
                 shared.set(
                     LaunchPhase::CheckingStability,
-                    "Mods cargados. Comprobando que el juego sigue abierto…",
+                    "Mod module loaded. Checking that the game stays open…",
                 );
             }
             HelperEvent::GameObserved {
                 mods_module_present: false,
                 ..
             } => {
-                fail("El juego arrancó, pero los mods no se cargaron en 30 segundos. Ciérralo y vuelve a intentarlo.".into());
+                fail("The game started, but mods did not load within 30 seconds. Close it and try again.".into());
                 terminal = true;
             }
             HelperEvent::GameAlive { .. } => {
                 shared.set(
                     LaunchPhase::Running,
-                    "Juego en marcha. El módulo de mods está cargado; LXMI no comprueba el efecto de cada mod.",
+                    "The game is running. The mod module is loaded; LXMI does not verify the effect of each mod.",
                 );
                 terminal = true;
             }
@@ -471,7 +478,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        assert!(run(&mut host, false).message.contains("5 minutos"));
+        assert!(run(&mut host, false).message.contains("5 minutes"));
         let mut host = FakeHost {
             lines: vec![r#"{"status":"hook_library_returned","code":300}"#],
             ..Default::default()
@@ -481,7 +488,7 @@ mod tests {
             lines: vec![SUCCESS[0]],
             ..Default::default()
         };
-        assert!(run(&mut host, false).message.contains("sin informar"));
+        assert!(run(&mut host, false).message.contains("without reporting"));
     }
 
     #[test]
@@ -494,7 +501,7 @@ mod tests {
         };
         let s = run(&mut host, false);
         assert_eq!(s.phase, LaunchPhase::Failed);
-        assert!(s.message.contains("código 600"));
+        assert!(s.message.contains("code 600"));
         assert!(!s.mods_loaded, "a failed injection never confirms mods");
 
         let mut host = FakeHost {

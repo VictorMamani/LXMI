@@ -1,0 +1,39 @@
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.md {
+  font-size: 12px;
+}
+.sm {
+  font-size: 10px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  flex: none;
+}
+
+.ok {
+  color: var(--rf-ok);
+}
+.accent {
+  color: var(--rf-cyan);
+}
+.idle {
+  color: var(--rf-muted);
+}
+.warn {
+  color: var(--rf-rust);
+}
+.error {
+  color: var(--rf-danger);
+}

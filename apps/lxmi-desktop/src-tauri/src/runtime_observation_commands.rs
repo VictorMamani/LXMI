@@ -15,7 +15,7 @@ pub async fn start_zzz_runtime_observation(
     .unwrap_or_else(|error| {
         Err(RuntimeObservationError {
             code: "observer_task_failed".into(),
-            detail: format!("La tarea de observación terminó inesperadamente: {error}"),
+            detail: format!("The observation task ended unexpectedly: {error}"),
         })
     });
     match &result {

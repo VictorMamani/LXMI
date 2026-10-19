@@ -971,7 +971,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requiere ZZZ instalada localmente; solo inspecciona el filesystem"]
+    #[ignore = "requires a local ZZZ installation; only inspects the filesystem"]
     fn local_steam_scan_finds_zzz_without_inferring_proton_selection() {
         let scan = scan_steam_snapshot();
         assert_eq!(scan.status, "detected");

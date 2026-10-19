@@ -541,17 +541,17 @@ pub fn assess_loader_strategy(
         criterion(
             "upstream_direct_inject_mode",
             upstream_direct_state,
-            "XXMI Launcher v2.2.1 incluye una ruta genérica Direct Inject para Custom Launch; ZZMI conserva Hook por defecto cuando Custom Launch está desactivado.",
+            "XXMI Launcher v2.2.1 includes a generic Direct Inject path for Custom Launch; ZZMI keeps Hook as the default when Custom Launch is disabled.",
         ),
         criterion(
             "xxmi_libraries_generic_direct_inject",
             upstream_generic_state,
-            "MigotoInjector usa el mismo 3dmloader.dll y la ruta genérica Inject para la clase de integración; esto documenta capacidad upstream, no compatibilidad con ZZZ.",
+            "MigotoInjector uses the same 3dmloader.dll and generic Inject path for the integration class; this documents upstream capability, not ZZZ compatibility.",
         ),
         criterion(
             "loader_component_local_use",
             component_local_use_state,
-            "El componente 3dmloader.dll autenticado fue revisado para uso local de laboratorio; esta evidencia no autoriza su redistribución.",
+            "The authenticated 3dmloader.dll component was reviewed for local laboratory use; this evidence does not authorize redistribution.",
         ),
         criterion(
             "hook_exclusive_requirement",
@@ -560,61 +560,61 @@ pub fn assess_loader_strategy(
                 HookRequirementState::NotEstablished => LoaderCriterionState::NotEstablished,
                 HookRequirementState::Unknown => LoaderCriterionState::Unknown,
             },
-            "No se encontró evidencia upstream de un requisito exclusivo de Hook para ZZMI. NotEstablished no equivale a demostrar que Hook no sea necesario.",
+            "No upstream evidence of an exclusive Hook requirement for ZZMI was found. NotEstablished does not prove that Hook is unnecessary.",
         ),
         criterion(
             "direct_inject_component_in_lab",
             lab_direct_state,
-            "La ruta Direct Inject de 3dmloader.dll cargó el DLL de prueba en el proceso LXMI fijado bajo Proton.",
+            "The 3dmloader.dll Direct Inject path loaded the test DLL into the fixed LXMI process under Proton.",
         ),
         criterion(
             "remote_dll_in_lab",
             remote_direct_state,
-            "El test DLL remoto fue visible y verificó marker/nonce en el target de LXMI.",
+            "The remote test DLL was visible and verified the marker and nonce in the LXMI target.",
         ),
         criterion(
             "zzmi_game_specific_compatibility",
             criterion_from_capability(capability(ZzmiCapability::GameSpecificLoaderCompatibility)),
-            "No se ha ejecutado ZZMI ni ZZZ con Direct Inject; el requisito específico de ZZMI permanece sin establecer.",
+            "Neither ZZMI nor ZZZ has been run with Direct Inject; the ZZMI-specific requirement remains unestablished.",
         ),
         criterion(
             "loader_identity_for_linux_runtime",
             criterion_from_capability(capability(ZzmiCapability::LoaderIdentitySemantics)),
-            "La configuración loader= está documentada para el launcher upstream; no se ha validado la identidad de un loader ejecutado por LXMI bajo Proton.",
+            "The loader= configuration is documented for the upstream launcher; the identity of a loader run by LXMI under Proton has not been validated.",
         ),
         criterion(
             "steam_launch_context_under_proton",
             criterion_from_capability(capability(ZzmiCapability::ZzzSteamUnderLinuxProton)),
-            "La documentación Native Steam Launch consultada es para Windows y no prueba Steam Linux/Proton.",
+            "The reviewed Native Steam Launch documentation is for Windows and does not prove Steam Linux/Proton support.",
         ),
         criterion(
             "process_identification_in_proton",
             criterion_from_capability(capability(
                 ZzmiCapability::ZzzProcessIdentificationInProton,
             )),
-            "Upstream busca el proceso por nombre; su visibilidad en el contexto real Steam/Proton de ZZZ no está probada.",
+            "Upstream finds the process by name; its visibility in the actual ZZZ Steam/Proton context has not been tested.",
         ),
         criterion(
             "target_process_mapping",
             criterion_from_capability(capability(ZzmiCapability::ZzzTargetProcessMapping)),
-            "El nombre de target está confirmado por la integración upstream y el ejecutable local; su resolución como proceso Windows desde Steam/Proton aún requiere evidencia.",
+            "The target name is confirmed by the upstream integration and local executable; resolving it as a Windows process from Steam/Proton still requires evidence.",
         ),
         criterion(
             "process_lifecycle_in_proton",
             criterion_from_capability(capability(
                 ZzmiCapability::DirectInjectProcessLifecycleInProton,
             )),
-            "El test de laboratorio creó su propio proceso; no demuestra que LXMI pueda controlar el ciclo de vida del target iniciado por Steam/Proton.",
+            "The laboratory test created its own process; it does not prove LXMI can control the lifecycle of a target started by Steam/Proton.",
         ),
         criterion(
             "same_prefix_or_wineserver_context",
             criterion_from_capability(capability(ZzmiCapability::SamePrefixRequirement)),
-            "No se ha establecido qué relación de prefix/wineserver requiere la detección del target para ZZZ.",
+            "The prefix/wineserver relationship required for ZZZ target detection has not been established.",
         ),
         criterion(
             "anti_cheat_boundary",
             criterion_from_capability(capability(ZzmiCapability::AntiCheatBoundary)),
-            "No se ha ejecutado el juego ni se ha estudiado/interactuado con anti-cheat.",
+            "The game has not been run and anti-cheat has not been studied or interacted with.",
         ),
     ];
 
@@ -673,28 +673,28 @@ pub fn assess_loader_strategy(
             mode: ZzmiLoaderMode::Hook,
             scope: LoaderIsolationScope::WineDesktopWithinServer,
             state: ReadinessCapabilityState::UpstreamDocumented,
-            evidence: "XXMI describe su Hook como global. En la implementación Wine consultada, SetWindowsHookEx sin thread target registra el hook en la tabla global del desktop actual, administrada por wineserver; WINEPREFIX distinto permite sesiones Wine independientes.".into(),
-            limitation: "El alcance Wine no es un HOST TEST de Proton ni demuestra el comportamiento interno de 3dmloader.dll. Un hook de desktop puede alcanzar otros procesos del mismo desktop, por lo que no satisface el guard de target único del Hook Lab.".into(),
+            evidence: "XXMI describes its Hook as global. In the reviewed Wine implementation, SetWindowsHookEx without a target thread registers the hook in the current desktop global table managed by wineserver; different WINEPREFIX values allow independent Wine sessions.".into(),
+            limitation: "The Wine scope is not a Proton HOST TEST and does not prove the internal behavior of 3dmloader.dll. A desktop hook can reach other processes on the same desktop, so it does not satisfy the Hook Lab single-target guard.".into(),
         },
         LoaderIsolationEvidence {
             mode: ZzmiLoaderMode::DirectInject,
             scope: LoaderIsolationScope::ProcessBound,
             state: direct_state,
-            evidence: "En LXMI 0.7 el harness pasó únicamente el PID del hijo de test que creó LXMI al export Inject de 3dmloader.dll.".into(),
-            limitation: "El flujo upstream normal encuentra por nombre el proceso de juego; el test de PID propio no verifica la identificación de ZZZ en Steam/Proton.".into(),
+            evidence: "In LXMI 0.7, the harness passed only the PID of its own test child to the Inject export of 3dmloader.dll.".into(),
+            limitation: "The normal upstream flow finds the game process by name; the owned-PID test does not verify ZZZ identification in Steam/Proton.".into(),
         },
     ];
 
     let evidence = vec![
-        "En XXMI Launcher v2.2.1, el lanzamiento estándar hereda use_hook=true de ModelImporterPackage; ZZMI no lo sobrescribe.".into(),
-        "Al activar Custom Launch, custom_launch_inject_mode == Hook selecciona Hook; Inject selecciona la ruta Direct Inject y Bypass omite d3d11.dll salvo que se añada como library extra.".into(),
-        "La configuración de ZZMI no establece una necesidad técnica exclusiva de Hook. La ausencia de tal requisito no demuestra por sí sola compatibilidad de Direct Inject con ZZZ.".into(),
+        "In XXMI Launcher v2.2.1, standard launch inherits use_hook=true from ModelImporterPackage; ZZMI does not override it.".into(),
+        "With Custom Launch enabled, custom_launch_inject_mode == Hook selects Hook; Inject selects Direct Inject and Bypass skips d3d11.dll unless it is added as an extra library.".into(),
+        "The ZZMI configuration does not establish an exclusive technical requirement for Hook. Absence of that requirement alone does not prove Direct Inject compatibility with ZZZ.".into(),
     ];
     let known_limitations = vec![
-        "Direct Inject está probado solo con el target y DLL de laboratorio de LXMI, no con ZZMI/ZZZ.".into(),
-        "El Proton explícito del laboratorio no es la selección Proton de Steam para el juego.".into(),
-        "No se determinó si el proceso helper, Steam y ZZZ deben compartir prefix o wineserver.".into(),
-        "La política del Hook Lab sigue rechazando Hook antes de resolver runtime o iniciar procesos.".into(),
+        "Direct Inject has only been tested with the LXMI laboratory target and DLL, not with ZZMI/ZZZ.".into(),
+        "The explicit laboratory Proton is not the Steam Proton selection for the game.".into(),
+        "It has not been determined whether the helper process, Steam, and ZZZ must share a prefix or wineserver.".into(),
+        "The Hook Lab policy still rejects Hook before resolving a runtime or starting processes.".into(),
     ];
 
     LoaderStrategyDecision {
@@ -736,7 +736,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "game_installation",
         input.installation,
-        "La instalación del juego debe estar presente y reconocida.",
+        "The game installation must be present and recognized.",
     );
     push_evidence_requirement(
         &mut requirements,
@@ -744,7 +744,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "game_content_completeness",
         input.game_content_completeness,
-        "La presencia del directorio/ejecutable no demuestra por sí sola que todos los datos del juego estén completos.",
+        "The presence of the directory or executable alone does not prove that all game data is complete.",
     );
     push_capability_requirement(
         &mut requirements,
@@ -752,7 +752,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "steam_distribution",
         input.distribution,
-        "La distribución Steam debe estar identificada; HoYoPlay/manual son rutas distintas.",
+        "The Steam distribution must be identified; HoYoPlay and manual installations are separate paths.",
     );
     push_evidence_requirement(
         &mut requirements,
@@ -760,7 +760,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "expected_executable",
         input.executable,
-        "Debe existir el ejecutable esperado de Zenless Zone Zero.",
+        "The expected Zenless Zone Zero executable must exist.",
     );
     push_evidence_requirement(
         &mut requirements,
@@ -768,7 +768,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "compatdata",
         input.compatdata,
-        "La ubicación compatdata debe estar identificada.",
+        "The compatdata location must be identified.",
     );
     push_evidence_requirement(
         &mut requirements,
@@ -776,7 +776,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "game_prefix",
         input.prefix,
-        "El estado del prefix del juego debe ser conocido; no se inicializa durante readiness.",
+        "The game prefix state must be known; readiness assessment does not initialize it.",
     );
     push_evidence_requirement(
         &mut requirements,
@@ -784,7 +784,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "zzmi_package",
         input.zzmi_package,
-        "El paquete ZZMI debe estar disponible y validado.",
+        "The ZZMI package must be available and validated.",
     );
     push_evidence_requirement(
         &mut requirements,
@@ -792,7 +792,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "zzmi_authenticity",
         input.zzmi_authenticity,
-        "La procedencia/autenticidad ZZMI debe estar verificada.",
+        "ZZMI provenance and authenticity must be verified.",
     );
     push_evidence_requirement(
         &mut requirements,
@@ -800,7 +800,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "xxmi_libraries_package",
         input.xxmi_libraries_package,
-        "XXMI Libraries es una dependencia independiente de ZZMI.",
+        "XXMI Libraries is a separate ZZMI dependency.",
     );
     push_evidence_requirement(
         &mut requirements,
@@ -808,7 +808,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "xxmi_libraries_authenticity",
         input.xxmi_libraries_authenticity,
-        "La procedencia/autenticidad de XXMI Libraries debe estar verificada.",
+        "XXMI Libraries provenance and authenticity must be verified.",
     );
     push_evidence_requirement(
         &mut requirements,
@@ -816,7 +816,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "managed_runtime",
         input.managed_runtime,
-        "El runtime ensamblado administrado por LXMI debe estar íntegro.",
+        "The assembled LXMI-managed runtime must pass integrity checks.",
     );
     push_capability_requirement(
         &mut requirements,
@@ -824,7 +824,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         &mut unknowns,
         "game_proton_selection",
         input.game_runtime_selection,
-        "El Proton elegido por Steam para ZZZ no se deduce del runtime elegido para el laboratorio.",
+        "The Proton selected by Steam for ZZZ cannot be inferred from the laboratory runtime.",
     );
     if let Some(context) = &input.steam_process_context {
         push_capability_requirement(
@@ -833,7 +833,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
             &mut unknowns,
             "effective_game_proton_context",
             context_knowledge_capability(context.effective_runtime_selection),
-            "El mapping local puede indicar una configuración, pero no observa qué runtime ejecutó Steam para esta sesión.",
+            "The local mapping may indicate a configuration, but does not observe the runtime Steam used for this session.",
         );
         push_capability_requirement(
             &mut requirements,
@@ -841,7 +841,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
             &mut unknowns,
             "effective_game_prefix_context",
             context_knowledge_capability(context.effective_prefix),
-            "compatdata/pfx es una ruta candidata observada; no prueba el prefix efectivo de un proceso iniciado.",
+            "compatdata/pfx is an observed candidate path; it does not prove the effective prefix of a running process.",
         );
         push_capability_requirement(
             &mut requirements,
@@ -849,7 +849,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
             &mut unknowns,
             "steam_process_context",
             context_knowledge_capability(context.process_context),
-            "No se iniciaron ni inspeccionaron procesos Steam/Proton/ZZZ en este incremento.",
+            "No Steam/Proton/ZZZ processes were started or inspected in this increment.",
         );
         push_capability_requirement(
             &mut requirements,
@@ -857,7 +857,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
             &mut unknowns,
             "loader_same_prefix_requirement",
             context_knowledge_capability(context.loader_same_prefix_requirement),
-            "No hay evidencia que determine si un futuro loader debe compartir el prefix de ZZZ.",
+            "No evidence determines whether a future loader must share the ZZZ prefix.",
         );
         push_capability_requirement(
             &mut requirements,
@@ -865,7 +865,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
             &mut unknowns,
             "loader_same_wineserver_requirement",
             context_knowledge_capability(context.loader_same_wineserver_requirement),
-            "No hay evidencia que determine si un futuro loader debe compartir wineserver con ZZZ.",
+            "No evidence determines whether a future loader must share a wineserver with ZZZ.",
         );
         push_capability_requirement(
             &mut requirements,
@@ -873,7 +873,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
             &mut unknowns,
             "wineserver_relationship",
             context_knowledge_capability(context.wineserver_relationship),
-            "No se observaron wineserver ni procesos bajo Wine/Proton.",
+            "No wineserver or Wine/Proton processes were observed.",
         );
     }
     let loader_strategy = assess_loader_strategy(
@@ -891,7 +891,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
                 &mut unknowns,
                 "selected_loader_mode_in_lab",
                 ReadinessCapabilityState::Verified,
-                "El modo Hook seleccionado está probado en el laboratorio.",
+                "The selected Hook mode has been tested in the laboratory.",
             );
         }
         LoaderStrategyOutcome::DirectInject => {
@@ -901,7 +901,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
                 &mut unknowns,
                 "selected_loader_mode_in_lab",
                 ReadinessCapabilityState::Verified,
-                "El modo Direct Inject seleccionado está probado en el laboratorio.",
+                "The selected Direct Inject mode has been tested in the laboratory.",
             );
         }
         LoaderStrategyOutcome::NoDecision => {
@@ -911,7 +911,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
                 &mut unknowns,
                 "loader_strategy_for_zzmi_linux",
                 ReadinessCapabilityState::Unknown,
-                "Upstream ofrece Hook por defecto y Direct Inject en Custom Launch; la compatibilidad específica ZZMI/ZZZ/Linux no está establecida.",
+                "Upstream provides Hook by default and Direct Inject through Custom Launch; specific ZZMI/ZZZ/Linux compatibility has not been established.",
             );
         }
         LoaderStrategyOutcome::Blocked => {
@@ -921,7 +921,7 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
                 &mut unknowns,
                 "loader_strategy_for_zzmi_linux",
                 ReadinessCapabilityState::Blocked,
-                "No hay una estrategia loader que cumpla la política de seguridad con la evidencia disponible.",
+                "No loader strategy satisfies the security policy with the available evidence.",
             );
         }
     }
@@ -930,27 +930,27 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         (
             ZzmiCapability::HookVisibilityInSteamContext,
             "hook_steam_context",
-            "No se ha probado la visibilidad del hook desde el contexto de lanzamiento Steam/Proton de ZZZ.",
+            "Hook visibility from the ZZZ Steam/Proton launch context has not been tested.",
         ),
         (
             ZzmiCapability::SamePrefixRequirement,
             "same_prefix_requirement",
-            "No se ha determinado si loader y ZZZ deben compartir prefix/contexto Proton.",
+            "It has not been determined whether the loader and ZZZ must share a Proton prefix or context.",
         ),
         (
             ZzmiCapability::GameSpecificLoaderCompatibility,
             "game_specific_loader_compatibility",
-            "La prueba de laboratorio no demuestra compatibilidad del loader con ZZZ.",
+            "The laboratory test does not prove loader compatibility with ZZZ.",
         ),
         (
             ZzmiCapability::ZzzProcessIdentificationInProton,
             "process_identification_in_proton",
-            "No se ha probado la identificación del proceso objetivo ZZZ desde el contexto del loader bajo Proton.",
+            "ZZZ target process identification from the loader context under Proton has not been tested.",
         ),
         (
             ZzmiCapability::AntiCheatBoundary,
             "anti_cheat_boundary",
-            "No se ha verificado que el flujo de juego pueda mantenerse dentro del límite sin interacción con anti-cheat.",
+            "It has not been verified that the game flow can stay within the boundary without interacting with anti-cheat.",
         ),
     ] {
         let state = input
@@ -973,12 +973,12 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         (
             ZzmiCapability::ZzzSteamUnderLinuxProton,
             "steam_zzz_launch_context",
-            "La guía Native Steam Launch no demuestra el contexto real Steam Linux/Proton de ZZZ.",
+            "The Native Steam Launch guide does not prove the actual ZZZ Steam Linux/Proton context.",
         ),
         (
             ZzmiCapability::NativeSteamLaunchUpstream,
             "native_steam_launch_topology",
-            "La ruta upstream documentada para ZZZ describe Steam en Windows; su topología Linux/Proton requiere evidencia propia.",
+            "The documented upstream ZZZ path describes Steam on Windows; its Linux/Proton topology requires separate evidence.",
         ),
     ] {
         let state = input
@@ -1025,16 +1025,16 @@ pub fn assess_zzmi_launch_readiness(input: ZzmiLaunchReadinessInput) -> ZzmiLaun
         components: gate_components,
         rationale: match decision {
             ZzmiReadinessDecision::NotReady => {
-                "Faltan requisitos observados; esta evaluación no ejecuta el juego.".into()
+                "Observed requirements are missing; this assessment does not run the game.".into()
             }
             ZzmiReadinessDecision::NeedsEvidence => {
-                "Hay requisitos desconocidos; esta evaluación no ejecuta el juego.".into()
+                "Some requirements are unknown; this assessment does not run the game.".into()
             }
             ZzmiReadinessDecision::ReadyForControlledExperiment => {
-                "La evidencia permitiría revisar un experimento; aún harían falta consentimiento explícito y una implementación separada.".into()
+                "The evidence would permit reviewing an experiment; explicit consent and a separate implementation would still be required.".into()
             }
             ZzmiReadinessDecision::Blocked => {
-                "Una restricción de seguridad o requisito bloquea la revisión del experimento.".into()
+                "A security restriction or requirement blocks experiment review.".into()
             }
         },
     };
@@ -1136,7 +1136,7 @@ fn build_gate_components(
         ),
         None => (
             ZzmiRequirementState::Unknown,
-            "No hay estrategia preferida. El Hook observado tiene alcance de desktop dentro del wineserver, no está probado como aislado al proceso; Direct Inject para ZZMI/ZZZ tampoco está verificado.".into(),
+            "No strategy is preferred. The observed Hook has desktop scope within wineserver and has not been proven process-isolated; Direct Inject for ZZMI/ZZZ is also unverified.".into(),
         ),
     };
 
@@ -1149,18 +1149,18 @@ fn build_gate_components(
                 "xxmi_libraries_package",
                 "xxmi_libraries_authenticity",
             ]),
-            evidence: "ZZMI y XXMI Libraries deben estar presentes y mantener procedencia verificada.".into(),
+            evidence: "ZZMI and XXMI Libraries must be present and retain verified provenance.".into(),
         },
         ZzmiGateComponentAssessment {
             component: ZzmiGateComponent::ManagedRuntime,
             state: state_for("managed_runtime"),
-            evidence: "El runtime ensamblado se inspecciona en modo read-only.".into(),
+            evidence: "The assembled runtime is inspected in read-only mode.".into(),
         },
         ZzmiGateComponentAssessment {
             component: ZzmiGateComponent::LoaderMechanism,
             state: loader_mechanism_state,
             evidence: format!(
-                "Upstream: {:?}; estrategia LXMI para {}: {:?}.",
+                "Upstream: {:?}; LXMI strategy for {}: {:?}.",
                 strategy.upstream_strategy, strategy.platform, strategy.outcome
             ),
         },
@@ -1175,7 +1175,7 @@ fn build_gate_components(
                 "game_proton_selection",
                 "effective_game_proton_context",
             ]),
-            evidence: "La selección Proton de ZZZ requiere evidencia propia; el runtime del laboratorio no se hereda.".into(),
+            evidence: "The ZZZ Proton selection requires separate evidence; the laboratory runtime is not inherited.".into(),
         },
         ZzmiGateComponentAssessment {
             component: ZzmiGateComponent::SteamLaunchTopology,
@@ -1184,17 +1184,17 @@ fn build_gate_components(
                 "native_steam_launch_topology",
                 "steam_zzz_launch_context",
             ]),
-            evidence: "La ruta Native Steam Launch documentada no demuestra Steam Linux/Proton.".into(),
+            evidence: "The documented Native Steam Launch path does not prove Steam Linux/Proton support.".into(),
         },
         ZzmiGateComponentAssessment {
             component: ZzmiGateComponent::ProcessIdentification,
             state: state_for("process_identification_in_proton"),
-            evidence: "La identificación del target ZZZ desde el loader en Proton no se ha probado.".into(),
+            evidence: "ZZZ target identification from the loader in Proton has not been tested.".into(),
         },
         ZzmiGateComponentAssessment {
             component: ZzmiGateComponent::SteamProcessContext,
             state: state_for("steam_process_context"),
-            evidence: "El contexto efectivo de ejecución no se deduce de archivos ni de runtimes instalados.".into(),
+            evidence: "The effective execution context cannot be inferred from files or installed runtimes.".into(),
         },
         ZzmiGateComponentAssessment {
             component: ZzmiGateComponent::PrefixContext,
@@ -1205,7 +1205,7 @@ fn build_gate_components(
                 "effective_game_prefix_context",
                 "loader_same_prefix_requirement",
             ]),
-            evidence: "compatdata/pfx detectado no resuelve si loader y juego deben compartir prefix o wineserver.".into(),
+            evidence: "Detected compatdata/pfx does not determine whether the loader and game must share a prefix or wineserver.".into(),
         },
         ZzmiGateComponentAssessment {
             component: ZzmiGateComponent::WineServerContext,
@@ -1213,12 +1213,12 @@ fn build_gate_components(
                 "wineserver_relationship",
                 "loader_same_wineserver_requirement",
             ]),
-            evidence: "El wineserver efectivo y su relación con un futuro loader no se inspeccionaron.".into(),
+            evidence: "The effective wineserver and its relationship to a future loader have not been inspected.".into(),
         },
         ZzmiGateComponentAssessment {
             component: ZzmiGateComponent::UserConsent,
             state: ZzmiRequirementState::Unknown,
-            evidence: "Este assessment read-only no recoge consentimiento; cualquier experimento futuro lo requerirá antes de ejecutarse.".into(),
+            evidence: "This read-only assessment does not collect consent; any future experiment will require consent before execution.".into(),
         },
     ]
 }
@@ -1724,7 +1724,8 @@ mod tests {
         assert!(result
             .evidence
             .iter()
-            .any(|item| item.contains("no establece una necesidad técnica exclusiva de Hook")));
+            .any(|item| item
+                .contains("does not establish an exclusive technical requirement for Hook")));
         assert!(result.direct_inject_criteria.iter().any(|item| {
             item.id == "hook_exclusive_requirement"
                 && item.state == LoaderCriterionState::NotEstablished
@@ -1747,7 +1748,9 @@ mod tests {
             .expect("hook isolation assessment exists");
         assert_eq!(hook.scope, LoaderIsolationScope::WineDesktopWithinServer);
         assert_eq!(hook.state, ReadinessCapabilityState::UpstreamDocumented);
-        assert!(hook.limitation.contains("no satisface el guard"));
+        assert!(hook
+            .limitation
+            .contains("does not satisfy the Hook Lab single-target guard"));
     }
 
     #[test]

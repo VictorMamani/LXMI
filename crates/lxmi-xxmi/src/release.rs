@@ -62,7 +62,7 @@ impl ReleaseProvider for FixtureReleaseProvider {
                 XxmiError::new(
                     ErrorCode::ReleaseUnavailable,
                     None,
-                    "Fixture sin release para este paquete.",
+                    "The fixture does not contain a release for this package.",
                 )
             })
     }
@@ -76,7 +76,7 @@ impl ReleaseProvider for FixtureReleaseProvider {
                 XxmiError::new(
                     ErrorCode::ReleaseUnavailable,
                     None,
-                    "Fixture sin esa combinación paquete/tag.",
+                    "The fixture does not contain that package/tag combination.",
                 )
             })
     }
@@ -96,14 +96,14 @@ impl ReleaseProvider for FixtureReleaseProvider {
                 XxmiError::new(
                     ErrorCode::ReleaseUnavailable,
                     None,
-                    "Fixture asset sin release.",
+                    "The fixture asset has no release.",
                 )
             })?;
         asset_for_release(release, &asset.name)?;
         let bytes = self
             .assets
             .get(&asset.id)
-            .ok_or_else(|| XxmiError::new(ErrorCode::NotFound, None, "Fixture asset ausente."))?;
+            .ok_or_else(|| XxmiError::new(ErrorCode::NotFound, None, "Fixture asset missing."))?;
         let extension = asset
             .name
             .rsplit_once('.')
@@ -113,7 +113,7 @@ impl ReleaseProvider for FixtureReleaseProvider {
                 XxmiError::new(
                     ErrorCode::UnsafePath,
                     None,
-                    "Extensión de fixture no permitida.",
+                    "Fixture extension not allowed.",
                 )
             })?;
         let result = cache.store_reader(
@@ -128,7 +128,7 @@ impl ReleaseProvider for FixtureReleaseProvider {
             return Err(XxmiError::new(
                 ErrorCode::ChecksumMismatch,
                 Some(result.path),
-                "El fixture no coincide con el tamaño declarado.",
+                "The fixture does not match the declared size.",
             ));
         }
         Ok(result)
@@ -181,7 +181,7 @@ impl GitHubReleaseProvider {
                     return Err(XxmiError::new(
                         ErrorCode::RedirectRejected,
                         None,
-                        "Se excedió el límite de redirects.",
+                        "The redirect limit was exceeded.",
                     ));
                 }
                 let location = response
@@ -192,15 +192,11 @@ impl GitHubReleaseProvider {
                         XxmiError::new(
                             ErrorCode::RedirectRejected,
                             None,
-                            "Redirect sin Location válido.",
+                            "Redirect without a valid Location.",
                         )
                     })?;
                 url = url.join(location).map_err(|_| {
-                    XxmiError::new(
-                        ErrorCode::RedirectRejected,
-                        None,
-                        "URL de redirect inválida.",
-                    )
+                    XxmiError::new(ErrorCode::RedirectRejected, None, "Invalid redirect URL.")
                 })?;
                 validate_url(&url, false)?;
                 continue;
@@ -209,7 +205,7 @@ impl GitHubReleaseProvider {
                 return Err(XxmiError::new(
                     ErrorCode::Network,
                     None,
-                    format!("GitHub respondió HTTP {}.", response.status()),
+                    format!("GitHub returned HTTP {}.", response.status()),
                 ));
             }
             return Ok(response);
@@ -217,7 +213,7 @@ impl GitHubReleaseProvider {
         Err(XxmiError::new(
             ErrorCode::RedirectRejected,
             None,
-            "Se excedió el límite de redirects.",
+            "The redirect limit was exceeded.",
         ))
     }
 
@@ -236,14 +232,18 @@ impl GitHubReleaseProvider {
             XxmiError::new(
                 ErrorCode::InvalidMetadata,
                 None,
-                format!("Metadata de release inválida: {error}"),
+                format!("Invalid release metadata: {error}"),
             )
         })?;
         let tag = value
             .get("tag_name")
             .and_then(Value::as_str)
             .ok_or_else(|| {
-                XxmiError::new(ErrorCode::InvalidMetadata, None, "Release sin tag_name.")
+                XxmiError::new(
+                    ErrorCode::InvalidMetadata,
+                    None,
+                    "The release has no tag_name.",
+                )
             })?;
         validate_tag(tag)?;
         let commit_url = Url::parse(&format!(
@@ -255,7 +255,7 @@ impl GitHubReleaseProvider {
             XxmiError::new(
                 ErrorCode::InvalidMetadata,
                 None,
-                format!("Metadata del commit inválida: {error}"),
+                format!("Invalid commit metadata: {error}"),
             )
         })?;
         let commit = commit_json
@@ -265,7 +265,7 @@ impl GitHubReleaseProvider {
                 XxmiError::new(
                     ErrorCode::InvalidMetadata,
                     None,
-                    "No se resolvió el commit del tag.",
+                    "Could not resolve the tag commit.",
                 )
             })?;
         parse_github_release(&kind, &bytes, commit, unix_seconds()?)
@@ -292,7 +292,7 @@ impl GitHubReleaseProvider {
                 return Err(XxmiError::new(
                     ErrorCode::LimitExceeded,
                     None,
-                    "Content-Length del asset excede el límite o difiere de GitHub API.",
+                    "The asset Content-Length exceeds the limit or differs from the GitHub API.",
                 ));
             }
         }
@@ -302,7 +302,7 @@ impl GitHubReleaseProvider {
                 return Err(XxmiError::new(
                     ErrorCode::UnsafePath,
                     None,
-                    "Extensión de release asset no permitida.",
+                    "Release asset extension not allowed.",
                 ))
             }
         };
@@ -319,7 +319,7 @@ impl GitHubReleaseProvider {
             return Err(XxmiError::new(
                 ErrorCode::ChecksumMismatch,
                 Some(cached.path),
-                "El tamaño descargado difiere del tamaño publicado por GitHub.",
+                "The downloaded size differs from the size published by GitHub.",
             ));
         }
         Ok(cached)
@@ -376,7 +376,7 @@ pub fn parse_github_release(
         XxmiError::new(
             ErrorCode::InvalidMetadata,
             None,
-            format!("JSON de GitHub inválido: {error}"),
+            format!("Invalid GitHub JSON: {error}"),
         )
     })?;
     if json.get("draft").and_then(Value::as_bool).unwrap_or(true)
@@ -388,13 +388,17 @@ pub fn parse_github_release(
         return Err(XxmiError::new(
             ErrorCode::ReleaseUnavailable,
             None,
-            "Las releases draft/prerelease no se consideran candidatas oficiales.",
+            "Draft and prerelease releases are not official candidates.",
         ));
     }
     let tag = required_string(&json, "tag_name")?;
     validate_tag(tag)?;
     let release_id = json.get("id").and_then(Value::as_u64).ok_or_else(|| {
-        XxmiError::new(ErrorCode::InvalidMetadata, None, "Release sin ID numérico.")
+        XxmiError::new(
+            ErrorCode::InvalidMetadata,
+            None,
+            "The release has no numeric ID.",
+        )
     })?;
     let release_url = required_string(&json, "html_url")?.to_owned();
     let expected_url = format!("https://github.com/{}/releases/tag/{tag}", repository(kind));
@@ -402,7 +406,7 @@ pub fn parse_github_release(
         return Err(XxmiError::new(
             ErrorCode::ReleaseUnavailable,
             None,
-            "La URL de release no coincide con el repositorio oficial permitido.",
+            "The release URL does not match the allowed official repository.",
         ));
     }
     let published_at = required_string(&json, "published_at")?.to_owned();
@@ -411,18 +415,23 @@ pub fn parse_github_release(
     let assets_value = json
         .get("assets")
         .and_then(Value::as_array)
-        .ok_or_else(|| XxmiError::new(ErrorCode::InvalidMetadata, None, "Release sin assets."))?;
+        .ok_or_else(|| {
+            XxmiError::new(
+                ErrorCode::InvalidMetadata,
+                None,
+                "The release has no assets.",
+            )
+        })?;
     let mut assets = Vec::new();
     for value in assets_value {
         let asset = ReleaseAsset {
-            id: value
-                .get("id")
-                .and_then(Value::as_u64)
-                .ok_or_else(|| XxmiError::new(ErrorCode::InvalidMetadata, None, "Asset sin ID."))?,
+            id: value.get("id").and_then(Value::as_u64).ok_or_else(|| {
+                XxmiError::new(ErrorCode::InvalidMetadata, None, "The asset has no ID.")
+            })?,
             name: required_string(value, "name")?.to_owned(),
             download_url: required_string(value, "browser_download_url")?.to_owned(),
             size: value.get("size").and_then(Value::as_u64).ok_or_else(|| {
-                XxmiError::new(ErrorCode::InvalidMetadata, None, "Asset sin size.")
+                XxmiError::new(ErrorCode::InvalidMetadata, None, "The asset has no size.")
             })?,
             content_type: value
                 .get("content_type")
@@ -458,7 +467,7 @@ pub fn parse_github_release(
                 return Err(XxmiError::new(
                     ErrorCode::ReleaseUnavailable,
                     None,
-                    "Asset no coincide con el nombre/ruta/tamaño oficial esperado.",
+                    "The asset does not match the expected official name, path, or size.",
                 ));
             }
             assets.push(asset);
@@ -476,7 +485,7 @@ pub fn parse_github_release(
         return Err(XxmiError::new(
             ErrorCode::ReleaseUnavailable,
             None,
-            "Release no contiene exactamente los assets oficiales requeridos.",
+            "The release does not contain exactly the required official assets.",
         ));
     }
     let body = json.get("body").and_then(Value::as_str).unwrap_or_default();
@@ -502,7 +511,7 @@ pub fn asset_for_release<'a>(release: &'a UpstreamRelease, name: &str) -> Result
         return Err(XxmiError::new(
             ErrorCode::ReleaseUnavailable,
             None,
-            "Repositorio fuera de allowlist oficial.",
+            "The repository is outside the official allowlist.",
         ));
     }
     release
@@ -513,7 +522,7 @@ pub fn asset_for_release<'a>(release: &'a UpstreamRelease, name: &str) -> Result
             XxmiError::new(
                 ErrorCode::ReleaseUnavailable,
                 None,
-                "Asset no pertenece a la metadata seleccionada.",
+                "The asset does not belong to the selected metadata.",
             )
         })
 }
@@ -533,7 +542,7 @@ pub fn download_and_import_official(
         return Err(XxmiError::new(
             ErrorCode::ReleaseUnavailable,
             None,
-            "El provider devolvió una fuente no autorizada.",
+            "The provider returned an unauthorized source.",
         ));
     }
     let zip_name = format!(
@@ -546,7 +555,7 @@ pub fn download_and_import_official(
         return Err(XxmiError::new(
             ErrorCode::MissingSignature,
             None,
-            "La release oficial no publica una firma del asset ZIP.",
+            "The official release does not publish a ZIP asset signature.",
         ));
     }
     let archive =
@@ -597,7 +606,7 @@ fn required_string<'a>(value: &'a Value, name: &str) -> Result<&'a str> {
             XxmiError::new(
                 ErrorCode::InvalidMetadata,
                 None,
-                format!("Metadata sin {name}."),
+                format!("Metadata is missing {name}."),
             )
         })
 }
@@ -612,7 +621,7 @@ fn validate_tag(tag: &str) -> Result<()> {
         return Err(XxmiError::new(
             ErrorCode::UnsafePath,
             None,
-            "Tag de release inválido.",
+            "Invalid release tag.",
         ));
     }
     Ok(())
@@ -641,7 +650,7 @@ fn validate_url(url: &Url, api_only: bool) -> Result<()> {
         return Err(XxmiError::new(
             ErrorCode::RedirectRejected,
             None,
-            "URL fuera del allowlist HTTPS de GitHub.",
+            "The URL is outside the GitHub HTTPS allowlist.",
         ));
     }
     Ok(())
@@ -655,7 +664,7 @@ fn bounded_body(response: &mut Response, limit: u64) -> Result<Vec<u8>> {
         return Err(XxmiError::new(
             ErrorCode::LimitExceeded,
             None,
-            "Respuesta de metadata demasiado grande.",
+            "The metadata response is too large.",
         ));
     }
     let mut bytes = Vec::new();
@@ -667,7 +676,7 @@ fn bounded_body(response: &mut Response, limit: u64) -> Result<Vec<u8>> {
         return Err(XxmiError::new(
             ErrorCode::LimitExceeded,
             None,
-            "Respuesta de metadata excede el límite.",
+            "The metadata response exceeds the limit.",
         ));
     }
     Ok(bytes)
@@ -681,7 +690,7 @@ fn unix_seconds() -> Result<u64> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())
-        .map_err(|_| XxmiError::new(ErrorCode::Io, None, "Reloj anterior a Unix epoch."))
+        .map_err(|_| XxmiError::new(ErrorCode::Io, None, "The clock is before the Unix epoch."))
 }
 
 pub(crate) fn format_utc(timestamp: u64) -> String {

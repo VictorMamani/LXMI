@@ -59,7 +59,7 @@ pub(crate) fn inspect_zzz_prefix_preflight_raw(
         .filter(|g| g.steam_app_id == ZENLESS_ZONE_ZERO_APP_ID)
         .collect::<Vec<_>>();
     if games.len() != 1 {
-        return Err(fail("Se requiere una única instalación ZZZ detectada."));
+        return Err(fail("Exactly one detected ZZZ installation is required."));
     }
     let game = games[0];
     let tools = resolved_bridge_runtimes(&discovery)
@@ -67,11 +67,11 @@ pub(crate) fn inspect_zzz_prefix_preflight_raw(
         .filter(|r| r.option.display_name == "Proton - Experimental")
         .collect::<Vec<_>>();
     if tools.len() != 1 {
-        return Err(fail("No se encontró un único candidato de la tool observada en 0.8.3. No se elige otra tool."));
+        return Err(fail("No unique candidate for the tool observed in 0.8.3 was found. No other tool is selected."));
     }
     let runtime = &tools[0];
-    let observer = lxmi_runtime::ProcfsObserver::for_current_user()
-        .map_err(|_| fail("procfs no disponible"))?;
+    let observer =
+        lxmi_runtime::ProcfsObserver::for_current_user().map_err(|_| fail("procfs unavailable"))?;
     let activity = observer.inspect_prefix_activity(&game.compatdata.compatdata_path);
     let mut protected = vec![
         game.installation.install_path.clone(),
@@ -107,7 +107,7 @@ pub(crate) fn inspect_zzz_prefix_preflight_raw(
         proton_root: runtime
             .proton_script
             .parent()
-            .ok_or_else(|| fail("Tool root ausente"))?
+            .ok_or_else(|| fail("Tool root missing"))?
             .into(),
         protected_paths: protected,
         active_processes: activity.matching_processes + activity.game_name_matches,
@@ -319,7 +319,7 @@ pub fn run_runtime_bridge_test(
             .canonicalize()
             .map_err(|error| BridgeServiceError {
                 code: "runtime_not_found".into(),
-                detail: format!("El runtime elegido dejó de estar disponible: {error}"),
+                detail: format!("The selected runtime is no longer available: {error}"),
                 stderr: None,
             })?;
     let selected_runtime = resolved_bridge_runtimes(&discovery)
@@ -327,7 +327,8 @@ pub fn run_runtime_bridge_test(
         .find(|candidate| candidate.proton_script == selected_path)
         .ok_or_else(|| BridgeServiceError {
             code: "runtime_not_allowed".into(),
-            detail: "El runtime no es un candidato Proton válido del discovery actual.".into(),
+            detail: "The runtime is not a valid Proton candidate from the current discovery."
+                .into(),
             stderr: None,
         })?;
     let platform =
@@ -342,7 +343,7 @@ pub fn run_runtime_bridge_test(
     .map_err(BridgeServiceError::from)?
     .ok_or_else(|| BridgeServiceError {
         code: "managed_runtime_missing".into(),
-        detail: "Ensambla primero un runtime ZZMI administrado y verificado.".into(),
+        detail: "First assemble a verified managed ZZMI runtime.".into(),
         stderr: None,
     })?;
     let options = lxmi_bridge::inspect_bridge_options(store.root(), Some(&runtime.app_root));
@@ -354,14 +355,14 @@ pub fn run_runtime_bridge_test(
         lxmi_bridge::HelperState::Available { .. } => {
             return Err(BridgeServiceError {
                 code: "helper_hash_mismatch".into(),
-                detail: "La integridad del helper no coincide con su manifest LXMI.".into(),
+                detail: "The helper integrity does not match its LXMI manifest.".into(),
                 stderr: None,
             });
         }
         lxmi_bridge::HelperState::Missing => {
             return Err(BridgeServiceError {
                 code: "helper_missing".into(),
-                detail: "Construye y coloca el helper Windows LXMI en el almacenamiento administrado antes de iniciar la prueba.".into(),
+                detail: "Build and place the LXMI Windows helper in managed storage before starting the test.".into(),
                 stderr: None,
             });
         }
@@ -404,7 +405,7 @@ pub fn inspect_loader_lab() -> std::result::Result<LoaderLabPanel, BridgeService
             }),
             None,
         ),
-        None => (None, Some("No hay un paquete oficial autenticado de XXMI Libraries con 3dmloader.dll disponible.".into())),
+        None => (None, Some("No authenticated official XXMI Libraries package containing 3dmloader.dll is available.".into())),
     };
     let status = inspect_loader_lab_read_only(store.root())?;
     Ok(LoaderLabPanel {
@@ -425,12 +426,12 @@ pub fn prepare_loader_lab() -> std::result::Result<lxmi_bridge::LoaderLabStatus,
     let (package, component, loader_path, loader_sha256) = verified_loader_package(&store, None)?
         .ok_or_else(|| BridgeServiceError {
             code: "upstream_loader_unavailable".into(),
-            detail: "Importa primero XXMI Libraries desde la release oficial verificada; LXMI no descarga ni acepta otro origen para este experimento.".into(),
+            detail: "First import XXMI Libraries from the verified official release; LXMI does not download or accept another source for this experiment.".into(),
             stderr: None,
         })?;
     let application_root = application_workspace_root().map_err(|error| BridgeServiceError {
         code: "loader_artifacts_missing".into(),
-        detail: format!("No se pudo resolver la raíz local de construcción: {error}"),
+        detail: format!("Could not resolve the local build root: {error}"),
         stderr: None,
     })?;
     let upstream = package
@@ -439,7 +440,7 @@ pub fn prepare_loader_lab() -> std::result::Result<lxmi_bridge::LoaderLabStatus,
         .as_ref()
         .ok_or_else(|| BridgeServiceError {
             code: "loader_provenance_invalid".into(),
-            detail: "Falta upstream provenance en el paquete XXMI Libraries.".into(),
+            detail: "The XXMI Libraries package is missing upstream provenance.".into(),
             stderr: None,
         })?;
     let provenance = component.into_provenance(upstream);
@@ -467,7 +468,7 @@ pub fn run_loader_lab_experiment(
     if mode == lxmi_bridge::LoaderExperimentMode::Hook {
         return Err(BridgeServiceError {
             code: "hook_scope_not_isolated".into(),
-            detail: "Hook de XXMI bloqueado: upstream configura un hook global y LXMI no puede demostrar que quede limitado al proceso de prueba propio. No se inspeccionó Proton ni se inició ningún proceso.".into(),
+            detail: "XXMI Hook blocked: upstream configures a global hook and LXMI cannot prove it is limited to its own test process. Proton was not inspected and no process was started.".into(),
             stderr: None,
         });
     }
@@ -477,7 +478,7 @@ pub fn run_loader_lab_experiment(
     let lab_status = inspect_loader_lab_read_only(store.root())?;
     let lab_manifest = lab_status.manifest.ok_or_else(|| BridgeServiceError {
         code: "loader_artifacts_missing".into(),
-        detail: "Prepara Loader Lab antes de ejecutar un experimento.".into(),
+        detail: "Prepare Loader Lab before running an experiment.".into(),
         stderr: None,
     })?;
     if !lab_status.ready {
@@ -494,7 +495,7 @@ pub fn run_loader_lab_experiment(
     .ok_or_else(|| BridgeServiceError {
         code: "loader_provenance_invalid".into(),
         detail:
-            "El paquete XXMI Libraries usado al preparar el laboratorio ya no está autenticado."
+            "The XXMI Libraries package used to prepare the laboratory is no longer authenticated."
                 .into(),
         stderr: None,
     })?;
@@ -504,7 +505,7 @@ pub fn run_loader_lab_experiment(
         .as_ref()
         .ok_or_else(|| BridgeServiceError {
             code: "loader_provenance_invalid".into(),
-            detail: "Falta upstream provenance en el paquete XXMI Libraries.".into(),
+            detail: "The XXMI Libraries package is missing upstream provenance.".into(),
             stderr: None,
         })?;
     let current_provenance = component.into_provenance(upstream);
@@ -513,7 +514,7 @@ pub fn run_loader_lab_experiment(
     {
         return Err(BridgeServiceError {
             code: "loader_provenance_invalid".into(),
-            detail: "El origen o el hash de 3dmloader.dll no coincide con el paquete autenticado usado en el staging.".into(),
+            detail: "The origin or hash of 3dmloader.dll does not match the authenticated package used for staging.".into(),
             stderr: None,
         });
     }
@@ -522,7 +523,7 @@ pub fn run_loader_lab_experiment(
             .canonicalize()
             .map_err(|error| BridgeServiceError {
                 code: "runtime_not_found".into(),
-                detail: format!("El Proton de prueba seleccionado no está disponible: {error}"),
+                detail: format!("The selected test Proton is unavailable: {error}"),
                 stderr: None,
             })?;
     let selected_runtime = resolved_bridge_runtimes(&discovery)
@@ -530,7 +531,7 @@ pub fn run_loader_lab_experiment(
         .find(|candidate| candidate.proton_script == selected_path)
         .ok_or_else(|| BridgeServiceError {
             code: "runtime_not_allowed".into(),
-            detail: "El Proton debe ser un candidato válido del discovery actual; no se aceptan ejecutables arbitrarios.".into(),
+            detail: "Proton must be a valid candidate from the current discovery; arbitrary executables are not accepted.".into(),
             stderr: None,
         })?;
     lxmi_bridge::run_loader_experiment(&lxmi_bridge::LoaderExperimentConfig {
@@ -562,7 +563,7 @@ mod hook_guard_tests {
         .expect_err("Hook must be blocked before resolving the supplied runtime");
 
         assert_eq!(error.code, "hook_scope_not_isolated");
-        assert!(error.detail.contains("No se inspeccionó Proton"));
+        assert!(error.detail.contains("Proton was not inspected"));
     }
 }
 
@@ -635,7 +636,7 @@ fn verified_loader_package(
         .as_ref()
         .ok_or_else(|| BridgeServiceError {
             code: "loader_provenance_invalid".into(),
-            detail: "Falta upstream provenance en el paquete XXMI Libraries.".into(),
+            detail: "The XXMI Libraries package is missing upstream provenance.".into(),
             stderr: None,
         })?;
     let file = manifest
@@ -644,7 +645,7 @@ fn verified_loader_package(
         .find(|file| file.relative_path == "3dmloader.dll")
         .ok_or_else(|| BridgeServiceError {
             code: "loader_component_missing".into(),
-            detail: "El inventario autenticado no contiene 3dmloader.dll.".into(),
+            detail: "The authenticated inventory does not contain 3dmloader.dll.".into(),
             stderr: None,
         })?;
     let path = package.payload_path().join("3dmloader.dll");
@@ -674,7 +675,7 @@ fn inspect_loader_lab_read_only(
         }
         Ok(_) => Err(BridgeServiceError {
             code: "unsafe_path".into(),
-            detail: "El storage LXMI debe ser un directorio real, no un symlink.".into(),
+            detail: "LXMI storage must be a real directory, not a symbolic link.".into(),
             stderr: None,
         }),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
@@ -682,7 +683,7 @@ fn inspect_loader_lab_read_only(
                 test_root: lxmi_bridge::loader_lab_root(root),
                 ready: false,
                 manifest: None,
-                missing_or_invalid: vec!["No existe un staging preparado.".into()],
+                missing_or_invalid: vec!["No prepared staging directory exists.".into()],
             })
         }
         Err(error) => Err(BridgeServiceError {
@@ -727,7 +728,7 @@ pub(crate) fn store_for(discovery: &SteamDiscoveryResult) -> Result<ManagedStore
         discovery.steam.status,
         lxmi_core::SteamDetectionStatus::Detected | lxmi_core::SteamDetectionStatus::NotInstalled
     ) {
-        return Err(XxmiError::new(ErrorCode::StorageUnavailable,None,"Resuelve el diagnóstico de Steam antes de importar paquetes: límites de almacenamiento no comprobados."));
+        return Err(XxmiError::new(ErrorCode::StorageUnavailable,None,"Resolve the Steam diagnostics before importing packages: storage boundaries have not been checked."));
     }
     store.ensure_outside(&protected_paths(discovery))?;
     Ok(store)
@@ -779,7 +780,7 @@ pub(crate) fn platform_plan(
             XxmiError::new(
                 ErrorCode::UnsupportedIntegration,
                 None,
-                "El juego no aparece en el discovery actual de Steam.",
+                "The game is missing from the current Steam discovery.",
             )
         })
 }
@@ -1093,7 +1094,7 @@ fn steam_process_context_evidence(
             .as_ref()
             .map(|path| path.display().to_string())
             .unwrap_or_else(|| "Steam game discovery".into()),
-        "La existencia del manifest vincula AppID y biblioteca; no identifica por sí sola el runtime efectivo.",
+        "The manifest links the AppID and library; it does not identify the effective runtime by itself.",
     ));
     findings.push(context_finding(
         "compatdata directory",
@@ -1141,8 +1142,8 @@ fn steam_process_context_evidence(
     findings.push(context_finding(
         "Effective Steam/Proton execution context",
         ContextFindingState::Unknown,
-        "LXMI no inicia Steam ni ZZZ; el contexto efectivo se obtiene únicamente mediante observación pasiva de una sesión iniciada manualmente.".into(),
-        "Los mappings configurados y los candidatos instalados no demuestran por sí solos el runtime de una ejecución concreta.",
+        "LXMI does not start Steam or ZZZ; the effective context comes only from passive observation of a manually started session.".into(),
+        "Configured mappings and installed candidates alone do not prove the runtime of a specific execution.",
     ));
     findings.push(context_finding(
         "Loader prefix and wineserver relationship",
@@ -1205,7 +1206,7 @@ pub fn inspect_zzz_launch_readiness(
         .find(|plan| plan.game.id == "zenless-zone-zero")
         .ok_or_else(|| BridgeServiceError {
             code: "game_registry_missing".into(),
-            detail: "Zenless Zone Zero no aparece en el registro de juegos de LXMI.".into(),
+            detail: "Zenless Zone Zero is missing from the LXMI game registry.".into(),
             stderr: None,
         })?;
 
@@ -1357,57 +1358,57 @@ pub fn inspect_zzz_launch_readiness(
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::ExplicitLabProtonRuntime,
             state: ReadinessCapabilityState::Verified,
-            evidence: "LXMI 0.7 registró un host test con Proton Experimental explícitamente elegido para el laboratorio. Este dato no selecciona Proton para ZZZ.".into(),
+            evidence: "LXMI 0.7 recorded a host test with Proton Experimental explicitly selected for the laboratory. This does not select Proton for ZZZ.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::DirectInjectInIsolatedLab,
             state: ReadinessCapabilityState::Verified,
-            evidence: "Host test LXMI 0.7: Direct Inject cargó el DLL de prueba solo en el target LXMI fijo dentro del prefix aislado.".into(),
+            evidence: "LXMI 0.7 host test: Direct Inject loaded the test DLL only into the fixed LXMI target inside the isolated prefix.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::HookInIsolatedLab,
             state: ReadinessCapabilityState::Blocked,
-            evidence: "No ejecutado: el upstream instala un hook global y no se puede demostrar el límite de un único target que exige el Loader Lab.".into(),
+            evidence: "Not executed: upstream installs a global hook and the single-target boundary required by Loader Lab cannot be demonstrated.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::RemoteDllViaDirectInject,
             state: ReadinessCapabilityState::Verified,
-            evidence: "El test DLL remoto informó su ruta Windows y marker/nonce válidos en el test target LXMI.".into(),
+            evidence: "The remote test DLL reported its Windows path and valid marker and nonce in the LXMI test target.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::RemoteDllViaHook,
             state: ReadinessCapabilityState::Blocked,
-            evidence: "No probado porque el modo Hook no satisface el aislamiento por proceso del experimento.".into(),
+            evidence: "Not tested because Hook mode does not satisfy the experiment process-isolation requirement.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::ManagedRuntimePathViaProton,
             state: ReadinessCapabilityState::Verified,
-            evidence: "El bridge 0.6 leyó el manifiesto administrado mediante una ruta Windows en un contexto aislado; no representa el prefix de ZZZ.".into(),
+            evidence: "Bridge 0.6 read the managed manifest through a Windows path in an isolated context; this does not represent the ZZZ prefix.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::LoaderIdentitySemantics,
             state: ReadinessCapabilityState::UpstreamDocumented,
-            evidence: "La configuración upstream de ZZMI describe loader= como la identidad ejecutable permitida para carga desde una ubicación externa; no se ha probado una identidad LXMI distinta.".into(),
+            evidence: "The upstream ZZMI configuration describes loader= as the executable identity allowed for loading from an external location; a different LXMI identity has not been tested.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::UpstreamDirectInjectCustomLaunch,
             state: ReadinessCapabilityState::UpstreamDocumented,
-            evidence: "XXMI Launcher v2.2.1: Custom Launch con modo Inject selecciona use_hook=false y entra al flujo genérico Direct Inject. El lanzamiento estándar sigue heredando el default del paquete.".into(),
+            evidence: "XXMI Launcher v2.2.1: Custom Launch with Inject mode selects use_hook=false and enters the generic Direct Inject flow. Standard launch still inherits the package default.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::UpstreamGenericDirectInject,
             state: ReadinessCapabilityState::UpstreamDocumented,
-            evidence: "La ruta Inject está implementada en el MigotoInjector genérico y usa el export Inject de 3dmloader.dll; esto no verifica ZZMI sobre ZZZ/Linux/Proton.".into(),
+            evidence: "The Inject path is implemented in the generic MigotoInjector and uses the 3dmloader.dll Inject export; this does not verify ZZMI on ZZZ/Linux/Proton.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::LoaderComponentLocalUse,
             state: ReadinessCapabilityState::Verified,
-            evidence: "3dmloader.dll fue autenticado desde XXMI Libraries v1.1.7 y revisado para ejecución local en laboratorio. No se autoriza redistribución.".into(),
+            evidence: "3dmloader.dll was authenticated from XXMI Libraries v1.1.7 and reviewed for local laboratory execution. Redistribution is not authorized.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::DirectInjectProcessLifecycleInProton,
             state: ReadinessCapabilityState::Unknown,
-            evidence: "El test controlado crea su propio target; no prueba inicio/detección/espera del juego iniciado por Steam bajo Proton.".into(),
+            evidence: "The controlled test creates its own target; it does not test starting, detecting, or waiting for a game launched by Steam under Proton.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::ZzzTargetProcessMapping,
@@ -1418,47 +1419,47 @@ pub fn inspect_zzz_launch_readiness(
             } else {
                 ReadinessCapabilityState::Unknown
             },
-            evidence: "La integración ZZZ fija ZenlessZoneZero.exe como target y el discovery local confirma el ejecutable; la resolución desde el proceso Windows de Steam/Proton no está probada.".into(),
+            evidence: "The ZZZ integration pins ZenlessZoneZero.exe as its target and local discovery confirms the executable; resolution from the Steam/Proton Windows process has not been tested.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::NativeSteamLaunchUpstream,
             state: ReadinessCapabilityState::UpstreamDocumented,
-            evidence: "La documentación XXMI fija documenta Native Steam Launch para ZZZ en Windows. No prueba su traducción a Steam Linux/Proton.".into(),
+            evidence: "The pinned XXMI documentation describes Native Steam Launch for ZZZ on Windows. It does not prove support for Steam Linux/Proton.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::DirectSteamLaunchZzz,
             state: ReadinessCapabilityState::Unsupported,
-            evidence: "La documentación upstream indica que Direct Steam Launch para ZZZ sigue pendiente.".into(),
+            evidence: "Upstream documentation indicates that Direct Steam Launch for ZZZ is still pending.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::ZzzSteamUnderLinuxProton,
             state: ReadinessCapabilityState::Unverified,
-            evidence: "No se ha ejecutado ZZMI/ZZZ mediante Steam Linux y Proton.".into(),
+            evidence: "ZZMI/ZZZ has not been run through Steam Linux and Proton.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::HookVisibilityInSteamContext,
             state: ReadinessCapabilityState::Unknown,
-            evidence: "No se sabe si el Hook instalado en un proceso Proton controlado será visible desde el contexto del juego iniciado por Steam.".into(),
+            evidence: "It is unknown whether a Hook installed in a controlled Proton process is visible from the context of a game started by Steam.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::SamePrefixRequirement,
             state: ReadinessCapabilityState::Unknown,
-            evidence: "No hay evidencia suficiente para afirmar si loader y juego deben compartir prefix/contexto.".into(),
+            evidence: "There is insufficient evidence to determine whether the loader and game must share a prefix or context.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::GameSpecificLoaderCompatibility,
             state: ReadinessCapabilityState::NotTested,
-            evidence: "El laboratorio usó únicamente lxmi-loader-test-target.exe; ZZZ no se lanzó ni recibió una DLL.".into(),
+            evidence: "The laboratory used only lxmi-loader-test-target.exe; ZZZ was not launched and did not receive a DLL.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::ZzzProcessIdentificationInProton,
             state: ReadinessCapabilityState::Unknown,
-            evidence: "Upstream obtiene el nombre del proceso desde el ejecutable configurado y lo busca; esa detección en Steam/Proton para ZZZ no se ha probado.".into(),
+            evidence: "Upstream derives the process name from the configured executable and searches for it; this detection has not been tested for ZZZ in Steam/Proton.".into(),
         },
         ZzmiCapabilityAssessment {
             capability: ZzmiCapability::AntiCheatBoundary,
             state: ReadinessCapabilityState::Unknown,
-            evidence: "No se investigó ni interactuó con anti-cheat; el comportamiento del flujo ZZZ permanece fuera de verificación.".into(),
+            evidence: "Anti-cheat was not investigated or interacted with; the ZZZ flow behavior remains unverified.".into(),
         },
     ];
 
@@ -1498,7 +1499,7 @@ pub fn inspect_zzz_launch_readiness(
                     )
                 })
                 .collect(),
-            explicit_lab_runtime: Some("Proton Experimental · laboratorio LXMI 0.7".into()),
+            explicit_lab_runtime: Some("Proton Experimental · LXMI 0.7 laboratory".into()),
             game_install_path: install_path,
             game_executable_path: executable_path,
             compatdata_path,
@@ -1551,7 +1552,7 @@ pub fn plan(
         XxmiError::new(
             ErrorCode::UnsupportedIntegration,
             None,
-            "Juego no registrado.",
+            "Game no registrado.",
         )
     })?;
     if matches!(
@@ -1561,14 +1562,14 @@ pub fn plan(
         return Err(XxmiError::new(
             ErrorCode::InvalidPackage,
             None,
-            "Instalación aún desconocida; revisa Steam.",
+            "The installation is still unknown; check Steam.",
         ));
     }
     let integration = integration_for_game(game_id).ok_or_else(|| {
         XxmiError::new(
             ErrorCode::UnsupportedIntegration,
             None,
-            "No existe una integración registrada para este juego.",
+            "No integration is registered for this game.",
         )
     })?;
     plan_installation_for_integration(
@@ -1718,7 +1719,7 @@ pub fn run_context_lab_test(
     if !side_effects_acknowledged {
         return Err(BridgeServiceError {
             code: "context_consent_required".into(),
-            detail: "Confirma la creación de prefixes aislados de LXMI.".into(),
+            detail: "Confirm creation of isolated LXMI prefixes.".into(),
             stderr: None,
         });
     }
@@ -1737,7 +1738,8 @@ pub fn run_context_lab_test(
         .find(|r| r.proton_script == selected_path)
         .ok_or_else(|| BridgeServiceError {
             code: "runtime_not_allowed".into(),
-            detail: "Selecciona un Proton descubierto; no se aceptan comandos arbitrarios.".into(),
+            detail: "Select a discovered Proton runtime; arbitrary commands are not accepted."
+                .into(),
             stderr: None,
         })?;
     let application_root = application_workspace_root().map_err(|e| BridgeServiceError {
@@ -1771,7 +1773,7 @@ pub fn run_direct_context_test(
     if !side_effects_acknowledged {
         return Err(BridgeServiceError {
             code: "context_consent_required".into(),
-            detail: "Confirma el experimento aislado con fixtures LXMI.".into(),
+            detail: "Confirm the isolated experiment using LXMI fixtures.".into(),
             stderr: None,
         });
     }
@@ -1790,13 +1792,13 @@ pub fn run_direct_context_test(
         .find(|r| r.proton_script == selected_path)
         .ok_or_else(|| BridgeServiceError {
             code: "runtime_not_allowed".into(),
-            detail: "Selecciona un Proton descubierto.".into(),
+            detail: "Select a discovered Proton runtime.".into(),
             stderr: None,
         })?;
     let (package, component, loader_path, loader_sha256) = verified_loader_package(&store, None)?
         .ok_or_else(|| BridgeServiceError {
         code: "upstream_loader_unavailable".into(),
-        detail: "Se requiere XXMI Libraries autenticado.".into(),
+        detail: "Authenticated XXMI Libraries is required.".into(),
         stderr: None,
     })?;
     let upstream = package
@@ -1805,7 +1807,7 @@ pub fn run_direct_context_test(
         .as_ref()
         .ok_or_else(|| BridgeServiceError {
             code: "loader_provenance_invalid".into(),
-            detail: "Falta provenance.".into(),
+            detail: "Missing provenance.".into(),
             stderr: None,
         })?;
     let application_root = application_workspace_root().map_err(|e| BridgeServiceError {
@@ -1877,7 +1879,7 @@ pub fn run_context_reentry_test(
     if !side_effects_acknowledged {
         return Err(BridgeServiceError {
             code: "context_consent_required".into(),
-            detail: "Confirma el test aislado sin loader.".into(),
+            detail: "Confirm the isolated test without a loader.".into(),
             stderr: None,
         });
     }
@@ -1896,7 +1898,7 @@ pub fn run_context_reentry_test(
         .find(|r| r.proton_script == selected_path)
         .ok_or_else(|| BridgeServiceError {
             code: "runtime_not_allowed".into(),
-            detail: "Selecciona un Proton descubierto.".into(),
+            detail: "Select a discovered Proton runtime.".into(),
             stderr: None,
         })?;
     let application_root = application_workspace_root().map_err(|e| BridgeServiceError {

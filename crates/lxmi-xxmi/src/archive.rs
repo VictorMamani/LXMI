@@ -19,7 +19,7 @@ pub(crate) fn extract_zip(
         XxmiError::new(
             ErrorCode::UnsafePath,
             Some(path.into()),
-            "ZIP sin directorio padre.",
+            "The ZIP has no parent directory.",
         )
     })?;
     let filename = path
@@ -29,7 +29,7 @@ pub(crate) fn extract_zip(
             XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(path.into()),
-                "Nombre ZIP inválido.",
+                "Invalid ZIP name.",
             )
         })?;
     let directory = Directory::open_absolute(parent)?;
@@ -41,7 +41,7 @@ pub(crate) fn extract_zip(
         return Err(XxmiError::new(
             ErrorCode::LimitExceeded,
             Some(path.into()),
-            "El ZIP supera el tamaño máximo permitido.",
+            "The ZIP exceeds the maximum allowed size.",
         ));
     }
     let mut archive = ZipArchive::new(file).map_err(|error| {
@@ -55,7 +55,7 @@ pub(crate) fn extract_zip(
         return Err(XxmiError::new(
             ErrorCode::LimitExceeded,
             Some(path.into()),
-            "El ZIP contiene demasiadas entradas.",
+            "The ZIP contains too many entries.",
         ));
     }
 
@@ -89,14 +89,14 @@ pub(crate) fn extract_zip(
             return Err(XxmiError::new(
                 ErrorCode::LimitExceeded,
                 Some(relative.into()),
-                "El ZIP excede la profundidad máxima.",
+                "The ZIP exceeds the maximum depth.",
             ));
         }
         if !seen.insert(relative.to_lowercase()) {
             return Err(XxmiError::new(
                 ErrorCode::UnsafeArchive,
                 Some(relative.into()),
-                "El ZIP contiene rutas duplicadas o ambiguas por mayúsculas.",
+                "The ZIP contains duplicate or case-ambiguous paths.",
             ));
         }
 
@@ -107,7 +107,7 @@ pub(crate) fn extract_zip(
                 return Err(XxmiError::new(
                     ErrorCode::UnsafeArchive,
                     Some(relative.into()),
-                    "El ZIP contiene un symlink, hardlink o archivo especial.",
+                    "The ZIP contains a symbolic link, hardlink, or special file.",
                 ));
             }
         }
@@ -122,7 +122,7 @@ pub(crate) fn extract_zip(
             return Err(XxmiError::new(
                 ErrorCode::LimitExceeded,
                 Some(relative.into()),
-                "Un archivo del ZIP supera el límite permitido.",
+                "A ZIP entry exceeds the allowed limit.",
             ));
         }
         let ratio_limit = compressed.saturating_mul(limits.max_compression_ratio);
@@ -130,17 +130,17 @@ pub(crate) fn extract_zip(
             return Err(XxmiError::new(
                 ErrorCode::LimitExceeded,
                 Some(relative.into()),
-                "La relación de compresión excede el límite permitido.",
+                "The compression ratio exceeds the allowed limit.",
             ));
         }
-        total = total.checked_add(declared_size).ok_or_else(|| {
-            XxmiError::new(ErrorCode::LimitExceeded, None, "Overflow de tamaño ZIP.")
-        })?;
+        total = total
+            .checked_add(declared_size)
+            .ok_or_else(|| XxmiError::new(ErrorCode::LimitExceeded, None, "ZIP size overflow."))?;
         if total > limits.max_total_bytes {
             return Err(XxmiError::new(
                 ErrorCode::LimitExceeded,
                 Some(path.into()),
-                "El tamaño descomprimido total del ZIP excede el límite permitido.",
+                "The total decompressed ZIP size exceeds the allowed limit.",
             ));
         }
 
@@ -153,7 +153,7 @@ pub(crate) fn extract_zip(
                 XxmiError::new(
                     ErrorCode::UnsafeArchive,
                     Some(relative.into()),
-                    format!("No se pudo descomprimir o validar CRC: {error}"),
+                    format!("Could not decompress or validate CRC: {error}"),
                 )
             })?;
             if count == 0 {
@@ -164,7 +164,7 @@ pub(crate) fn extract_zip(
                 return Err(XxmiError::new(
                     ErrorCode::LimitExceeded,
                     Some(relative.into()),
-                    "El tamaño descomprimido excede lo declarado o el límite permitido.",
+                    "The decompressed size exceeds the declared size or allowed limit.",
                 ));
             }
             output
@@ -175,7 +175,7 @@ pub(crate) fn extract_zip(
             return Err(XxmiError::new(
                 ErrorCode::UnsafeArchive,
                 Some(relative.into()),
-                "El tamaño real no coincide con el directorio central del ZIP.",
+                "The actual size does not match the ZIP central directory.",
             ));
         }
         output
@@ -189,7 +189,7 @@ fn unsafe_entry(name: &str) -> XxmiError {
     XxmiError::new(
         ErrorCode::UnsafePath,
         Some(name.into()),
-        "El ZIP contiene una ruta absoluta, traversal o separador ambiguo.",
+        "The ZIP contains an absolute path, traversal, or ambiguous separator.",
     )
 }
 

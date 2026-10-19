@@ -20,7 +20,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["vite.config.ts", "eslint.config.js"],
+    files: ["vite.config.ts", "eslint.config.js", "tests/**/*.mjs"],
     languageOptions: { globals: globals.node },
   },
 );

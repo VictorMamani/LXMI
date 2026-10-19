@@ -1,4 +1,4 @@
-//! Non-invasive checks before «Jugar con mods». Only metadata and file existence:
+//! Non-invasive checks before «Play with mods». Only metadata and file existence:
 //! this never starts Steam, Proton, the helper or the game. Messages name files, never
 //! absolute paths of the user's home.
 use crate::host::{LoadMode, ModLaunchTarget};
@@ -42,34 +42,34 @@ pub fn preflight(input: &PreflightInput<'_>) -> Vec<String> {
 
     if !is_file(&target.game_executable) {
         blockers.push(format!(
-            "No se encontró el ejecutable del juego ({}).",
+            "The game executable was not found ({}).",
             file_name(&target.game_executable)
         ));
     }
     if !file_name(&target.game_executable).eq_ignore_ascii_case(input.runtime_target) {
         blockers.push(format!(
-            "El importador espera {} pero el proceso del juego es {}.",
+            "The importer expects {} but the game process is {}.",
             input.runtime_target,
             file_name(&target.game_executable)
         ));
     }
     if !fs::symlink_metadata(target.compat_data.join("pfx")).is_ok_and(|m| m.is_dir()) {
         blockers.push(
-            "Falta el prefix de Proton del juego. Abre el juego desde Steam una vez y vuelve a intentarlo."
+            "The game Proton prefix is missing. Open the game from Steam once and try again."
                 .into(),
         );
     }
     if !mode_matches_importer(target.load_mode, target.integration_folder) {
-        blockers.push("La estrategia de carga no corresponde a este importador.".into());
+        blockers.push("The loading strategy does not match this importer.".into());
     }
     if input.importer_root.file_name().and_then(|n| n.to_str()) != Some(target.integration_folder) {
-        blockers.push("La carpeta del importador no corresponde al juego.".into());
+        blockers.push("The importer folder does not match the game.".into());
     }
     if target.load_mode == LoadMode::DirectInject {
         for name in DIRECT_INJECT_FILES {
             if !is_file(&input.importer_root.join(name)) {
                 blockers.push(format!(
-                    "Falta {name} en el runtime de WWMI. Prepara el runtime de nuevo."
+                    "{name} is missing from the WWMI runtime. Prepare the runtime again."
                 ));
             }
         }
@@ -84,14 +84,14 @@ fn argument_blockers(target: &ModLaunchTarget) -> Vec<String> {
     let args = target.launch_arguments;
     for (index, arg) in args.iter().enumerate() {
         if !ALLOWED_LAUNCH_ARGUMENTS.contains(arg) {
-            blockers.push(format!("Argumento de lanzamiento no permitido: {arg}."));
+            blockers.push(format!("Launch argument is not allowed: {arg}."));
         }
         if args[..index].contains(arg) {
-            blockers.push(format!("Argumento de lanzamiento repetido: {arg}."));
+            blockers.push(format!("Duplicate launch argument: {arg}."));
         }
     }
     if target.load_mode == LoadMode::DirectInject && !args.contains(&"-dx11") {
-        blockers.push("WWMI necesita el argumento -dx11 para iniciar Wuthering Waves.".into());
+        blockers.push("WWMI requires the -dx11 argument to launch Wuthering Waves.".into());
     }
     blockers
 }
@@ -183,7 +183,7 @@ mod tests {
         let f = Fixture::new();
         fs::remove_dir_all(f.root.join("compat/pfx")).unwrap();
         let t = f.target(LoadMode::DirectInject, "WWMI", &["-dx11"]);
-        assert!(f.run(&t).iter().any(|b| b.contains("prefix de Proton")));
+        assert!(f.run(&t).iter().any(|b| b.contains("Proton prefix")));
     }
 
     #[test]
@@ -197,7 +197,7 @@ mod tests {
         });
         assert!(blockers
             .iter()
-            .any(|b| b.contains("espera ZenlessZoneZero.exe")));
+            .any(|b| b.contains("expects ZenlessZoneZero.exe")));
     }
 
     #[test]
@@ -210,7 +210,7 @@ mod tests {
         assert!(f.run(&unknown).iter().any(|b| b.contains("-krqlv=hd")));
 
         let repeated = f.target(LoadMode::DirectInject, "WWMI", &["-dx11", "-dx11"]);
-        assert!(f.run(&repeated).iter().any(|b| b.contains("repetido")));
+        assert!(f.run(&repeated).iter().any(|b| b.contains("Duplicate")));
     }
 
     #[test]
@@ -221,12 +221,12 @@ mod tests {
         assert!(f
             .run(&hook_on_wwmi)
             .iter()
-            .any(|b| b.contains("no corresponde")));
+            .any(|b| b.contains("does not match")));
         let inject_on_zzmi = f.target(LoadMode::DirectInject, "ZZMI", &["-dx11"]);
         assert!(f
             .run(&inject_on_zzmi)
             .iter()
-            .any(|b| b.contains("no corresponde")));
+            .any(|b| b.contains("does not match")));
     }
 
     #[test]
@@ -234,6 +234,6 @@ mod tests {
         let f = Fixture::new();
         fs::remove_file(f.root.join("game/Client-Win64-Shipping.exe")).unwrap();
         let t = f.target(LoadMode::DirectInject, "WWMI", &["-dx11"]);
-        assert!(f.run(&t).iter().any(|b| b.contains("ejecutable del juego")));
+        assert!(f.run(&t).iter().any(|b| b.contains("game executable")));
     }
 }

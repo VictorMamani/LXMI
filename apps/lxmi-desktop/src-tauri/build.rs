@@ -1,6 +1,6 @@
 //! Builds the Windows mod loader helper with MinGW and embeds it in the app, so its
 //! bytes (and hash) are fixed at compile time. Without MinGW the app still builds
-//! and reports "Jugar con mods" as unavailable.
+//! and reports "Play with mods" as unavailable.
 use std::{path::PathBuf, process::Command};
 
 fn main() {
@@ -25,7 +25,7 @@ fn main() {
         .status();
     match built {
         Ok(status) if status.success() => println!("cargo:rustc-cfg=lxmi_mod_loader"),
-        _ => println!("cargo:warning=x86_64-w64-mingw32-gcc no disponible: «Jugar con mods» quedará deshabilitado"),
+        _ => println!("cargo:warning=x86_64-w64-mingw32-gcc is unavailable: 'Play with mods' will be disabled"),
     }
     tauri_build::build()
 }

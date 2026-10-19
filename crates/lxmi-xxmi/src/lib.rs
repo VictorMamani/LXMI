@@ -18,8 +18,8 @@ mod topology;
 
 pub use activation::{
     activate_profile, copy_profile_runtime_for_launch, profile_activation_status,
-    resolve_profile_runtime, review_profile_activation, rollback_profile_activation,
-    ActivationPlan, ActiveProfileSelection, ProfileRuntimeRef,
+    profile_runtime_profile, resolve_profile_runtime, review_profile_activation,
+    rollback_profile_activation, ActivationPlan, ActiveProfileSelection, ProfileRuntimeRef,
 };
 pub use assembly::{
     assemble_importer_runtime, assemble_zzmi_runtime, existing_importer_runtime,

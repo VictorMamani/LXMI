@@ -12,19 +12,18 @@ pub enum ConfigError {
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::MissingLoaderSection => write!(f, "d3dx.ini no tiene sección [Loader]."),
+            Self::MissingLoaderSection => write!(f, "d3dx.ini has no [Loader] section."),
             Self::LoaderEntries(n) => write!(
                 f,
-                "d3dx.ini debe tener un único `loader` en [Loader]; hay {n}."
+                "d3dx.ini must have exactly one `loader` in [Loader]; found {n}."
             ),
             Self::TargetEntries(n) => write!(
                 f,
-                "d3dx.ini debe tener un único `target` en [Loader]; hay {n}."
+                "d3dx.ini must have exactly one `target` in [Loader]; found {n}."
             ),
-            Self::UnexpectedTarget(t) => write!(
-                f,
-                "El `target` de d3dx.ini ({t}) no es el ejecutable del juego."
-            ),
+            Self::UnexpectedTarget(t) => {
+                write!(f, "The d3dx.ini `target` ({t}) is not the game executable.")
+            }
         }
     }
 }

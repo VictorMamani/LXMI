@@ -13,6 +13,7 @@ pub struct GameModRuntimeStatus {
     pub base_runtime: Option<ManagedRuntime>,
     pub selected_runtime: Option<ManagedRuntime>,
     pub selection: ActiveProfileSelection,
+    pub applied_profile: Option<ModProfile>,
     pub launch_with_mods_available: bool,
     pub launch_blockers: Vec<String>,
     /// True while the launch path is not validated in game (WWMI Direct Inject).
@@ -44,19 +45,15 @@ fn base_runtime(
         XxmiError::new(
             ErrorCode::NotFound,
             None,
-            "Prepara primero el runtime de este juego.",
+            "Prepare the runtime for this game first.",
         )
     })
 }
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
-    tauri::async_runtime::spawn_blocking(f).await.map_err(|_| {
-        XxmiError::new(
-            ErrorCode::Io,
-            None,
-            "La tarea del runtime terminó inesperadamente.",
-        )
-    })?
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|_| XxmiError::new(ErrorCode::Io, None, "The runtime task ended unexpectedly."))?
 }
 
 #[tauri::command]
@@ -67,7 +64,7 @@ pub async fn inspect_game_mod_runtime(
 ) -> Result<GameModRuntimeStatus> {
     blocking(move || {
         let kind = integration_for_game(&game_id).ok_or_else(|| {
-            XxmiError::new(ErrorCode::WrongGameIntegration, None, "Juego desconocido.")
+            XxmiError::new(ErrorCode::WrongGameIntegration, None, "Unknown game.")
         })?;
         let (discovery, store) = context()?;
         let packages = store.list()?;
@@ -96,6 +93,11 @@ pub async fn inspect_game_mod_runtime(
             .map(|base| resolve_profile_runtime(&store, base))
             .transpose()?;
         let selection = profile_activation_status(&store, &game_id)?;
+        let applied_profile = selection
+            .current
+            .as_ref()
+            .map(|current| profile_runtime_profile(&store, &game_id, &current.runtime_id))
+            .transpose()?;
         let mut launch_blockers = crate::mod_launch::launch_blockers(&game_id, &selection);
         if let (true, true, Some(runtime)) = (
             installed,
@@ -125,6 +127,7 @@ pub async fn inspect_game_mod_runtime(
             launch_experimental: crate::mod_launch::launch_is_experimental(&game_id),
             launch_blockers,
             selection,
+            applied_profile,
         })
     })
     .await
@@ -235,7 +238,7 @@ pub async fn launch_game_without_mods(game_id: String) -> Result<SteamLaunchRequ
                 XxmiError::new(
                     ErrorCode::NotFound,
                     None,
-                    "No se encontró una instalación lista en Steam.",
+                    "No ready Steam installation was found.",
                 )
             })?;
         // Fixed registry AppID only, direct argv, no shell/URI supplied by the webview.
@@ -254,7 +257,7 @@ pub async fn launch_game_without_mods(game_id: String) -> Result<SteamLaunchRequ
                 XxmiError::new(
                     ErrorCode::Io,
                     None,
-                    format!("No se pudo enviar la solicitud a Steam: {e}"),
+                    format!("Could not send the request to Steam: {e}"),
                 )
             })?;
         std::thread::spawn(move || {

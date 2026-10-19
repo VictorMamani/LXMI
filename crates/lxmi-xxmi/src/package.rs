@@ -76,7 +76,7 @@ fn walk(
         return Err(XxmiError::new(
             ErrorCode::LimitExceeded,
             None,
-            "Profundidad máxima excedida.",
+            "Maximum depth exceeded.",
         ));
     }
     for name in dir.entries(limits.max_files)? {
@@ -85,7 +85,7 @@ fn walk(
             return Err(XxmiError::new(
                 ErrorCode::LimitExceeded,
                 None,
-                "Demasiadas entradas en el paquete.",
+                "Too many package entries.",
             ));
         }
         let rel = if prefix.is_empty() {
@@ -98,21 +98,21 @@ fn walk(
             XxmiError::new(
                 ErrorCode::InvalidPackage,
                 Some(PathBuf::from(&rel)),
-                "Entrada desapareció durante la inspección.",
+                "The entry disappeared during inspection.",
             )
         })?;
         if meta.is_dir() {
             walk(&dir.child(&name)?, &rel, limits, files, total, entries)?;
         } else {
             let (size, hash) = hash_file(dir, &name, limits.max_file_bytes)?;
-            *total = total.checked_add(size).ok_or_else(|| {
-                XxmiError::new(ErrorCode::LimitExceeded, None, "Overflow de tamaño.")
-            })?;
+            *total = total
+                .checked_add(size)
+                .ok_or_else(|| XxmiError::new(ErrorCode::LimitExceeded, None, "Size overflow."))?;
             if *total > limits.max_total_bytes {
                 return Err(XxmiError::new(
                     ErrorCode::LimitExceeded,
                     None,
-                    "Tamaño total excedido.",
+                    "Total size exceeded.",
                 ));
             }
             files.push(PackageFile {
@@ -129,7 +129,7 @@ fn walk(
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(PathBuf::from(&f.relative_path)),
-                "Colisión de nombres ignorando mayúsculas.",
+                "Case-insensitive name collision.",
             ));
         }
     }
@@ -152,7 +152,7 @@ pub(crate) fn hash_file(dir: &Directory, name: &str, limit: u64) -> Result<(u64,
             return Err(XxmiError::new(
                 ErrorCode::LimitExceeded,
                 Some(PathBuf::from(name)),
-                "Archivo demasiado grande.",
+                "The file is too large.",
             ));
         }
         h.update(&buf[..n]);
@@ -188,7 +188,7 @@ fn require(files: &[PackageFile], required: &[&str]) -> Result<()> {
             ErrorCode::MissingRequiredFile,
             None,
             format!(
-                "Faltan archivos requeridos o están vacíos: {}",
+                "Required files are missing or empty: {}",
                 missing.join(", ")
             ),
         ));
@@ -215,7 +215,7 @@ pub(crate) fn inspect_package(dir: &Directory, limits: ImportLimits) -> Result<P
         return Err(XxmiError::new(
             ErrorCode::InvalidPackage,
             None,
-            "El directorio mezcla payloads WWMI y ZZMI; importa una raíz de integración por separado.",
+            "The directory mixes WWMI and ZZMI payloads; import each integration root separately.",
         ));
     }
     if has_wwmi {
@@ -225,7 +225,7 @@ pub(crate) fn inspect_package(dir: &Directory, limits: ImportLimits) -> Result<P
             return Err(XxmiError::new(
                 ErrorCode::UnsupportedIntegration,
                 None,
-                "Namespace WWMI desconocido; layout soportado: WWMIv1.",
+                "Unknown WWMI namespace; supported layout: WWMIv1.",
             ));
         }
         let config = text(dir, "d3dx.ini")?;
@@ -240,7 +240,7 @@ pub(crate) fn inspect_package(dir: &Directory, limits: ImportLimits) -> Result<P
             return Err(XxmiError::new(
                 ErrorCode::InvalidPackage,
                 None,
-                "d3dx.ini no referencia el núcleo WWMI conocido.",
+                "d3dx.ini does not reference the known WWMI core.",
             ));
         }
         let version = assignment(&ini, "global $wwmi_version").map(|raw| VersionInfo {
@@ -266,7 +266,7 @@ pub(crate) fn inspect_package(dir: &Directory, limits: ImportLimits) -> Result<P
                 XxmiError::new(
                     ErrorCode::InvalidMetadata,
                     None,
-                    "Manifest.json no contiene signatures.",
+                    "Manifest.json does not contain signatures.",
                 )
             })?;
         for name in &LIBRARY_FILES[..3] {
@@ -279,7 +279,7 @@ pub(crate) fn inspect_package(dir: &Directory, limits: ImportLimits) -> Result<P
                     ErrorCode::InvalidMetadata,
                     None,
                     format!(
-                        "Falta declaración de firma para {name}. No se verifican firmas en 0.5."
+                        "Missing signature declaration for {name}. Signatures are not verified in 0.5."
                     ),
                 ));
             }
@@ -294,7 +294,7 @@ pub(crate) fn inspect_package(dir: &Directory, limits: ImportLimits) -> Result<P
             });
         Ok(PackageInspection{kind:PackageKind::XxmiLibraries,version,files,evidence:vec!["Three XXMI library files plus declared signature manifest; signatures NOT verified".into()]})
     } else {
-        Err(XxmiError::new(ErrorCode::UnsupportedIntegration,None,"No se reconoce un paquete WWMIv1, ZZMI ni XXMI Libraries. Selecciona la raíz del payload, no la carpeta contenedora."))
+        Err(XxmiError::new(ErrorCode::UnsupportedIntegration,None,"No WWMIv1, ZZMI, or XXMI Libraries package was recognized. Select the payload root, not its containing directory."))
     }
 }
 
@@ -317,7 +317,7 @@ fn validate_zzmi_package(dir: &Directory, files: Vec<PackageFile>) -> Result<Pac
         return Err(XxmiError::new(
             ErrorCode::InvalidPackage,
             None,
-            "d3dx.ini no declara el ejecutable ZZMI conocido ni incluye Core/ZZMI/main.ini.",
+            "d3dx.ini does not declare the known ZZMI executable or include Core/ZZMI/main.ini.",
         ));
     }
 
@@ -496,7 +496,7 @@ pub fn inspect_runtime(path: &Path) -> RuntimeDiscovery {
         out.issues.push(XxmiError::new(
             ErrorCode::InvalidPackage,
             Some(path.to_owned()),
-            "Se observaron estructuras WWMI y ZZMI juntas; no se asigna una integración única.",
+            "WWMI and ZZMI structures were observed together; no unique integration is assigned.",
         ));
     }
     tracing::info!(integration=?out.integration,libraries=?out.libraries,"XXMI discovery completed");

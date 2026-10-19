@@ -72,7 +72,7 @@ impl RuntimeObservationController {
         if !user_confirmed_manual_launch {
             return Err(observation_error(
                 "consent_required",
-                "Confirma que iniciarás Zenless Zone Zero manualmente desde Steam mientras LXMI observa.",
+                "Confirm that you will start Zenless Zone Zero manually from Steam while LXMI observes.",
             ));
         }
         if let Some(active) = self.active_session() {
@@ -88,7 +88,7 @@ impl RuntimeObservationController {
             .ok_or_else(|| {
                 observation_error(
                     "zzz_not_detected",
-                    "El escaneo read-only actual no encontró el manifest Steam de Zenless Zone Zero (AppID 4162040).",
+                    "The current read-only scan did not find the Zenless Zone Zero Steam manifest (AppID 4162040).",
                 )
             })?;
         let system = SystemInfo::current();
@@ -108,7 +108,7 @@ impl RuntimeObservationController {
             observation_error(
                 "procfs_unavailable",
                 &format!(
-                    "No se pudo preparar la vista read-only del usuario actual: {}",
+                    "Could not prepare the current user read-only view: {}",
                     safe_io_kind(&error)
                 ),
             )
@@ -163,10 +163,7 @@ impl RuntimeObservationController {
                 }
                 observation_error(
                     "observer_thread_failed",
-                    &format!(
-                        "No se pudo iniciar la observación: {}",
-                        safe_io_kind(&error)
-                    ),
+                    &format!("Could not start observation: {}", safe_io_kind(&error)),
                 )
             })?;
         Ok(redacted_snapshot(&session))
@@ -350,12 +347,12 @@ fn update_from_scan(session: &ObservationSession, scan: lxmi_runtime::ProcfsScan
             snapshot.app_id_evidence = RuntimeObservationAppId {
                 state: ObservationEvidenceState::Ambiguous,
                 observed_values: Vec::new(),
-                sources: vec!["más de un proceso coincide con la identidad del juego".into()],
+                sources: vec!["more than one process matches the game identity".into()],
             };
             snapshot.observed_runtime = RuntimeObservationSelection {
                 state: ObservationEvidenceState::Ambiguous,
                 tool: None,
-                evidence_source: Some("no se seleccionó arbitrariamente un proceso".into()),
+                evidence_source: Some("no process was selected arbitrarily".into()),
             };
             snapshot.compatdata.state = ObservationEvidenceState::Ambiguous;
             snapshot.compatdata.observed_path = None;
@@ -366,7 +363,7 @@ fn update_from_scan(session: &ObservationSession, scan: lxmi_runtime::ProcfsScan
             snapshot.wineserver = WineServerObservation {
                 state: ObservationEvidenceState::Ambiguous,
                 related_process_count: 0,
-                evidence: "Hay varios procesos candidatos; no se eligió un contexto.".into(),
+                evidence: "Multiple candidate processes exist; no context was selected.".into(),
             };
         }
     }
@@ -457,7 +454,7 @@ fn initial_snapshot(
         wineserver: WineServerObservation {
             state: ObservationEvidenceState::NotObserved,
             related_process_count: 0,
-            evidence: "La observación aún espera el proceso del juego.".into(),
+            evidence: "Observation is still waiting for the game process.".into(),
         },
         environment_evidence: ObservationEvidenceState::Unknown,
         warnings: Vec::new(),
@@ -560,9 +557,9 @@ fn now_millis() -> u64 {
 
 fn safe_io_kind(error: &std::io::Error) -> &'static str {
     match error.kind() {
-        std::io::ErrorKind::PermissionDenied => "permiso denegado",
-        std::io::ErrorKind::NotFound => "entrada ausente",
-        _ => "error de lectura",
+        std::io::ErrorKind::PermissionDenied => "permission denied",
+        std::io::ErrorKind::NotFound => "entry missing",
+        _ => "read error",
     }
 }
 
