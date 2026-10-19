@@ -1,0 +1,23 @@
+.picker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.switch {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--rf-faint);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--rf-muted);
+}
+
+.switch:not(:disabled):hover,
+.switch[aria-expanded="true"] {
+  border-color: var(--rf-cyan);
+  color: var(--rf-cyan);
+}

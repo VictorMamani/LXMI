@@ -114,28 +114,55 @@ mods». La recarga sin reiniciar todavía no existe.
 
 ## Frontend (para trabajar la interfaz)
 
-| Archivo | Qué es |
+Diseño de referencia: «monMan v3» (pen.dev). Todo vive en `apps/lxmi-desktop/src/`,
+organizado por capas; cada componente tiene su `*.module.css` al lado.
+
+| Carpeta | Qué contiene |
 |---|---|
-| `App.tsx` | Estructura y pantallas: Inicio, Mods, Perfiles, Compatibilidad, Configuración |
-| `components/Chrome.tsx` | Barra superior (`LauncherBar`), botones y piezas comunes |
-| `ModLaunchCard.tsx` | Botón «Jugar con mods», pasos del inicio, aviso y Cancelar |
-| `ModManagerPanel.tsx`, `RuntimePanel.tsx` | Biblioteca, perfiles, paquetes y aplicación de perfiles |
-| `DiagnosticsApp.tsx`, `XxmiPanel.tsx`, `*Panel.tsx` | Diagnósticos |
-| `gameCatalog.ts` | Juegos, importador y arte de cada uno |
-| `tokens.css` | Colores, tipografía y radios |
-| `launcher.css` | Estilo launcher: fondo a pantalla completa, barra superior y panel de inicio |
-| `styles.css`, `prototype.css`, `workspace.css` | Estilos base y de paneles |
-| `runtimeTypes.ts` | Tipos de las respuestas de los comandos Tauri |
-| `public/artwork/*.svg` | Ilustraciones originales de LXMI (no se usa arte oficial de los juegos) |
+| `api/` | `commands.ts` (mapa tipado de todos los comandos Tauri), `client.ts` (`call()`), `types.ts` y `mock/` (backend de demostración) |
+| `domain/` | Lógica pura sin React: catálogo de juegos, fases de lanzamiento, versiones, formato |
+| `services/` | Flujos de varios comandos: guardar y aplicar perfil, actualizar el runtime |
+| `state/` | Contextos compartidos: juego activo (biblioteca y runtime), Steam, lanzamiento, avisos |
+| `hooks/` | `useAsync`, `useAction`, `useHotkeys` |
+| `components/` | Piezas del sistema de diseño: `Button` (primario, contorno, fantasma), `Tag`, `StatusDot`, `Dialog`, `MenuButton`… |
+| `features/home/` | Inicio: video de fondo, tarjetas de juego, JUGAR y progreso de carga |
+| `features/config/` | Configuración: barra lateral, cartuchos (Q / E) y las páginas Espacios, Mods, Compartir, Avanzado (con Laboratorios) y Acerca de |
+| `styles/` | Tokens de color y tipografía (`tokens.css`), estilos base y fuentes empaquetadas |
+| `media/games/` | Fondos animados (WebM VP9), pósters y portadas de cada juego |
 
-Toda la comunicación con el backend pasa por `invoke` de `@tauri-apps/api`. Los comandos
-están registrados en `apps/lxmi-desktop/src-tauri/src/lib.rs`; los principales son
-`list_mod_library`, `import_local_mod`, `save_mod_profile`, `inspect_game_mod_runtime`,
-`activate_mod_profile`, `start_game_with_mods`, `game_with_mods_status`,
-`cancel_game_with_mods` y `launch_game_without_mods`.
+Toda la comunicación con el backend pasa por `call()` de `api/client.ts`, tipado con el
+mapa de `api/commands.ts`. Los comandos están registrados en
+`apps/lxmi-desktop/src-tauri/src/lib.rs`.
 
-`npm run dev` solo sirve el frontend: fuera de la ventana de Tauri las llamadas a
-`invoke` fallan. Para probar la interfaz con datos reales usa `npm run tauri:dev`.
+`npm run dev` sirve el frontend en <http://127.0.0.1:1420>. Fuera de la ventana de Tauri
+(por ejemplo, en Windows o en un navegador) la app usa automáticamente el backend de
+demostración de `api/mock/`, con datos de ejemplo y sin tocar el sistema; «Acerca de»
+indica «Modo demo». Para probar con datos reales usa `npm run tauri:dev` en Linux.
+
+### Desarrollo en Windows (app real vía WSL)
+
+La ventana de Tauri y el backend real corren en WSL2 (WSLg muestra la ventana); Vite
+corre en Windows y la ventana lo carga con recarga en caliente. Preparación, una vez:
+
+1. En `%UserProfile%\.wslconfig`, dentro de `[wsl2]`: `networkingMode=mirrored` (Windows y
+   WSL comparten `localhost`). Luego `wsl --shutdown`.
+2. En Ubuntu: Rust (`curl https://sh.rustup.rs -sSf | sh`) y los paquetes de sistema:
+
+   ```bash
+   sudo apt install -y build-essential pkg-config libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
+     libayatana-appindicator3-dev librsvg2-dev gcc-mingw-w64-x86-64 \
+     gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav
+   ```
+
+Después, desde la raíz del repo en Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\dev-wsl.ps1
+```
+
+La primera compilación tarda varios minutos; los artefactos quedan en
+`~/.cache/lxmi-target` dentro de WSL. El backend ve el Steam y los juegos de la distro
+de WSL, no los de Windows.
 
 ## Comprobaciones antes de subir cambios
 

@@ -1,0 +1,47 @@
+/* Design tokens from «monMan v3» (pen.dev). Configuration keeps one uniform
+   style for every game: near-black surfaces, a single cyan accent and thin
+   rust lines. Per-game colour only appears in the game art. */
+:root {
+  --rf-bg: #0f1011;
+  --rf-surface: #16181a;
+  --rf-surface-2: #1d2023;
+  --rf-cyan: #19e3ff;
+  --rf-cyan-dim: #19e3ff26;
+  --rf-cyan-wash: #19e3ff0d;
+  --rf-rust: #c0601f;
+  --rf-rust-wash: #c0601f0d;
+  --rf-line: #5a2e10;
+  --rf-text: #e4e8e9;
+  --rf-muted: #7e868a;
+  --rf-faint: #3a3f43;
+  --rf-ok: #8fe388;
+  --rf-danger: #ff7a6b;
+  --rf-row-line: #ffffff0d;
+
+  /* Home screen: light text and controls over moving art. */
+  --home-paper: #f3f5f1;
+  --home-ink: #0f1011;
+  --home-veil: #07101488;
+  --home-fade: #070b0de6;
+  --glass: #1b2529a8;
+  --glass-line: #ffffff38;
+
+  --font-display: "Share Tech Mono", ui-monospace, monospace;
+  --font-body: "IBM Plex Mono", ui-monospace, monospace;
+  --font-title: "Space Grotesk", system-ui, sans-serif;
+
+  --radius-sm: 2px;
+  --radius: 3px;
+  --page-gutter: 48px;
+  --sidebar-width: 250px;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* Space for the custom window controls; 0 outside the Tauri window. */
+  --titlebar-height: 0px;
+
+  color-scheme: dark;
+}
+
+/* Set by main.tsx inside the Tauri window, which draws its own title bar. */
+:root[data-window-frame="custom"] {
+  --titlebar-height: 32px;
+}

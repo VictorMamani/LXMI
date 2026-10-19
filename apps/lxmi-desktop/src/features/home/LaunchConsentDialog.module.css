@@ -1,0 +1,14 @@
+.consent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--rf-text);
+  cursor: pointer;
+}
+
+.consent input {
+  accent-color: var(--rf-cyan);
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}

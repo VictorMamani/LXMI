@@ -1,0 +1,22 @@
+.search {
+  width: 200px;
+}
+
+.note {
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--rf-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}

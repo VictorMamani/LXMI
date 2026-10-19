@@ -1,0 +1,43 @@
+.toast {
+  position: fixed;
+  right: 17px;
+  bottom: 108px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 34px));
+  padding: 10px 14px;
+  border-left: 2px solid var(--rf-cyan);
+  background: var(--rf-surface-2);
+  color: var(--rf-text);
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 10px 30px #00000070;
+  animation: slide 220ms var(--ease-out);
+}
+
+.toast svg {
+  flex: none;
+  color: var(--rf-cyan);
+}
+
+.success svg {
+  color: var(--rf-ok);
+}
+
+.error {
+  border-left-color: var(--rf-danger);
+}
+.error svg {
+  color: var(--rf-danger);
+}
+
+@keyframes slide {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}

@@ -1,0 +1,33 @@
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rf-row-line);
+}
+
+.row dt {
+  display: flex;
+  gap: 6px;
+  width: 96px;
+}
+
+.row dd {
+  color: var(--rf-text);
+}
+
+.row kbd {
+  min-width: 22px;
+  padding: 3px 6px;
+  border: 1px solid var(--rf-faint);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--rf-muted);
+  text-align: center;
+}
