@@ -6,7 +6,7 @@ biblioteca privada, los agrupa en perfiles y abre el juego desde Steam con el pe
 elegido usando la carga oficial de XXMI (ZZMI/WWMI), sin modificar la instalación del
 juego, Steam ni el prefix de Proton.
 
-![LXMI](.github/assets/lxmi-launcher.png)
+![LXMI](.github/assets/image.png)
 
 > **Estado: primera versión (0.8.7).** «Jugar con mods» está validado en ZZZ con Steam +
 > Proton Experimental. Wuthering Waves ya gestiona biblioteca y perfiles, pero su carga
@@ -179,13 +179,6 @@ Desde `apps/lxmi-desktop`:
 ```bash
 npm run typecheck && npm run lint && npm run format:check && npm run build
 ```
-
-Pruebas nativas opcionales (abren una ventana real y no lanzan juegos):
-
-- `tools/test-mod-manager-native.sh` (con `npm run dev` en marcha): biblioteca y perfiles
-  en un `XDG_DATA_HOME` temporal, sin tocar tus datos.
-- `LXMI_CONFIRM_NATIVE_PROFILE_REVIEW=YES cargo run -p lxmi-desktop --example selected_profile_native_review`:
-  revisa el perfil aplicado sin pulsar «Jugar con mods».
 
 ## Dónde guarda LXMI los datos
 
