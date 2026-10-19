@@ -1,15 +1,24 @@
 //! «Play with mods»: one launch at a time through `lxmi-launch`. Paths, AppID and the
 //! runtime are derived here from discovery and the saved selection, never the webview.
+use lxmi_core::SteamInstallation;
 use lxmi_core::{GameExecutableStatus, GameInstallationStatus};
 use lxmi_launch::{
     preflight, run_launch, LaunchStatus, LoadMode, ModLaunchTarget, PreflightInput,
-    SteamModLaunchHost,
+    SteamModLaunchHost, SteamProcessContext,
 };
-use lxmi_steam::{SteamDiscoveryResult, SteamDiscoveryScanner};
+use lxmi_proton::{parse_tool_manifest_vdf, CompatibilityToolKind, ProtonScanner};
+use lxmi_steam::{
+    inspect_steam_compat_tool_config, parse_app_manifest, SteamDiscoveryResult,
+    SteamDiscoveryScanner,
+};
 use lxmi_xxmi::*;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
 };
 
 #[cfg(lxmi_mod_loader)]
@@ -32,12 +41,12 @@ struct LaunchSpec {
     /// Extra arguments for `steam -applaunch`.
     launch_arguments: &'static [&'static str],
     load_mode: LoadMode,
-    /// Shown as experimental in the UI until the path is validated in game.
+    /// Shown as experimental while gameplay validation covers only a limited setup.
     experimental: bool,
 }
 
 /// ZZZ uses the validated hook path on Steam + Proton. Wuthering Waves uses
-/// experimental Direct Inject and has not been validated in gameplay.
+/// experimental Direct Inject, tested with dwproton 11.0-14 and DXVK Sarek.
 const LAUNCH_SPECS: &[LaunchSpec] = &[
     LaunchSpec {
         game_id: "zenless-zone-zero",
@@ -67,7 +76,83 @@ fn launch_spec(game_id: &str) -> Option<&'static LaunchSpec> {
     LAUNCH_SPECS.iter().find(|spec| spec.game_id == game_id)
 }
 
-/// True when «Play with mods» for this game is not yet validated in gameplay.
+/// Steam's own Proton names that local files can map to an AppID without `appinfo.vdf`.
+const BUILTIN_TOOLS: &[(&str, u32)] = &[("proton_experimental", 1493710)];
+
+/// `steamapps/common/<installdir>` of an installed Steam app in any library.
+fn installed_app_dir(libraries: &[PathBuf], app_id: u32) -> Option<PathBuf> {
+    libraries.iter().find_map(|library| {
+        let steamapps = library.join("steamapps");
+        let text = fs::read_to_string(steamapps.join(format!("appmanifest_{app_id}.acf"))).ok()?;
+        let manifest = parse_app_manifest(&text).ok()?;
+        (manifest.app_id == app_id).then(|| steamapps.join("common").join(manifest.install_dir))
+    })
+}
+
+fn is_file(path: &Path) -> bool {
+    fs::symlink_metadata(path).is_ok_and(|m| m.is_file())
+}
+
+/// Proton and Steam Linux Runtime Steam will use for this game, read from Steam's own
+/// configuration before anything starts. Only an explicit per-game choice is trusted:
+/// without it Steam may pick a tool from data LXMI cannot read, and a loader started in a
+/// different Proton could not join the game's wineserver.
+fn planned_steam_context(
+    installations: &[SteamInstallation],
+    target: &ModLaunchTarget,
+) -> std::result::Result<SteamProcessContext, String> {
+    let name = inspect_steam_compat_tool_config(&target.steam_root, target.steam_app_id)
+        .mappings
+        .and_then(|m| m.per_app)
+        .and_then(|m| m.internal_name)
+        .filter(|n| !n.trim().is_empty())
+        .ok_or("Choose a compatibility tool for this game in Steam (Properties → Compatibility → Force a specific Steam Play compatibility tool) so LXMI knows which Proton Steam will use.")?;
+    let libraries: Vec<PathBuf> = installations
+        .iter()
+        .flat_map(|i| i.libraries.iter().map(|l| l.path.clone()))
+        .collect();
+    let custom = ProtonScanner
+        .scan(installations)
+        .tools
+        .into_iter()
+        .find(|tool| {
+            tool.internal_id.as_deref() == Some(name.as_str())
+                && tool.kind == CompatibilityToolKind::Proton
+        });
+    let proton_dir = custom
+        .map(|tool| tool.path)
+        .or_else(|| {
+            BUILTIN_TOOLS
+                .iter()
+                .find(|(builtin, _)| *builtin == name)
+                .and_then(|(_, app)| installed_app_dir(&libraries, *app))
+        })
+        .and_then(|dir| fs::canonicalize(dir).ok())
+        .filter(|dir| is_file(&dir.join("proton")))
+        .ok_or_else(|| {
+            format!("LXMI cannot locate the compatibility tool «{name}» selected in Steam.")
+        })?;
+    let runtime_app = fs::read_to_string(proton_dir.join("toolmanifest.vdf"))
+        .ok()
+        .and_then(|text| parse_tool_manifest_vdf(&text).ok())
+        .and_then(|manifest| manifest.require_tool_appid)
+        .and_then(|app| app.trim().parse::<u32>().ok())
+        .ok_or_else(|| format!("«{name}» does not declare the Steam Linux Runtime it needs."))?;
+    let runtime_dir = installed_app_dir(&libraries, runtime_app)
+        .filter(|dir| is_file(&dir.join("_v2-entry-point")))
+        .ok_or_else(|| format!("The Steam Linux Runtime required by «{name}» (AppID {runtime_app}) is not installed. Open any game with it once from Steam."))?;
+    Ok(SteamProcessContext {
+        pid: 0,
+        start_ticks: 0,
+        compat_data: fs::canonicalize(&target.compat_data)
+            .unwrap_or_else(|_| target.compat_data.clone()),
+        proton_dir,
+        runtime_dir,
+        steam_client_dir: Some(target.steam_root.clone()),
+    })
+}
+
+/// True when «Play with mods» for this game has only limited gameplay validation.
 pub(crate) fn launch_is_experimental(game_id: &str) -> bool {
     launch_spec(game_id).is_some_and(|spec| spec.experimental)
 }
@@ -80,11 +165,20 @@ pub(crate) fn runtime_blockers(
     runtime: &ManagedRuntime,
 ) -> Vec<String> {
     match target(discovery, game_id) {
-        Ok(target) => preflight(&PreflightInput {
-            target: &target,
-            importer_root: &runtime.importer_root,
-            runtime_target: &runtime.target_process,
-        }),
+        Ok(target) => {
+            let mut blockers = preflight(&PreflightInput {
+                target: &target,
+                importer_root: &runtime.importer_root,
+                runtime_target: &runtime.target_process,
+            });
+            if target.load_mode == LoadMode::DirectInject {
+                if let Err(reason) = planned_steam_context(&discovery.steam.installations, &target)
+                {
+                    blockers.push(reason);
+                }
+            }
+            blockers
+        }
         Err(reason) => vec![reason.to_string()],
     }
 }
@@ -246,11 +340,32 @@ pub async fn start_game_with_mods(
             launch_arguments = ?launch_target.launch_arguments,
             "launch with mods: preflight passed"
         );
+        // Direct Inject has no launcher to wait in: stage the loader with the tools Steam
+        // will use and release it into the game's wineserver once Steam started the game.
+        let planned = match launch_target.load_mode {
+            LoadMode::DirectInject => Some(
+                planned_steam_context(&discovery.steam.installations, &launch_target)
+                    .map_err(error)?,
+            ),
+            LoadMode::Hook => None,
+        };
+        if let Some(context) = &planned {
+            tracing::info!(
+                game = %id,
+                proton = %context.proton_dir.display(),
+                runtime = %context.runtime_dir.display(),
+                "launch with mods: loader staged before Steam starts the game"
+            );
+        }
         let helper = HELPER
             .ok_or_else(|| error("Loader not included."))?
             .to_vec();
+        let host = SteamModLaunchHost::new(launch_target, store, runtime, helper);
         Ok((
-            SteamModLaunchHost::new(launch_target, store, runtime, helper),
+            match planned {
+                Some(context) => host.with_planned_context(context),
+                None => host,
+            },
             profile,
         ))
     })
@@ -323,10 +438,177 @@ mod tests {
         assert_eq!(wuwa.load_mode, LoadMode::DirectInject);
         assert!(
             wuwa.experimental,
-            "WWMI stays experimental until validated in game"
+            "WWMI stays experimental while validation is limited to one setup"
         );
         assert!(launch_is_experimental("wuthering-waves"));
         assert!(!launch_is_experimental("zenless-zone-zero"));
+    }
+
+    struct SteamTree(PathBuf);
+    impl Drop for SteamTree {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    /// Steam root with a per-game mapping, a custom Proton and the runtime it requires.
+    fn steam_tree(mapping: Option<&str>) -> (SteamTree, Vec<SteamInstallation>, ModLaunchTarget) {
+        let root = std::env::temp_dir().join(format!(
+            "lxmi-planned-{}-{}",
+            std::process::id(),
+            mapping.unwrap_or("none")
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let write = |path: &Path, text: &str| {
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        let config = mapping.map_or(String::new(), |name| {
+            format!(r#""3513350" {{ "name" "{name}" "config" "" "priority" "250" }}"#)
+        });
+        write(
+            &root.join("config/config.vdf"),
+            &format!(
+                r#""InstallConfigStore" {{ "Software" {{ "Valve" {{ "Steam" {{ "CompatToolMapping" {{ {config} }} }} }} }} }}"#
+            ),
+        );
+        let tool = root.join("compatibilitytools.d/custom-proton");
+        write(
+            &tool.join("compatibilitytool.vdf"),
+            r#""compatibilitytools" { "compat_tools" { "custom-proton" { "install_path" "." "display_name" "Custom Proton" "from_oslist" "windows" "to_oslist" "linux" } } }"#,
+        );
+        write(
+            &tool.join("toolmanifest.vdf"),
+            r#""manifest" { "version" "2" "commandline" "/proton %verb%" "require_tool_appid" "4183110" "compatmanager_layer_name" "proton" }"#,
+        );
+        write(&tool.join("proton"), "");
+        write(
+            &root.join("steamapps/appmanifest_4183110.acf"),
+            r#""AppState" { "appid" "4183110" "name" "Steam Linux Runtime 4.0" "installdir" "SteamLinuxRuntime_4" }"#,
+        );
+        write(
+            &root.join("steamapps/common/SteamLinuxRuntime_4/_v2-entry-point"),
+            "",
+        );
+        let compat = root.join("steamapps/compatdata/3513350");
+        fs::create_dir_all(compat.join("pfx")).unwrap();
+        let installations = vec![SteamInstallation {
+            root_path: root.clone(),
+            libraries: vec![lxmi_core::SteamLibrary {
+                path: root.clone(),
+                is_default: true,
+            }],
+        }];
+        let target = ModLaunchTarget {
+            game_id: "wuthering-waves".into(),
+            steam_app_id: 3513350,
+            game_executable: root.join("game.exe"),
+            launcher_executable: root.join("launcher.exe"),
+            compat_data: compat,
+            steam_root: root.clone(),
+            integration_folder: "WWMI",
+            launcher_label: "Wuthering Waves",
+            launch_arguments: &["-dx11"],
+            load_mode: LoadMode::DirectInject,
+        };
+        (SteamTree(root), installations, target)
+    }
+
+    #[test]
+    fn plans_the_per_game_proton_and_the_runtime_it_requires() {
+        let (tree, installations, target) = steam_tree(Some("custom-proton"));
+        let context = planned_steam_context(&installations, &target).expect("planned");
+        let root = fs::canonicalize(&tree.0).unwrap();
+        assert_eq!(
+            fs::canonicalize(&context.proton_dir).unwrap(),
+            root.join("compatibilitytools.d/custom-proton")
+        );
+        assert_eq!(
+            context.runtime_dir,
+            tree.0.join("steamapps/common/SteamLinuxRuntime_4")
+        );
+        assert_eq!(
+            context.compat_data,
+            root.join("steamapps/compatdata/3513350")
+        );
+    }
+
+    #[test]
+    fn refuses_to_guess_without_a_per_game_choice_or_with_an_unknown_tool() {
+        let (_tree, installations, target) = steam_tree(None);
+        let reason = planned_steam_context(&installations, &target).unwrap_err();
+        assert!(reason.contains("Properties"), "{reason}");
+
+        let (_tree, installations, target) = steam_tree(Some("proton_9"));
+        let reason = planned_steam_context(&installations, &target).unwrap_err();
+        assert!(reason.contains("proton_9"), "{reason}");
+    }
+
+    /// Resolves against this machine's Steam: `cargo test -p lxmi-desktop -- --ignored planned`.
+    #[test]
+    #[ignore = "reads the real Steam installation"]
+    fn planned_context_on_this_machine() {
+        let discovery = SteamDiscoveryScanner::from_environment().scan();
+        let target = target(&discovery, "wuthering-waves").expect("Wuthering Waves target");
+        let context = planned_steam_context(&discovery.steam.installations, &target);
+        eprintln!("{context:#?}");
+        assert!(context.is_ok());
+    }
+
+    /// Stages the real WWMI loader container through Steam and cancels it without release:
+    /// no Wine process starts and the game prefix is untouched. Needs Steam running and an
+    /// applied WWMI profile: `cargo test -p lxmi-desktop -- --ignored staged_loader`.
+    #[test]
+    #[ignore = "starts a Steam Linux Runtime container"]
+    fn staged_loader_container_reports_and_cancels_without_wine() {
+        use lxmi_launch::{HelperEvent, HelperRead, LaunchHost};
+        use std::time::{Duration, Instant};
+        let id = "wuthering-waves";
+        let discovery = SteamDiscoveryScanner::from_environment().scan();
+        let store = crate::xxmi_service::store_for(&discovery).expect("store");
+        let (runtime, _) = selected_runtime(&discovery, &store, id).expect("applied profile");
+        let launch_target = target(&discovery, id).expect("target");
+        let planned = planned_steam_context(&discovery.steam.installations, &launch_target)
+            .expect("planned context");
+        let mut host = SteamModLaunchHost::new(
+            launch_target,
+            store,
+            runtime,
+            HELPER.expect("loader").to_vec(),
+        )
+        .with_planned_context(planned.clone());
+        let dir = host.prepare().expect("launch copy");
+        let started = Instant::now();
+        let mut helper = host.spawn_helper(&planned).expect("spawn");
+        let mut staged = false;
+        while !staged && started.elapsed() < Duration::from_secs(60) {
+            match helper.read_line(Duration::from_millis(250)) {
+                HelperRead::Line(line) => {
+                    eprintln!("helper: {line}");
+                    staged = HelperEvent::parse(&line) == Some(HelperEvent::Staged);
+                }
+                HelperRead::Timeout => {}
+                HelperRead::Closed => break,
+            }
+        }
+        let staged_after = started.elapsed();
+        let detail = helper.exit_detail();
+        helper.terminate();
+        helper.wait();
+        let marker = dir.file_name().unwrap().to_string_lossy().into_owned();
+        let survivors = fs::read_dir("/proc")
+            .unwrap()
+            .flatten()
+            .filter_map(|e| fs::read(e.path().join("cmdline")).ok())
+            .filter(|c| String::from_utf8_lossy(c).contains(&marker))
+            .count();
+        eprintln!(
+            "staged={staged} after_ms={} survivors={survivors}",
+            staged_after.as_millis()
+        );
+        assert!(staged, "no loader_staged: {detail:?}");
+        assert!(!dir.join("loader-release").exists(), "never released");
+        assert_eq!(survivors, 0, "staged processes survived cancellation");
     }
 
     #[test]

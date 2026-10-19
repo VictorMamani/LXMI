@@ -16,7 +16,7 @@ pub struct GameModRuntimeStatus {
     pub applied_profile: Option<ModProfile>,
     pub launch_with_mods_available: bool,
     pub launch_blockers: Vec<String>,
-    /// True while the launch path is not validated in game (WWMI Direct Inject).
+    /// True while gameplay validation covers only a limited setup (WWMI Direct Inject).
     pub launch_experimental: bool,
 }
 

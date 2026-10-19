@@ -46,10 +46,15 @@ export function LaunchConsentDialog({
             modified.
           </p>
           <p>
-            This method has not been validated in gameplay. DLL injection in an
-            online game with ACE anti-cheat may be detected and have account
-            consequences. Mod loading and account safety are not guaranteed. Use
-            test accounts only.
+            Gameplay was tested with dwproton 11.0-14 and DXVK Sarek. In Steam
+            launch options, use <code>PROTON_DXVK_SAREK=1 %command%</code>. With
+            this Proton version, the default DXVK crashed at about 75% loading.
+            Other setups remain unverified.
+          </p>
+          <p>
+            DLL injection in an online game with ACE anti-cheat may be detected
+            and have account consequences. Mod loading and account safety are
+            not guaranteed. Use test accounts only.
           </p>
         </>
       ) : (

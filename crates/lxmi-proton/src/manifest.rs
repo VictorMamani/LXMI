@@ -10,6 +10,8 @@ pub struct CompatibilityToolMetadata {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolManifestMetadata {
     pub compatmanager_layer_name: Option<String>,
+    /// AppID of the Steam Linux Runtime this tool runs inside (`require_tool_appid`).
+    pub require_tool_appid: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,6 +76,7 @@ pub fn parse_tool_manifest_vdf(
     let manifest = as_object(manifest, "manifest")?;
     Ok(ToolManifestMetadata {
         compatmanager_layer_name: scalar_field(manifest, "compatmanager_layer_name")?,
+        require_tool_appid: scalar_field(manifest, "require_tool_appid")?,
     })
 }
 
@@ -161,6 +164,16 @@ mod tests {
         let input = include_str!("../tests/fixtures/proton/steam-proton/toolmanifest.vdf");
         let metadata = parse_tool_manifest_vdf(input).expect("synthetic manifest parses");
         assert_eq!(metadata.compatmanager_layer_name.as_deref(), Some("proton"));
+        assert_eq!(metadata.require_tool_appid, None);
+    }
+
+    #[test]
+    fn parses_the_required_linux_runtime_appid() {
+        let metadata = parse_tool_manifest_vdf(
+            r#""manifest" { "version" "2" "require_tool_appid" "4183110" "compatmanager_layer_name" "proton" }"#,
+        )
+        .expect("manifest parses");
+        assert_eq!(metadata.require_tool_appid.as_deref(), Some("4183110"));
     }
 
     #[test]

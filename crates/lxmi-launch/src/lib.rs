@@ -5,7 +5,9 @@
 //!   of the launcher Steam started, installs `HookLibrary` before the game exists and
 //!   removes it once the module is seen in the new game process.
 //! - `DirectInject` (WWMI, experimental): upstream's default since v2.2.0. The helper waits
-//!   for the exact game image and calls `Inject` on its PID. Not validated in game.
+//!   for the exact game image, injects its shader compiler, then calls `Inject` for
+//!   the importer. Gameplay tested with dwproton 11.0-14 and DXVK Sarek; see
+//!   `docs/wwmi-direct-inject-validation.md` for the tested setup and limitations.
 //!
 //! `preflight` runs static checks before anything starts. Nothing is written to Steam,
 //! the game installation or its prefix.

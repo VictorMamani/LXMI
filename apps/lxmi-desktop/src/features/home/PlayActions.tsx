@@ -72,8 +72,8 @@ export function PlayActions({
       </p>
       {experimental && (
         <p className={styles.hint} data-warning>
-          Experimental WWMI Direct Inject. Not validated in gameplay. Test
-          accounts only.
+          Experimental WWMI. Tested with dwproton 11.0-14. In Steam launch
+          options, use <code>PROTON_DXVK_SAREK=1 %command%</code>.
         </p>
       )}
     </div>

@@ -12,6 +12,14 @@
  * inject-wait (WWMI, experimental): upstream Direct Inject. Waits for the exact game image
  *             to appear, then calls the 3dmloader.dll `Inject` export with that PID. No hook.
  *             Injection into a live process may be detected by the game's anti-cheat.
+ *             LXMI releases this helper into the game's wineserver once Steam started the
+ *             game (there is no launcher to wait in), so the game may be up to
+ *             INJECT_LATE_WINDOW_MS older than the helper; LXMI checked it was not running
+ *             before asking Steam. Anything older is still rejected.
+ *             The importer's own d3dcompiler_47.dll is injected first: d3d11.dll imports it
+ *             by name, and a DLL loaded by full path resolves imports from the game folder
+ *             and system32, which under Proton holds Wine's compiler (it cannot build the
+ *             importer's shaders). Once loaded, the import binds to it by name.
  *
  * The importer folder is one of two fixed names; the module (<folder>\d3d11.dll) and
  * 3dmloader.dll are derived from this image's directory. No PID, DLL path or process
@@ -29,6 +37,7 @@
 #define WAIT_FOR_GAME_MS 300000
 #define WAIT_FOR_MODULE_MS 30000
 #define HEALTH_WINDOW_MS 15000
+#define INJECT_LATE_WINDOW_MS 60000
 
 typedef int (__cdecl *HookLibraryFn)(LPCWSTR, HHOOK *, HANDLE *);
 typedef int (__cdecl *UnhookLibraryFn)(HHOOK *, HANDLE *);
@@ -123,11 +132,12 @@ int wmain(int argc, wchar_t **argv) {
     if (GetFileAttributesW(expected_image) == INVALID_FILE_ATTRIBUTES)
         return fail("game_executable_not_visible", GetLastError());
 
-    wchar_t root[CAP], module_path[CAP], loader_path[CAP];
+    wchar_t root[CAP], module_path[CAP], compiler_path[CAP], loader_path[CAP];
     DWORD length = GetModuleFileNameW(NULL, root, CAP);
     if (!length || length >= CAP || !wcsrchr(root, L'\\')) return fail("invalid_layout", 0);
     *wcsrchr(root, L'\\') = 0;
     if (swprintf(module_path, CAP, L"%ls\\%ls\\d3d11.dll", root, importer_folder) < 0 ||
+        swprintf(compiler_path, CAP, L"%ls\\%ls\\d3dcompiler_47.dll", root, importer_folder) < 0 ||
         swprintf(loader_path, CAP, L"%ls\\3dmloader.dll", root) < 0)
         return fail("path_too_long", 0);
 
@@ -191,7 +201,10 @@ int wmain(int argc, wchar_t **argv) {
         Sleep(10);
     } while (GetTickCount() - started < WAIT_FOR_GAME_MS);
 
-    if (target && created <= armed_at) {
+    /* FILETIME counts 100 ns units. */
+    unsigned long long not_before = armed_at;
+    if (inject) not_before -= (unsigned long long)INJECT_LATE_WINDOW_MS * 10000ULL;
+    if (target && created <= not_before) {
         unhook(); CloseHandle(target);
         return fail("existing_game_rejected", 0);
     }
@@ -202,6 +215,11 @@ int wmain(int argc, wchar_t **argv) {
     }
 
     if (inject) {
+        /* The importer's compiler first, so d3d11.dll's import binds to it (see header). */
+        int compiler = inject_library(pid, compiler_path, INJECT_TIMEOUT_S);
+        printf("{\"status\":\"compiler_inject_returned\",\"code\":%d}\n", compiler);
+        fflush(stdout);
+        if (compiler != 0) { CloseHandle(target); FreeLibrary(loader); return 1; }
         /* Upstream Direct Inject: one Inject call for this bound PID. No hook exists. */
         int code = inject_library(pid, module_path, INJECT_TIMEOUT_S);
         printf("{\"status\":\"inject_returned\",\"code\":%d}\n", code);
@@ -219,8 +237,10 @@ int wmain(int argc, wchar_t **argv) {
         Sleep(5);
     }
     unhook();
-    printf("{\"status\":\"game_observed\",\"windows_pid\":%lu,\"mods_module_present\":%d,\"process_age_ms\":%llu}\n",
-           pid, seen, (now_filetime() - created) / 10000);
+    /* Diagnostics only: whether the importer's own compiler is the one loaded (-1 hook mode). */
+    int compiler_present = inject ? module_present(pid, compiler_path) : -1;
+    printf("{\"status\":\"game_observed\",\"windows_pid\":%lu,\"mods_module_present\":%d,\"compiler_module_present\":%d,\"process_age_ms\":%llu}\n",
+           pid, seen, compiler_present, (now_filetime() - created) / 10000);
     fflush(stdout);
 
     int rc = 2;

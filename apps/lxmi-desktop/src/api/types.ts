@@ -67,7 +67,7 @@ export type RuntimeStatus = {
   applied_profile: ModProfile | null;
   launch_with_mods_available: boolean;
   launch_blockers: string[];
-  /** The launch strategy has not been validated in gameplay. */
+  /** The launch strategy has only limited gameplay validation. */
   launch_experimental: boolean;
 };
 

@@ -12,8 +12,9 @@ profile copies outside the game installation, Steam, and the Proton prefix.
 > with Steam and Proton Experimental. Wuthering Waves supports library, profiles,
 > and WWMI runtimes. Its mod loading is **experimental**: it uses Direct Inject,
 > WWMI's default method, and is enabled only after local preflight checks pass.
-> It has not been validated in gameplay. Injection in an online game with anti-cheat
-> may have account consequences; use test accounts only.
+> Gameplay was confirmed with dwproton 11.0-14 and DXVK Sarek; see the
+> [tested WuWa setup](#tested-wuthering-waves-setup). Injection in an online game
+> with anti-cheat may have account consequences; use test accounts only.
 
 ## Features
 
@@ -24,7 +25,7 @@ profile copies outside the game installation, Steam, and the Proton prefix.
 | Official packages | Download ZZMI/WWMI and XXMI Libraries from official releases and verify their signatures and hashes |
 | Private runtimes | Assemble importers and profiles under `~/.local/share/lxmi/`, outside the game |
 | Play with mods (ZZZ) | Start through Steam and arm the official XXMI hook at launch time |
-| Play with mods (Wuthering Waves) | Experimental WWMI Direct Inject with static preflight and `-dx11`; not validated in gameplay |
+| Play with mods (Wuthering Waves) | Experimental WWMI Direct Inject with static preflight and `-dx11`; gameplay tested with the documented Proton/DXVK setup |
 | Play without mods | Request a normal Steam launch using `steam -applaunch` |
 | Diagnostics | Inspect Steam, Proton, Steam Linux Runtime, compatdata, and managed packages |
 
@@ -67,12 +68,40 @@ sequenceDiagram
 
 For **Wuthering Waves**, the experimental path uses Direct Inject instead of a
 hook. Static preflight checks the game executable, Proton prefix, importer target,
-required WWMI files, and allowed launch arguments before any process starts. Steam
-launches with `-dx11`. Once the exact new `Client-Win64-Shipping.exe` process appears,
-the helper calls the official `Inject` export once and checks module presence and
-15 seconds of process stability. These checks do not verify each mod's visual
-effects or establish gameplay compatibility. The UI keeps WWMI marked experimental
-and requires a separate acknowledgement from the ZZZ flow.
+required WWMI files, and allowed launch arguments before any process starts. LXMI
+reads the explicitly selected Proton from Steam and resolves its required Steam
+Linux Runtime. It stages the loader container without starting Wine, then asks
+Steam to launch the game with `-dx11`. This avoids blocking Steam's
+`waitforexitandrun` on a loader-owned wineserver.
+
+Once Steam's game context appears, LXMI releases the loader into the game's
+wineserver. The helper injects WWMI's own Microsoft `d3dcompiler_47.dll` first,
+then `d3d11.dll`, and checks their module presence and 15 seconds of process
+stability. Direct Inject accepts the exact game process up to 60 seconds older
+than the helper; LXMI checks that the game is closed before requesting the launch.
+These checks do not verify each mod's visual effects. The UI keeps WWMI marked
+experimental and requires a separate acknowledgement from the ZZZ flow.
+
+## Tested Wuthering Waves setup
+
+Gameplay was confirmed on 2026-10-19 with **dwproton 11.0-14**, **Steam Linux
+Runtime 4**, and **DXVK Sarek**, with Hiyuki, Hsin, and RabbitFX loaded. In Steam:
+
+1. Open WuWa **Properties → Compatibility** and explicitly select dwproton 11.0-14.
+2. Under **General → Launch Options**, use:
+
+   ```text
+   PROTON_DXVK_SAREK=1 %command%
+   ```
+
+3. Close the game and start it using **Play** in LXMI. WuWa starts directly;
+   there is no separate launcher button to press.
+
+With this dwproton version, the default DXVK 3.1.1 configuration crashed at about
+75% loading in the reported tests; enabling Sarek allowed entry into gameplay.
+Keep the option for this tested setup. LXMI does not set it or validate Steam's
+launch options automatically. Other Proton/DXVK combinations remain unverified.
+See [WWMI validation and known issues](docs/wwmi-direct-inject-validation.md).
 
 ## Requirements
 
@@ -109,9 +138,10 @@ are preserved as entered.
 3. Use the profile picker to create or choose a profile, select its mods, then choose
    **Save and apply**. If activation fails after saving, the saved profile remains
    pending and can be applied again.
-4. Return home and choose **Play**. Accept the first-launch explanation. When LXMI
-   prompts you to press Play in the game's launcher, do so. WWMI Direct Inject
-   is experimental and intended for test accounts only.
+4. Return home and choose **Play**. Accept the first-launch explanation. For ZZZ,
+   press Play in HoYoPlay when LXMI prompts you. For WuWa, configure the
+   [tested setup](#tested-wuthering-waves-setup) first; LXMI starts the game
+   directly. WWMI Direct Inject remains experimental and intended for test accounts.
 5. Use the arrow beside **Play** to choose **Play without mods**.
 
 To change mods, close the game, apply another profile, and launch again. Reloading
@@ -232,8 +262,9 @@ LXMI uses `~/.local/share/lxmi/`, or `$XDG_DATA_HOME/lxmi/`:
 
 ## Limitations
 
-- Validated on one combination: Steam ZZZ, Proton Experimental, Steam Linux Runtime 4,
-  and official ZZMI/XXMI Libraries packages. Other versions may behave differently.
+- ZZZ was validated with Proton Experimental and Steam Linux Runtime 4. WuWa
+  gameplay was confirmed with dwproton 11.0-14, Steam Linux Runtime 4, and DXVK
+  Sarek using `PROTON_DXVK_SAREK=1`. Other combinations may behave differently.
 - LXMI does not bypass or modify game protection systems.
 - ZZZ and Wuthering Waves are online games. Using mods may violate their terms;
   the account risk is yours.

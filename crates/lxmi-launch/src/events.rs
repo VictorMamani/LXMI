@@ -9,8 +9,14 @@ pub enum HelperEvent {
     Armed {
         timeout_seconds: u64,
     },
+    /// Staged flow: the loader's container is up and waits for release before Wine starts.
+    Staged,
     /// Direct Inject: `Inject` returned for the bound game process (0 = success).
     InjectReturned {
+        code: i64,
+    },
+    /// Direct Inject: `Inject` returned for the importer's own d3dcompiler_47.dll.
+    CompilerInjected {
         code: i64,
     },
     Unhooked {
@@ -18,6 +24,8 @@ pub enum HelperEvent {
     },
     GameObserved {
         mods_module_present: bool,
+        /// Direct Inject only: whether the importer's compiler is the one loaded.
+        compiler_module_present: Option<bool>,
         process_age_ms: u64,
     },
     GameAlive {
@@ -47,9 +55,14 @@ impl HelperEvent {
                 }
             }
             "unhook_library_returned" => Self::Unhooked { code: int("code")? },
+            "loader_staged" => Self::Staged,
             "inject_returned" => Self::InjectReturned { code: int("code")? },
+            "compiler_inject_returned" => Self::CompilerInjected { code: int("code")? },
             "game_observed" => Self::GameObserved {
                 mods_module_present: int("mods_module_present")? == 1,
+                compiler_module_present: int("compiler_module_present")
+                    .filter(|v| *v >= 0)
+                    .map(|v| v == 1),
                 process_age_ms: uint("process_age_ms").unwrap_or(0),
             },
             "game_alive_after_load" => Self::GameAlive {
@@ -84,6 +97,10 @@ mod tests {
             HelperEvent::parse(r#"{"status":"inject_returned","code":600}"#),
             Some(HelperEvent::InjectReturned { code: 600 })
         );
+        assert_eq!(
+            HelperEvent::parse(r#"{"status":"loader_staged"}"#),
+            Some(HelperEvent::Staged)
+        );
     }
 
     #[test]
@@ -98,8 +115,23 @@ mod tests {
             ),
             Some(HelperEvent::GameObserved {
                 mods_module_present: true,
+                compiler_module_present: None,
                 process_age_ms: 3210
             })
+        );
+        assert_eq!(
+            HelperEvent::parse(
+                r#"{"status":"game_observed","windows_pid":7,"mods_module_present":1,"compiler_module_present":0,"process_age_ms":40}"#
+            ),
+            Some(HelperEvent::GameObserved {
+                mods_module_present: true,
+                compiler_module_present: Some(false),
+                process_age_ms: 40
+            })
+        );
+        assert_eq!(
+            HelperEvent::parse(r#"{"status":"compiler_inject_returned","code":0}"#),
+            Some(HelperEvent::CompilerInjected { code: 0 })
         );
         assert_eq!(
             HelperEvent::parse(

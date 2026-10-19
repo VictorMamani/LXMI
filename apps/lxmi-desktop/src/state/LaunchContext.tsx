@@ -60,7 +60,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
         const next = await call("game_with_mods_status");
         if (cancelled) return;
         setStatus(next);
-        const index = next ? launchStepIndex(next.phase) : -1;
+        const index = next ? launchStepIndex(next.game_id, next.phase) : -1;
         if (index >= 0) setLastReached(index);
         if (next && !next.finished) timer = window.setTimeout(poll, POLL_MS);
       } catch (reason) {
