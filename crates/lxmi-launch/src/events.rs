@@ -9,6 +9,10 @@ pub enum HelperEvent {
     Armed {
         timeout_seconds: u64,
     },
+    /// Direct Inject: `Inject` returned for the bound game process (0 = success).
+    InjectReturned {
+        code: i64,
+    },
     Unhooked {
         code: i64,
     },
@@ -37,10 +41,13 @@ impl HelperEvent {
         let uint = |key: &str| value.get(key).and_then(Value::as_u64);
         Some(match status.as_str() {
             "hook_library_returned" => Self::HookInstalled { code: int("code")? },
-            "armed_hook_waiting_for_new_game" => Self::Armed {
-                timeout_seconds: uint("timeout_seconds")?,
-            },
+            "armed_hook_waiting_for_new_game" | "armed_inject_waiting_for_new_game" => {
+                Self::Armed {
+                    timeout_seconds: uint("timeout_seconds")?,
+                }
+            }
             "unhook_library_returned" => Self::Unhooked { code: int("code")? },
+            "inject_returned" => Self::InjectReturned { code: int("code")? },
             "game_observed" => Self::GameObserved {
                 mods_module_present: int("mods_module_present")? == 1,
                 process_age_ms: uint("process_age_ms").unwrap_or(0),
@@ -62,6 +69,22 @@ impl HelperEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_the_direct_inject_protocol() {
+        assert_eq!(
+            HelperEvent::parse(
+                r#"{"status":"armed_inject_waiting_for_new_game","timeout_seconds":300}"#
+            ),
+            Some(HelperEvent::Armed {
+                timeout_seconds: 300
+            })
+        );
+        assert_eq!(
+            HelperEvent::parse(r#"{"status":"inject_returned","code":600}"#),
+            Some(HelperEvent::InjectReturned { code: 600 })
+        );
+    }
 
     #[test]
     fn parses_the_helper_protocol() {

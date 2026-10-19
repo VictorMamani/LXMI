@@ -9,8 +9,10 @@ juego, Steam ni el prefix de Proton.
 ![LXMI](.github/assets/lxmi-launcher.png)
 
 > **Estado: primera versión (0.8.7).** «Jugar con mods» está validado en ZZZ con Steam +
-> Proton Experimental. Wuthering Waves ya gestiona biblioteca y perfiles, pero su carga
-> en el juego todavía no está validada y el botón aparece deshabilitado.
+> Proton Experimental. Wuthering Waves gestiona biblioteca, perfiles y runtime WWMI. Su
+> carga en el juego es **experimental**: usa Direct Inject (método por defecto de WWMI),
+> no está validada en partida y solo se habilita si pasa el preflight local. Inyectar en
+> un juego en línea con anticheat puede tener consecuencias en tu cuenta; usa cuentas de prueba.
 
 ## Qué hace
 

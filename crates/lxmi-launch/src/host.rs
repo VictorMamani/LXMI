@@ -40,6 +40,28 @@ const DESKTOP_ENV: [&str; 11] = [
 /// HookLibrary fails with 300 (hook isolation fixture, 2026-10-15).
 const DLL_OVERRIDES: &str = "d3d11,d3d10core,d3d9,dxgi,d3d12,d3d12core=n";
 
+/// How the helper gets the importer into the game. Chosen per game by the caller.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoadMode {
+    /// ZZZ, validated on Steam + Proton: global hook installed before the game exists.
+    Hook,
+    /// WWMI upstream default since v2.2.0: `Inject` on the bound game PID. Experimental.
+    DirectInject,
+}
+
+impl LoadMode {
+    /// Helper verb; the helper rejects anything else.
+    pub fn helper_verb(self) -> &'static str {
+        match self {
+            Self::Hook => "hook-wait",
+            Self::DirectInject => "inject-wait",
+        }
+    }
+}
+
+/// Importer folders the helper accepts. Anything else is refused before Proton starts.
+pub const IMPORTER_FOLDERS: &[&str] = &["ZZMI", "WWMI"];
+
 #[derive(Debug, Clone)]
 pub struct ModLaunchTarget {
     pub game_id: String,
@@ -49,6 +71,13 @@ pub struct ModLaunchTarget {
     pub launcher_executable: PathBuf,
     pub compat_data: PathBuf,
     pub steam_root: PathBuf,
+    /// Importer folder in the launch copy: `ZZMI` or `WWMI`. Fixed by the caller's table.
+    pub integration_folder: &'static str,
+    /// Launcher name shown in messages, e.g. «HoYoPlay» or «Wuthering Waves».
+    pub launcher_label: &'static str,
+    /// Extra arguments for `steam -applaunch`, e.g. `-dx11` for WWMI.
+    pub launch_arguments: &'static [&'static str],
+    pub load_mode: LoadMode,
 }
 
 pub struct SteamModLaunchHost {
@@ -117,11 +146,16 @@ impl LaunchHost for SteamModLaunchHost {
         )
     }
 
+    fn launcher_label(&self) -> String {
+        self.target.launcher_label.into()
+    }
+
     fn request_steam_launch(&self) -> Result<(), String> {
-        // Fixed AppID from discovery, direct argv, no shell or URI.
+        // Fixed AppID and arguments from the caller's table, direct argv, no shell or URI.
         let mut child = Command::new("steam")
             .arg("-applaunch")
             .arg(self.target.steam_app_id.to_string())
+            .args(self.target.launch_arguments)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -192,16 +226,7 @@ fn spawn_helper_in(
     ] {
         env.push((key.into(), value.to_os_string()));
     }
-    let mut run: Vec<OsString> = vec![
-        entry.into(),
-        "--verb=run".into(),
-        "--".into(),
-        proton.into(),
-        "runinprefix".into(),
-        dir.join(HELPER_NAME).into(),
-        "hook-wait".into(),
-        windows_path(&target.game_executable)?.into(),
-    ];
+    let mut run = helper_run_arguments(&entry, &proton, dir, target)?;
 
     // Ubuntu's apparmor_restrict_unprivileged_userns denies the container's user
     // namespace to unprofiled processes such as this app (bwrap "setting up uid
@@ -279,6 +304,30 @@ fn spawn_helper_in(
         group,
         stderr_path,
     }))
+}
+
+/// Argument vector for `SteamLinuxRuntime -- proton runinprefix <helper> <verb> <game> <folder>`.
+/// Every value is fixed by the caller's table except the game path, which is canonicalized.
+pub(crate) fn helper_run_arguments(
+    entry: &Path,
+    proton: &Path,
+    dir: &Path,
+    target: &ModLaunchTarget,
+) -> Result<Vec<OsString>, String> {
+    if !IMPORTER_FOLDERS.contains(&target.integration_folder) {
+        return Err("Carpeta de importador no permitida.".into());
+    }
+    Ok(vec![
+        entry.into(),
+        "--verb=run".into(),
+        "--".into(),
+        proton.into(),
+        "runinprefix".into(),
+        dir.join(HELPER_NAME).into(),
+        target.load_mode.helper_verb().into(),
+        windows_path(&target.game_executable)?.into(),
+        target.integration_folder.into(),
+    ])
 }
 
 const GROUP_WRAPPER: &str = r#"printf '{"status":"launch_group","pgid":%d}\n' "$$"; exec "$@""#;
@@ -417,6 +466,10 @@ mod tests {
             launcher_executable: var("LXMI_FIXTURE_TARGET"),
             compat_data: var("LXMI_FIXTURE_COMPAT"),
             steam_root: var("LXMI_FIXTURE_STEAM"),
+            integration_folder: "ZZMI",
+            launcher_label: "fixture",
+            launch_arguments: &[],
+            load_mode: super::LoadMode::Hook,
         };
         let launcher = crate::context::SteamProcessContext {
             pid: 0,
@@ -468,6 +521,78 @@ mod tests {
             "fixture: hook=0 armed=true cancelled_in_ms={}",
             stopped.elapsed().as_millis()
         );
+    }
+
+    fn target(
+        mode: super::LoadMode,
+        folder: &'static str,
+        game: &std::path::Path,
+    ) -> super::ModLaunchTarget {
+        super::ModLaunchTarget {
+            game_id: "test".into(),
+            steam_app_id: 1,
+            game_executable: game.to_path_buf(),
+            launcher_executable: game.to_path_buf(),
+            compat_data: game.to_path_buf(),
+            steam_root: game.to_path_buf(),
+            integration_folder: folder,
+            launcher_label: "test",
+            launch_arguments: &[],
+            load_mode: mode,
+        }
+    }
+
+    #[test]
+    fn helper_arguments_keep_the_validated_zzz_hook_and_add_the_wwmi_inject_verb() {
+        let dir = std::env::temp_dir().join(format!("lxmi-args-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let game = dir.join("Client Win64 game.exe");
+        std::fs::write(&game, b"").unwrap();
+        let entry = std::path::Path::new("/entry");
+        let proton = std::path::Path::new("/proton");
+
+        let zzz = super::helper_run_arguments(
+            entry,
+            proton,
+            &dir,
+            &target(super::LoadMode::Hook, "ZZMI", &game),
+        )
+        .unwrap();
+        assert!(zzz.iter().any(|a| a == "hook-wait"));
+        assert!(!zzz.iter().any(|a| a == "inject-wait"));
+        assert_eq!(zzz.last().unwrap(), "ZZMI");
+
+        let wwmi = super::helper_run_arguments(
+            entry,
+            proton,
+            &dir,
+            &target(super::LoadMode::DirectInject, "WWMI", &game),
+        )
+        .unwrap();
+        assert!(wwmi.iter().any(|a| a == "inject-wait"));
+        assert!(!wwmi.iter().any(|a| a == "hook-wait"));
+        assert_eq!(wwmi.last().unwrap(), "WWMI");
+        // Path with spaces stays one argument.
+        let exe = wwmi
+            .iter()
+            .find(|a| a.to_string_lossy().contains("Client Win64"))
+            .unwrap();
+        assert!(exe.to_string_lossy().ends_with("Client Win64 game.exe"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn helper_arguments_refuse_unknown_importer_folders() {
+        let game = std::env::temp_dir();
+        let bad = target(super::LoadMode::Hook, "Otra", &game);
+        assert!(super::helper_run_arguments(
+            std::path::Path::new("/e"),
+            std::path::Path::new("/p"),
+            &game,
+            &bad
+        )
+        .is_err());
     }
 
     #[test]

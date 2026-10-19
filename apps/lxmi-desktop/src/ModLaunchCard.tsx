@@ -12,7 +12,7 @@ const steps: { phase: LaunchStatus["phase"][]; label: string }[] = [
   { phase: ["preparing"], label: "Copia del perfil" },
   {
     phase: ["opening_launcher", "waiting_for_launcher"],
-    label: "HoYoPlay desde Steam",
+    label: "Launcher desde Steam",
   },
   { phase: ["arming"], label: "Carga preparada" },
   { phase: ["waiting_for_play"], label: "Pulsa Jugar" },
@@ -109,6 +109,7 @@ export default function ModLaunchCard({
   }
 
   const available = Boolean(runtime?.launch_with_mods_available);
+  const experimental = Boolean(runtime?.launch_experimental);
   const currentStep = shown
     ? steps.findIndex((s) => s.phase.includes(shown.phase))
     : -1;
@@ -137,11 +138,19 @@ export default function ModLaunchCard({
           aria-label="Antes de jugar con mods"
         >
           <p>
-            LXMI abrirá el juego desde Steam y, cuando HoYoPlay esté abierto,
-            preparará la carga oficial de XXMI. Durante unos segundos HoYoPlay
-            también recibe la DLL y la rechaza. No se modifica la instalación
-            del juego ni Steam.
+            {experimental
+              ? "LXMI abrirá el juego desde Steam y, cuando el juego esté listo, inyectará WWMI directamente en su proceso (Direct Inject, el método por defecto de WWMI). No se modifica la instalación del juego ni Steam."
+              : "LXMI abrirá el juego desde Steam y, cuando su launcher esté abierto, preparará la carga oficial de XXMI. Durante unos segundos el launcher también recibe la DLL y la rechaza. No se modifica la instalación del juego ni Steam."}
           </p>
+          {experimental && (
+            <p className="mod-launch-risk" role="note">
+              Experimental: esta ruta no está validada en partida. Inyectar una
+              DLL en un juego en línea con anticheat (Anti-Cheat Expert) puede
+              ser detectado y tener consecuencias en tu cuenta. LXMI no puede
+              garantizar que los mods carguen ni que la cuenta quede a salvo.
+              Úsala solo con cuentas de prueba.
+            </p>
+          )}
           <p>
             Los mods son contenido de terceros en un juego online: su uso puede
             infringir las condiciones del juego. La decisión y el riesgo son
@@ -198,12 +207,13 @@ export default function ModLaunchCard({
             ))}
           </ol>
           <p className="mod-launch-message">{shown.message}</p>
-          {shown.phase === "waiting_for_play" && (
-            <p className="mod-launch-hint">
-              En ZZZ, los mods de personajes necesitan Calidad de personajes:
-              Alta y Animación de personajes de alta precisión: Desactivada.
-            </p>
-          )}
+          {shown.phase === "waiting_for_play" &&
+            gameBackendId === "zenless-zone-zero" && (
+              <p className="mod-launch-hint">
+                En ZZZ, los mods de personajes necesitan Calidad de personajes:
+                Alta y Animación de personajes de alta precisión: Desactivada.
+              </p>
+            )}
           {active && shown.phase !== "checking_stability" && (
             <ActionButton variant="small" onClick={() => void cancel()}>
               Cancelar
@@ -214,6 +224,12 @@ export default function ModLaunchCard({
       {error && (
         <p className="mod-launch-error" role="alert">
           {error}
+        </p>
+      )}
+      {experimental && !confirming && (
+        <p className="mod-launch-risk" role="note">
+          Experimental: Direct Inject de WWMI sin validar en partida. Solo con
+          cuentas de prueba.
         </p>
       )}
       <div className="hero-play-wrap">

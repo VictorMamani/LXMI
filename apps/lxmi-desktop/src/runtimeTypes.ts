@@ -39,6 +39,7 @@ export type RuntimeStatus = {
   };
   launch_with_mods_available: boolean;
   launch_blockers: string[];
+  launch_experimental: boolean;
 };
 export type LaunchStatus = {
   game_id: string;

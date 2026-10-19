@@ -1,7 +1,10 @@
 //! «Jugar con mods»: one launch at a time through `lxmi-launch`. Paths, AppID and the
 //! runtime are derived here from discovery and the saved selection, never the webview.
 use lxmi_core::{GameExecutableStatus, GameInstallationStatus};
-use lxmi_launch::{run_launch, LaunchStatus, ModLaunchTarget, SteamModLaunchHost};
+use lxmi_launch::{
+    preflight, run_launch, LaunchStatus, LoadMode, ModLaunchTarget, PreflightInput,
+    SteamModLaunchHost,
+};
 use lxmi_steam::{SteamDiscoveryResult, SteamDiscoveryScanner};
 use lxmi_xxmi::*;
 use std::sync::{
@@ -14,10 +17,77 @@ const HELPER: Option<&[u8]> = Some(include_bytes!(concat!(env!("OUT_DIR"), "/lxm
 #[cfg(not(lxmi_mod_loader))]
 const HELPER: Option<&[u8]> = None;
 
-/// Only games whose loading was validated end to end (Hook, Steam + Proton).
-const SUPPORTED_GAME: &str = "zenless-zone-zero";
-/// Launcher Steam starts for ZZZ, relative to the install directory.
-const ZZZ_LAUNCHER: &str = "HYP.exe";
+/// Everything «Jugar con mods» needs for one game. Fixed here: nothing is taken from the
+/// webview or from the saved profile.
+struct LaunchSpec {
+    game_id: &'static str,
+    /// Launcher Steam starts, relative to the install directory; the player presses Play in it.
+    launcher: &'static str,
+    label: &'static str,
+    /// Game process the hook waits for, relative to the install directory. `None` keeps
+    /// the executable discovery found (ZZZ).
+    game: Option<&'static str>,
+    /// Importer folder inside the launch copy, as laid out by the assembler.
+    importer_folder: &'static str,
+    /// Extra arguments for `steam -applaunch`.
+    launch_arguments: &'static [&'static str],
+    load_mode: LoadMode,
+    /// Shown as experimental in the UI until the path is validated in game.
+    experimental: bool,
+}
+
+/// Games whose hook path is in place. ZZZ is validated end to end on Steam + Proton;
+/// Wuthering Waves uses the same hook path and is not validated in game yet.
+const LAUNCH_SPECS: &[LaunchSpec] = &[
+    LaunchSpec {
+        game_id: "zenless-zone-zero",
+        launcher: "HYP.exe",
+        label: "HoYoPlay",
+        game: None,
+        importer_folder: "ZZMI",
+        launch_arguments: &[],
+        load_mode: LoadMode::Hook,
+        experimental: false,
+    },
+    LaunchSpec {
+        game_id: "wuthering-waves",
+        launcher: "Wuthering Waves.exe",
+        label: "Wuthering Waves",
+        game: Some("Client/Binaries/Win64/Client-Win64-Shipping.exe"),
+        importer_folder: "WWMI",
+        // WWMI requires DX11 (upstream wiki: «else WWMI will crash»).
+        launch_arguments: &["-dx11"],
+        // Upstream WWMI default since v2.2.0 is Direct Inject; hooking no longer works.
+        load_mode: LoadMode::DirectInject,
+        experimental: true,
+    },
+];
+
+fn launch_spec(game_id: &str) -> Option<&'static LaunchSpec> {
+    LAUNCH_SPECS.iter().find(|spec| spec.game_id == game_id)
+}
+
+/// True when «Jugar con mods» for this game is not yet validated in game.
+pub(crate) fn launch_is_experimental(game_id: &str) -> bool {
+    launch_spec(game_id).is_some_and(|spec| spec.experimental)
+}
+
+/// Static preflight of the selected runtime against the game installation. Reads files
+/// and metadata only; nothing is started. Empty when the launch may proceed.
+pub(crate) fn runtime_blockers(
+    discovery: &SteamDiscoveryResult,
+    game_id: &str,
+    runtime: &ManagedRuntime,
+) -> Vec<String> {
+    match target(discovery, game_id) {
+        Ok(target) => preflight(&PreflightInput {
+            target: &target,
+            importer_root: &runtime.importer_root,
+            runtime_target: &runtime.target_process,
+        }),
+        Err(reason) => vec![reason.to_string()],
+    }
+}
 
 struct Session {
     status: Arc<Mutex<LaunchStatus>>,
@@ -36,8 +106,8 @@ fn error(message: impl Into<String>) -> XxmiError {
 /// Reasons «Jugar con mods» cannot start; empty when it can.
 pub(crate) fn launch_blockers(game_id: &str, selection: &ActiveProfileSelection) -> Vec<String> {
     let mut blockers = Vec::new();
-    if game_id != SUPPORTED_GAME {
-        blockers.push("La carga de mods en este juego todavía no se ha validado con Steam + Proton. Por ahora solo Zenless Zone Zero.".into());
+    if launch_spec(game_id).is_none() {
+        blockers.push("La carga de mods todavía no está disponible para este juego.".into());
     }
     if HELPER.is_none() {
         blockers.push(
@@ -51,6 +121,7 @@ pub(crate) fn launch_blockers(game_id: &str, selection: &ActiveProfileSelection)
 }
 
 fn target(discovery: &SteamDiscoveryResult, game_id: &str) -> Result<ModLaunchTarget> {
+    let spec = launch_spec(game_id).ok_or_else(|| error("Juego sin carga de mods."))?;
     let game = discovery
         .games
         .games
@@ -61,11 +132,19 @@ fn target(discovery: &SteamDiscoveryResult, game_id: &str) -> Result<ModLaunchTa
                 && g.installation.executable_status == GameExecutableStatus::Found
         })
         .ok_or_else(|| error("No se encontró una instalación lista en Steam."))?;
-    let game_executable = game
-        .installation
-        .executable_path
-        .clone()
-        .ok_or_else(|| error("No se encontró el ejecutable del juego."))?;
+    let game_executable = match spec.game {
+        Some(relative) => game.installation.install_path.join(relative),
+        None => game
+            .installation
+            .executable_path
+            .clone()
+            .ok_or_else(|| error("No se encontró el ejecutable del juego."))?,
+    };
+    if !game_executable.is_file() {
+        return Err(error(
+            "No se encontró el proceso del juego en la instalación de Steam.",
+        ));
+    }
     let steam_root = discovery
         .steam
         .installations
@@ -78,9 +157,13 @@ fn target(discovery: &SteamDiscoveryResult, game_id: &str) -> Result<ModLaunchTa
         game_id: game_id.into(),
         steam_app_id: game.steam_app_id,
         game_executable,
-        launcher_executable: game.installation.install_path.join(ZZZ_LAUNCHER),
+        launcher_executable: game.installation.install_path.join(spec.launcher),
         compat_data: game.compatdata.compatdata_path.clone(),
         steam_root,
+        integration_folder: spec.importer_folder,
+        launcher_label: spec.label,
+        launch_arguments: spec.launch_arguments,
+        load_mode: spec.load_mode,
     })
 }
 
@@ -143,11 +226,28 @@ pub async fn start_game_with_mods(
             return Err(error(blocker));
         }
         let (runtime, profile) = selected_runtime(&discovery, &store, &id)?;
+        let blockers = runtime_blockers(&discovery, &id, &runtime);
+        if !blockers.is_empty() {
+            tracing::warn!(game = %id, blockers = blockers.len(), "launch with mods refused by preflight");
+            return Err(error(blockers.join(" ")));
+        }
+        let launch_target = target(&discovery, &id)?;
+        tracing::info!(
+            game = %id,
+            strategy = ?launch_target.load_mode,
+            experimental = launch_is_experimental(&id),
+            runtime = %runtime.runtime_id,
+            importer = %launch_target.integration_folder,
+            importer_version = ?runtime.integration_version,
+            importer_target = %runtime.target_process,
+            launch_arguments = ?launch_target.launch_arguments,
+            "launch with mods: preflight passed"
+        );
         let helper = HELPER
             .ok_or_else(|| error("Cargador no incluido."))?
             .to_vec();
         Ok((
-            SteamModLaunchHost::new(target(&discovery, &id)?, store, runtime, helper),
+            SteamModLaunchHost::new(launch_target, store, runtime, helper),
             profile,
         ))
     })
@@ -189,5 +289,56 @@ pub fn cancel_game_with_mods(controller: tauri::State<'_, ModLaunchController>) 
             true
         }
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn each_supported_game_maps_to_one_importer_folder() {
+        let zzz = launch_spec("zenless-zone-zero").expect("ZZZ");
+        assert_eq!((zzz.importer_folder, zzz.launcher), ("ZZMI", "HYP.exe"));
+        assert_eq!(
+            zzz.load_mode,
+            LoadMode::Hook,
+            "ZZZ keeps the validated hook"
+        );
+        assert!(!zzz.experimental);
+        assert_eq!(zzz.game, None, "ZZZ keeps the executable discovery found");
+        assert!(zzz.launch_arguments.is_empty());
+
+        let wuwa = launch_spec("wuthering-waves").expect("Wuthering Waves");
+        assert_eq!(wuwa.importer_folder, "WWMI");
+        assert_eq!(wuwa.launcher, "Wuthering Waves.exe");
+        assert_eq!(
+            wuwa.game,
+            Some("Client/Binaries/Win64/Client-Win64-Shipping.exe")
+        );
+        assert_eq!(wuwa.launch_arguments, &["-dx11"]);
+        assert_eq!(wuwa.load_mode, LoadMode::DirectInject);
+        assert!(
+            wuwa.experimental,
+            "WWMI stays experimental until validated in game"
+        );
+        assert!(launch_is_experimental("wuthering-waves"));
+        assert!(!launch_is_experimental("zenless-zone-zero"));
+    }
+
+    #[test]
+    fn unknown_games_have_no_launch_spec_and_a_blocker() {
+        assert!(launch_spec("otro-juego").is_none());
+        let selection = ActiveProfileSelection {
+            schema_version: 1,
+            game_id: "otro-juego".into(),
+            revision: 0,
+            current: None,
+            previous: None,
+        };
+        let blockers = launch_blockers("otro-juego", &selection);
+        assert!(blockers
+            .iter()
+            .any(|b| b.contains("todavía no está disponible")));
     }
 }

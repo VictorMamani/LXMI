@@ -75,6 +75,10 @@ pub trait HelperProcess: Send {
 }
 
 pub trait LaunchHost: Send {
+    /// Name of the launcher the player presses Play in, for user-facing messages.
+    fn launcher_label(&self) -> String {
+        "el launcher del juego".into()
+    }
     fn game_running(&self) -> Result<bool, String>;
     fn prepare(&mut self) -> Result<PathBuf, String>;
     fn find_launcher(&self) -> Result<Option<SteamProcessContext>, String>;
@@ -105,15 +109,14 @@ impl Shared<'_> {
     }
 }
 
-fn failure_message(status: &str) -> String {
+fn failure_message(status: &str, launcher: &str) -> String {
     match status {
         "existing_game_rejected" => {
             "El juego ya estaba abierto antes de armar la carga. Ciérralo y vuelve a intentarlo."
                 .into()
         }
         "game_not_started" => {
-            "No se pulsó Jugar en HoYoPlay en 5 minutos. La carga se retiró; no se cambió nada."
-                .into()
+            format!("No se pulsó Jugar en {launcher} en 5 minutos. La carga se retiró; no se cambió nada.")
         }
         "ambiguous_target" => {
             "Hay más de un proceso del juego. Ciérralos y vuelve a intentarlo.".into()
@@ -128,9 +131,27 @@ fn failure_message(status: &str) -> String {
     }
 }
 
+/// Documented `Inject` return codes (upstream `dll_injector.py`, v2.2.1).
+fn inject_message(code: i64) -> String {
+    let cause = match code {
+        100 => "no se encontró el proceso del juego",
+        110 => "la ruta de la DLL no es válida para el juego",
+        120 => "no se resolvió kernel32 dentro del juego",
+        130 => "no se resolvió LoadLibraryW dentro del juego",
+        200 => "no se pudo reservar memoria en el juego",
+        300 => "no se pudo escribir en el juego",
+        400 => "no se pudo crear el hilo remoto en el juego",
+        500 => "el hilo remoto no terminó a tiempo",
+        510 => "no se pudo esperar al hilo remoto",
+        600 => "la inyección falló",
+        _ => "error desconocido",
+    };
+    format!("La carga de WWMI por inyección no se completó (código {code}: {cause}). No se confirma ningún mod cargado.")
+}
+
 fn exit_message(hex: &str) -> String {
     match hex {
-        "0xc0000135" => "El juego se cerró al cargar los mods (0xc0000135): ZZMI detectó un dispositivo D3D11 creado antes de su carga. Vuelve a intentarlo pulsando Jugar en cuanto LXMI lo indique.".into(),
+        "0xc0000135" => "El juego se cerró al cargar los mods (0xc0000135): el importador detectó un dispositivo D3D11 creado antes de su carga. Vuelve a intentarlo pulsando Jugar en cuanto LXMI lo indique.".into(),
         _ => format!("El juego se cerró durante los primeros 15 segundos con los mods cargados ({hex}). Revisa los mods del perfil o prueba «Jugar sin mods»."),
     }
 }
@@ -143,6 +164,7 @@ pub fn run_launch(
 ) {
     let shared = Shared { status };
     let fail = |message: String| shared.set(LaunchPhase::Failed, message);
+    let launcher_name = host.launcher_label();
     match host.game_running() {
         Ok(false) => {}
         Ok(true) => {
@@ -242,6 +264,11 @@ pub fn run_launch(
         };
         match event {
             HelperEvent::HookInstalled { code: 0 } | HelperEvent::Unhooked { .. } => {}
+            HelperEvent::InjectReturned { code: 0 } => {}
+            HelperEvent::InjectReturned { code } => {
+                fail(inject_message(code));
+                terminal = true;
+            }
             HelperEvent::HookInstalled { code } => {
                 fail(format!(
                     "No se pudo instalar la carga de XXMI (HookLibrary {code})."
@@ -250,7 +277,7 @@ pub fn run_launch(
             }
             HelperEvent::Armed { .. } => shared.set(
                 LaunchPhase::WaitingForPlay,
-                "Listo: pulsa Jugar en HoYoPlay ahora (tienes 5 minutos).",
+                format!("Listo: pulsa Jugar en {launcher_name} ahora (tienes 5 minutos)."),
             ),
             HelperEvent::GameObserved {
                 mods_module_present: true,
@@ -272,7 +299,7 @@ pub fn run_launch(
             HelperEvent::GameAlive { .. } => {
                 shared.set(
                     LaunchPhase::Running,
-                    "Juego en marcha con los mods del perfil.",
+                    "Juego en marcha. El módulo de mods está cargado; LXMI no comprueba el efecto de cada mod.",
                 );
                 terminal = true;
             }
@@ -282,7 +309,7 @@ pub fn run_launch(
                 terminal = true;
             }
             HelperEvent::Failure { status, .. } => {
-                fail(failure_message(&status));
+                fail(failure_message(&status, &launcher_name));
                 terminal = true;
             }
         }
@@ -455,6 +482,36 @@ mod tests {
             ..Default::default()
         };
         assert!(run(&mut host, false).message.contains("sin informar"));
+    }
+
+    #[test]
+    fn direct_inject_failures_name_the_documented_code_and_never_confirm_mods() {
+        let armed_inject =
+            r#"{"status":"armed_inject_waiting_for_new_game","timeout_seconds":300}"#;
+        let mut host = FakeHost {
+            lines: vec![armed_inject, r#"{"status":"inject_returned","code":600}"#],
+            ..Default::default()
+        };
+        let s = run(&mut host, false);
+        assert_eq!(s.phase, LaunchPhase::Failed);
+        assert!(s.message.contains("código 600"));
+        assert!(!s.mods_loaded, "a failed injection never confirms mods");
+
+        let mut host = FakeHost {
+            lines: vec![
+                armed_inject,
+                r#"{"status":"inject_returned","code":0}"#,
+                r#"{"status":"game_observed","windows_pid":7,"mods_module_present":1,"process_age_ms":900}"#,
+                r#"{"status":"game_alive_after_load","observation_ms":15000}"#,
+            ],
+            ..Default::default()
+        };
+        let s = run(&mut host, false);
+        assert_eq!(s.phase, LaunchPhase::Running);
+        assert!(
+            s.mods_loaded,
+            "module presence is recorded after a successful Inject"
+        );
     }
 
     #[test]
