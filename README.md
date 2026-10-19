@@ -6,7 +6,7 @@ private library, organize them into profiles, and launch the selected profile
 through Steam using the official XXMI loader (ZZMI/WWMI). LXMI keeps runtime and
 profile copies outside the game installation, Steam, and the Proton prefix.
 
-![LXMI](.github/assets/image.png)
+![LXMI](.github/assets/lxmi-launcher-home.png)
 
 > **Status: initial release (0.8.7).** Playing with mods has been validated for ZZZ
 > with Steam and Proton Experimental. Wuthering Waves supports library and profile
