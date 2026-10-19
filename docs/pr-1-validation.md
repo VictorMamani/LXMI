@@ -2,8 +2,8 @@
 
 This change fixes runtime updates with an active profile, recovery after a saved
 profile fails activation, and keyboard interaction in menus. Maintained UI,
-diagnostics, comments, documentation, demo fixtures, and the README screenshot now
-use English. User-created names, paths, and persisted formats remain compatible.
+diagnostics, comments, documentation, and demo fixtures now use English.
+User-created names, paths, and persisted formats remain compatible.
 
 ## Regression coverage
 
