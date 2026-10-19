@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import styles from "./SettingRow.module.css";
 
-/** Label · value (+ status) · single action — the rows of «Espacios». */
+/** Label · value (+ status) · single action — the rows of «Spaces». */
 export function SettingRow({
   label,
   value,

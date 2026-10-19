@@ -8,7 +8,7 @@ import styles from "./GameCards.module.css";
 export function GameCards() {
   const { game: active, selectGame } = useNavigation();
   return (
-    <nav className={styles.cards} aria-label="Juegos">
+    <nav className={styles.cards} aria-label="Games">
       {games.map((game) => (
         <GameCard
           key={game.id}
@@ -51,21 +51,21 @@ function GameCard({
         variant="glass"
         placement="bottom-end"
         items={[
-          { label: "Administrar", onSelect: manage("mods") },
-          { label: "Ver detalles", onSelect: manage("spaces") },
+          { label: "Manage", onSelect: manage("mods") },
+          { label: "View details", onSelect: manage("spaces") },
           {
-            label: "Desinstalar",
+            label: "Uninstall",
             onSelect: () => {},
             danger: true,
             disabled: true,
-            hint: "La instalación la gestiona Steam",
+            hint: "Steam manages the installation",
           },
         ]}
         trigger={(props) => (
           <button
             type="button"
             className={styles.moreButton}
-            aria-label={`Opciones de ${game.name}`}
+            aria-label={`${game.name} options`}
             {...props}
           >
             <Ellipsis size={18} aria-hidden />

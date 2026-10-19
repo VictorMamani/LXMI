@@ -23,14 +23,14 @@ export function CartridgeStrip({
         type="button"
         className={styles.key}
         onClick={() => onSwitch(-1)}
-        aria-label="Juego anterior (Q)"
+        aria-label="Previous game (Q)"
       >
         Q
       </button>
       <div
         className={styles.cartridges}
         role="tablist"
-        aria-label="Espacios de juego"
+        aria-label="Game spaces"
       >
         {games.map((game) => (
           <button
@@ -42,7 +42,7 @@ export function CartridgeStrip({
             onClick={() => {
               if (game.id === active.id) return;
               selectGame(game.id);
-              toast(`Espacio ${game.channel} cargado`);
+              toast(`Space ${game.channel} loaded`);
             }}
           >
             <img className={styles.thumb} src={game.media.card} alt="" />
@@ -57,7 +57,7 @@ export function CartridgeStrip({
         type="button"
         className={styles.key}
         onClick={() => onSwitch(1)}
-        aria-label="Juego siguiente (E)"
+        aria-label="Next game (E)"
       >
         E
       </button>
@@ -72,7 +72,7 @@ function RuntimeIndicator() {
   if (summary.loading && !summary.status)
     return (
       <span className={styles.status}>
-        <StatusDot status="idle">Consultando…</StatusDot>
+        <StatusDot status="idle">Checking…</StatusDot>
       </span>
     );
   const version = summary.importerVersion
@@ -81,11 +81,11 @@ function RuntimeIndicator() {
   return (
     <span className={styles.status}>
       {summary.ready ? (
-        <StatusDot status="ok">Runtime listo{version}</StatusDot>
+        <StatusDot status="ok">Runtime ready{version}</StatusDot>
       ) : summary.status?.base_runtime ? (
-        <StatusDot status="accent">Sin perfil aplicado{version}</StatusDot>
+        <StatusDot status="accent">No profile applied{version}</StatusDot>
       ) : (
-        <StatusDot status="warn">Runtime sin preparar</StatusDot>
+        <StatusDot status="warn">Runtime not prepared</StatusDot>
       )}
     </span>
   );

@@ -5,8 +5,8 @@ import { characterOf, modSize, type ModChange } from "../../../domain/mods";
 import styles from "./ModTable.module.css";
 
 const changeLabel: Record<Exclude<ModChange, null>, string> = {
-  added: "+ NUEVO",
-  removed: "− QUITADO",
+  added: "+ NEW",
+  removed: "− REMOVED",
 };
 
 /** Mod library with a check per mod for the open profile. */
@@ -26,20 +26,20 @@ export function ModTable({
   onToggle: (id: string, checked: boolean) => void;
 }) {
   return (
-    <div className={styles.table} role="table" aria-label="Biblioteca de mods">
+    <div className={styles.table} role="table" aria-label="Mod library">
       <div className={styles.head} role="row">
         <span className={styles.check} aria-hidden />
         <span role="columnheader" className={styles.name}>
           Mod
         </span>
         <span role="columnheader" className={styles.character}>
-          Personaje
+          Character
         </span>
         <span role="columnheader" className={styles.number}>
-          Tamaño
+          Size
         </span>
         <span role="columnheader" className={styles.number}>
-          Archivos
+          Files
         </span>
       </div>
 
@@ -62,7 +62,7 @@ export function ModTable({
                   <Checkbox
                     checked={checked}
                     disabled={disabled}
-                    label={`Incluir ${mod.name}`}
+                    label={`Include ${mod.name}`}
                     onChange={(value) => onToggle(mod.id, value)}
                   />
                 </span>
@@ -85,7 +85,7 @@ export function ModTable({
                   {formatBytes(modSize(mod))}
                 </span>
                 <span className={`${styles.number} ${styles.data}`} role="cell">
-                  {plural(mod.files.length, "archivo")}
+                  {plural(mod.files.length, "file")}
                 </span>
               </label>
             );

@@ -4,7 +4,7 @@ import { MenuButton } from "../../../components/MenuButton";
 import { PageTitle } from "../PageLayout";
 import styles from "./ProfilePicker.module.css";
 
-/** Page title «Perfil · Nombre» with the switcher next to it. */
+/** Page title 'Profile · Name' with the switcher next to it. */
 export function ProfilePicker({
   name,
   profiles,
@@ -22,7 +22,7 @@ export function ProfilePicker({
 }) {
   return (
     <div className={styles.picker}>
-      <PageTitle>{name ? `Perfil · ${name}` : "Sin perfiles"}</PageTitle>
+      <PageTitle>{name ? `Profile · ${name}` : "No profiles"}</PageTitle>
       <MenuButton
         variant="panel"
         placement="bottom-start"
@@ -30,18 +30,18 @@ export function ProfilePicker({
           ...profiles.map((profile) => ({
             label:
               profile.name === applied
-                ? `${profile.name}  · aplicado`
+                ? `${profile.name}  · applied`
                 : profile.name,
             selected: profile.name === name,
             onSelect: () => onOpen(profile.name),
           })),
-          { label: "+ Nuevo perfil…", onSelect: onCreate },
+          { label: "+ New profile…", onSelect: onCreate },
         ]}
         trigger={(props) => (
           <button
             type="button"
             className={styles.switch}
-            aria-label="Cambiar perfil"
+            aria-label="Switch profile"
             disabled={disabled}
             {...props}
           >

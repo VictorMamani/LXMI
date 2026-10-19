@@ -2,7 +2,7 @@ import { Check, RotateCcw } from "lucide-react";
 import { Button } from "../../../components/Button";
 import styles from "./PendingChangesBar.module.css";
 
-/** Bottom bar of the Mods page: summary, REVERTIR and GUARDAR Y APLICAR. */
+/** Bottom bar of the Mods page: summary, REVERT and SAVE AND APPLY. */
 export function PendingChangesBar({
   title,
   detail,
@@ -35,7 +35,7 @@ export function PendingChangesBar({
         disabled={!canRevert || applying}
         onClick={onRevert}
       >
-        Revertir
+        Revert
       </Button>
       <Button
         variant="primary"
@@ -43,7 +43,7 @@ export function PendingChangesBar({
         disabled={!canApply || applying}
         onClick={onApply}
       >
-        {applying ? "Aplicando…" : "Guardar y aplicar"}
+        {applying ? "Applying…" : "Save and apply"}
       </Button>
     </div>
   );

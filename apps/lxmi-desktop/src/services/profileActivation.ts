@@ -21,7 +21,7 @@ export async function applyProfile(params: {
   if (!status.base_runtime || !sources.importer || !sources.libraries)
     return {
       applied: false,
-      reason: "Prepara el runtime de mods en Espacios para aplicar el perfil.",
+      reason: "Prepare the mod runtime in Spaces to apply the profile.",
     };
   const runtime = {
     gameId,
@@ -44,7 +44,7 @@ export async function applyProfile(params: {
   return { applied: true };
 }
 
-/** «Guardar y aplicar»: saves the edited selection, then applies it. */
+/** «Save and apply»: saves the edited selection, then applies it. */
 export async function saveAndApplyProfile(params: {
   gameId: string;
   library: ModLibrary;

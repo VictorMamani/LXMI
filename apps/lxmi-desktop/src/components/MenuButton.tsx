@@ -1,4 +1,11 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from "react";
 import styles from "./MenuButton.module.css";
 
 export type MenuItem = {
@@ -12,6 +19,8 @@ export type MenuItem = {
 
 type TriggerProps = {
   onClick: () => void;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => void;
+  ref: (element: HTMLButtonElement | null) => void;
   "aria-haspopup": "menu";
   "aria-expanded": boolean;
   "aria-controls": string;
@@ -36,17 +45,72 @@ export function MenuButton({
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const triggerElement = useRef<HTMLButtonElement | null>(null);
+  const focusLast = useRef(false);
   const id = useId();
 
   useEffect(() => {
     if (!open) return;
+    const enabledItems = () =>
+      Array.from(
+        root.current?.querySelectorAll<HTMLButtonElement>(
+          '[role="menuitem"]:not(:disabled)',
+        ) ?? [],
+      );
+    const menuItems = enabledItems();
+    (focusLast.current ? menuItems.at(-1) : menuItems[0])?.focus();
     const onPointer = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        event.preventDefault();
         event.stopPropagation();
         setOpen(false);
+        triggerElement.current?.focus();
+      } else if (event.key === "Tab") {
+        setOpen(false);
+        triggerElement.current?.focus();
+      } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+        const entries = enabledItems();
+        const index = entries.findIndex(
+          (entry) => entry === document.activeElement,
+        );
+        const next =
+          event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? entries.length - 1
+              : (index +
+                  (event.key === "ArrowDown" ? 1 : -1) +
+                  entries.length) %
+                entries.length;
+        entries[next]?.focus();
+      } else if (
+        event.key.length === 1 &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        event.key !== " "
+      ) {
+        const entries = enabledItems();
+        const index = entries.findIndex(
+          (entry) => entry === document.activeElement,
+        );
+        const ordered = [
+          ...entries.slice(index + 1),
+          ...entries.slice(0, index + 1),
+        ];
+        ordered
+          .find((entry) =>
+            entry.textContent
+              ?.trim()
+              .toLowerCase()
+              .startsWith(event.key.toLowerCase()),
+          )
+          ?.focus();
       }
     };
     document.addEventListener("pointerdown", onPointer);
@@ -63,7 +127,19 @@ export function MenuButton({
       className={[styles.root, className].filter(Boolean).join(" ")}
     >
       {trigger({
-        onClick: () => setOpen((value) => !value),
+        onClick: () => {
+          focusLast.current = false;
+          setOpen((value) => !value);
+        },
+        onKeyDown: (event) => {
+          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+          event.preventDefault();
+          focusLast.current = event.key === "ArrowUp";
+          setOpen(true);
+        },
+        ref: (element) => {
+          triggerElement.current = element;
+        },
         "aria-haspopup": "menu",
         "aria-expanded": open,
         "aria-controls": id,
@@ -79,6 +155,7 @@ export function MenuButton({
               <button
                 type="button"
                 role="menuitem"
+                tabIndex={-1}
                 className={styles.item}
                 data-danger={item.danger || undefined}
                 data-selected={item.selected || undefined}
@@ -86,6 +163,7 @@ export function MenuButton({
                 title={item.hint}
                 onClick={() => {
                   setOpen(false);
+                  triggerElement.current?.focus();
                   item.onSelect();
                 }}
               >

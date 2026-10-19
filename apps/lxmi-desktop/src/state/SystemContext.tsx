@@ -26,6 +26,6 @@ export function SystemProvider({ children }: { children: ReactNode }) {
 
 export function useSystem(): SystemData {
   const value = useContext(SystemContext);
-  if (!value) throw new Error("useSystem requiere SystemProvider");
+  if (!value) throw new Error("useSystem requires SystemProvider");
   return value;
 }

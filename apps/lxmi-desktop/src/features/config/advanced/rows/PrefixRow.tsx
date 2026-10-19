@@ -13,20 +13,20 @@ const loadPreflight = () =>
   call("inspect_zzz_prefix_preflight", { captureBaseline: false });
 
 const recoveryActions: { action: PrefixRecoveryAction; label: string }[] = [
-  { action: "verify_backup", label: "Verificar copia" },
-  { action: "test_restore", label: "Probar restauración" },
-  { action: "create_current_backup", label: "Copia del estado actual" },
+  { action: "verify_backup", label: "Verify backup" },
+  { action: "test_restore", label: "Test restore" },
+  { action: "create_current_backup", label: "Back up current state" },
 ];
 
 function summarize(panel: PrefixPanel): string {
   const { recovery, preflight } = panel;
   const backup = recovery
-    ? `Copia de recuperación ${recovery.integrity.state === "verified" ? "verificada" : recovery.integrity.state}`
-    : "Sin copia de recuperación";
+    ? `Recovery backup ${recovery.integrity.state === "verified" ? "verified" : recovery.integrity.state}`
+    : "No recovery backup";
   const drift =
     preflight.runtime_drift === "none"
-      ? "sin desviaciones"
-      : `desviación: ${preflight.runtime_drift}`;
+      ? "no drift"
+      : `drift: ${preflight.runtime_drift}`;
   return `${backup} · ${drift}`;
 }
 
@@ -44,17 +44,17 @@ export function PrefixRow() {
 
   return (
     <DiagnosticRow
-      title="Prefix de ZZZ"
+      title="ZZZ prefix"
       status={
         current && (
           <StatusDot status={blockers ? "warn" : "ok"} size="sm">
-            {blockers ? `${blockers} bloqueos` : "OK"}
+            {blockers ? `${blockers} blockers` : "OK"}
           </StatusDot>
         )
       }
       summary={
         preflight.error ??
-        (current ? summarize(current) : "Revisando el prefix…")
+        (current ? summarize(current) : "Checking the prefix…")
       }
       action={
         <Button
@@ -66,19 +66,19 @@ export function PrefixRow() {
             )
           }
         >
-          {action.pending === "create" ? "Creando…" : "Crear copia"}
+          {action.pending === "create" ? "Creating…" : "Create backup"}
         </Button>
       }
     >
       <Facts
         items={[
-          ["Resultado", current?.preflight.result],
-          ["Procesos activos", current?.preflight.active_processes],
-          ["Reversión", current?.preflight.rollback],
-          ["Copia", current?.recovery?.backup_path],
+          ["Result", current?.preflight.result],
+          ["Active processes", current?.preflight.active_processes],
+          ["Rollback", current?.preflight.rollback],
+          ["Backup", current?.recovery?.backup_path],
           [
-            "Bloqueos",
-            current && (current.preflight.blockers.join(" · ") || "Ninguno"),
+            "Blockers",
+            current && (current.preflight.blockers.join(" · ") || "None"),
           ],
         ]}
       />
@@ -104,7 +104,7 @@ export function PrefixRow() {
             void run("reconcile", () => call("reconcile_zzz_prefix_recovery"))
           }
         >
-          Conciliar copias
+          Reconcile backups
         </Button>
         <Button
           variant="outline"
@@ -113,7 +113,7 @@ export function PrefixRow() {
             void run("steam", () => call("review_zzz_steam_protected_state"))
           }
         >
-          Estado protegido de Steam
+          Protected Steam state
         </Button>
         <Button
           variant="outline"
@@ -124,7 +124,7 @@ export function PrefixRow() {
             )
           }
         >
-          Capturar línea base
+          Capture baseline
         </Button>
       </DetailActions>
       {action.error && <InlineError>{action.error}</InlineError>}

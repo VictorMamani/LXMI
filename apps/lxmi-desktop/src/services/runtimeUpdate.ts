@@ -21,7 +21,7 @@ export function officialReleases(force = false): Promise<OfficialRelease[]> {
 }
 
 /**
- * «Actualizar»: downloads the newer official packages, assembles the runtime
+ * Update: downloads the newer official packages, assembles the runtime
  * and, if a profile was applied, applies it again on the new runtime.
  */
 export async function updateRuntime(params: {
@@ -41,26 +41,32 @@ export async function updateRuntime(params: {
     else sources.importer = pkg.id;
   }
   if (!sources.importer || !sources.libraries)
-    throw new Error("Faltan paquetes oficiales para ensamblar el runtime.");
+    throw new Error("Official packages are missing for runtime assembly.");
 
   const runtime = {
     gameId,
     importerId: sources.importer,
     librariesId: sources.libraries,
   };
-  await call("prepare_game_mod_runtime", runtime);
+  const prepared = await call("prepare_game_mod_runtime", runtime);
 
   const current = status.selection.current;
   if (!current || updates.length === 0) return;
   const [fresh, library] = await Promise.all([
-    call("inspect_game_mod_runtime", runtime),
+    // Read the latest selection revision without resolving its old runtime
+    // against the newly prepared packages. Rust rejects that mismatch.
+    call("inspect_game_mod_runtime", {
+      gameId,
+      importerId: null,
+      librariesId: null,
+    }),
     call("list_mod_library", { gameId }),
   ]);
   await applyProfile({
     gameId,
     profileName: current.profile_name,
     profileRevision: library.revision,
-    status: fresh,
+    status: { ...fresh, base_runtime: prepared },
     sources,
   });
 }

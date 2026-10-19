@@ -188,10 +188,10 @@
       "runtime_path_linux": "/tmp/lxmi-environment-fixture-916b0461d62b57b48d042649c8f72b75/marker",
       "runtime_path_windows": "Z:\\tmp\\lxmi-environment-fixture-916b0461d62b57b48d042649c8f72b75\\marker",
       "warnings": [
-        "Este runtime fue seleccionado solo para la prueba; GameRuntimePlan.selected permanece Unknown.",
-        "El nonce correlaciona request/response y no autentica al helper.",
-        "Proton crea o actualiza el prefix exclusivo de LXMI. Nunca se utiliza compatdata de ZZZ.",
-        "Proton/helper escribieron diagnósticos en stderr; están disponibles en el resultado."
+        "This runtime was selected only for the test; GameRuntimePlan.selected remains Unknown.",
+        "The nonce correlates requests and responses; it does not authenticate the helper.",
+        "Proton creates or updates the LXMI-only prefix. ZZZ compatdata is never used.",
+        "Proton or the helper wrote diagnostics to stderr; they are available in the result."
       ]
     },
     "container_metadata": {
@@ -431,10 +431,10 @@
           "runtime_path_linux": "/tmp/lxmi-environment-fixture-721e9c855b30c7a57de9ea5661ca0658/marker",
           "runtime_path_windows": "Z:\\tmp\\lxmi-environment-fixture-721e9c855b30c7a57de9ea5661ca0658\\marker",
           "warnings": [
-            "Este runtime fue seleccionado solo para la prueba; GameRuntimePlan.selected permanece Unknown.",
-            "El nonce correlaciona request/response y no autentica al helper.",
-            "Proton crea o actualiza el prefix exclusivo de LXMI. Nunca se utiliza compatdata de ZZZ.",
-            "Proton/helper escribieron diagnósticos en stderr; están disponibles en el resultado."
+            "This runtime was selected only for the test; GameRuntimePlan.selected remains Unknown.",
+            "The nonce correlates requests and responses; it does not authenticate the helper.",
+            "Proton creates or updates the LXMI-only prefix. ZZZ compatdata is never used.",
+            "Proton or the helper wrote diagnostics to stderr; they are available in the result."
           ]
         },
         "container_metadata": null,
@@ -2363,10 +2363,10 @@
           "runtime_path_linux": "/tmp/lxmi-environment-fixture-721e9c855b30c7a57de9ea5661ca0658/marker",
           "runtime_path_windows": "Z:\\tmp\\lxmi-environment-fixture-721e9c855b30c7a57de9ea5661ca0658\\marker",
           "warnings": [
-            "Este runtime fue seleccionado solo para la prueba; GameRuntimePlan.selected permanece Unknown.",
-            "El nonce correlaciona request/response y no autentica al helper.",
-            "Proton crea o actualiza el prefix exclusivo de LXMI. Nunca se utiliza compatdata de ZZZ.",
-            "Proton/helper escribieron diagnósticos en stderr; están disponibles en el resultado."
+            "This runtime was selected only for the test; GameRuntimePlan.selected remains Unknown.",
+            "The nonce correlates requests and responses; it does not authenticate the helper.",
+            "Proton creates or updates the LXMI-only prefix. ZZZ compatdata is never used.",
+            "Proton or the helper wrote diagnostics to stderr; they are available in the result."
           ]
         },
         "container_metadata": null,
@@ -2734,10 +2734,10 @@
           "runtime_path_linux": "/tmp/lxmi-environment-fixture-9f2fd5af847f84e8632c64b68d569a12/marker",
           "runtime_path_windows": "Z:\\tmp\\lxmi-environment-fixture-9f2fd5af847f84e8632c64b68d569a12\\marker",
           "warnings": [
-            "Este runtime fue seleccionado solo para la prueba; GameRuntimePlan.selected permanece Unknown.",
-            "El nonce correlaciona request/response y no autentica al helper.",
-            "Proton crea o actualiza el prefix exclusivo de LXMI. Nunca se utiliza compatdata de ZZZ.",
-            "Proton/helper escribieron diagnósticos en stderr; están disponibles en el resultado."
+            "This runtime was selected only for the test; GameRuntimePlan.selected remains Unknown.",
+            "The nonce correlates requests and responses; it does not authenticate the helper.",
+            "Proton creates or updates the LXMI-only prefix. ZZZ compatdata is never used.",
+            "Proton or the helper wrote diagnostics to stderr; they are available in the result."
           ]
         },
         "container_metadata": {
@@ -3181,10 +3181,10 @@
           "runtime_path_linux": "/tmp/lxmi-environment-fixture-9f2fd5af847f84e8632c64b68d569a12/marker",
           "runtime_path_windows": "Z:\\tmp\\lxmi-environment-fixture-9f2fd5af847f84e8632c64b68d569a12\\marker",
           "warnings": [
-            "Este runtime fue seleccionado solo para la prueba; GameRuntimePlan.selected permanece Unknown.",
-            "El nonce correlaciona request/response y no autentica al helper.",
-            "Proton crea o actualiza el prefix exclusivo de LXMI. Nunca se utiliza compatdata de ZZZ.",
-            "Proton/helper escribieron diagnósticos en stderr; están disponibles en el resultado."
+            "This runtime was selected only for the test; GameRuntimePlan.selected remains Unknown.",
+            "The nonce correlates requests and responses; it does not authenticate the helper.",
+            "Proton creates or updates the LXMI-only prefix. ZZZ compatdata is never used.",
+            "Proton or the helper wrote diagnostics to stderr; they are available in the result."
           ]
         },
         "container_metadata": {
@@ -3604,10 +3604,10 @@
           "runtime_path_linux": "/tmp/lxmi-environment-fixture-f72e167e22e1159915b45a8fdd2327e7/marker",
           "runtime_path_windows": "Z:\\tmp\\lxmi-environment-fixture-f72e167e22e1159915b45a8fdd2327e7\\marker",
           "warnings": [
-            "Este runtime fue seleccionado solo para la prueba; GameRuntimePlan.selected permanece Unknown.",
-            "El nonce correlaciona request/response y no autentica al helper.",
-            "Proton crea o actualiza el prefix exclusivo de LXMI. Nunca se utiliza compatdata de ZZZ.",
-            "Proton/helper escribieron diagnósticos en stderr; están disponibles en el resultado."
+            "This runtime was selected only for the test; GameRuntimePlan.selected remains Unknown.",
+            "The nonce correlates requests and responses; it does not authenticate the helper.",
+            "Proton creates or updates the LXMI-only prefix. ZZZ compatdata is never used.",
+            "Proton or the helper wrote diagnostics to stderr; they are available in the result."
           ]
         },
         "container_metadata": {
@@ -4050,10 +4050,10 @@
           "runtime_path_linux": "/tmp/lxmi-environment-fixture-f72e167e22e1159915b45a8fdd2327e7/marker",
           "runtime_path_windows": "Z:\\tmp\\lxmi-environment-fixture-f72e167e22e1159915b45a8fdd2327e7\\marker",
           "warnings": [
-            "Este runtime fue seleccionado solo para la prueba; GameRuntimePlan.selected permanece Unknown.",
-            "El nonce correlaciona request/response y no autentica al helper.",
-            "Proton crea o actualiza el prefix exclusivo de LXMI. Nunca se utiliza compatdata de ZZZ.",
-            "Proton/helper escribieron diagnósticos en stderr; están disponibles en el resultado."
+            "This runtime was selected only for the test; GameRuntimePlan.selected remains Unknown.",
+            "The nonce correlates requests and responses; it does not authenticate the helper.",
+            "Proton creates or updates the LXMI-only prefix. ZZZ compatdata is never used.",
+            "Proton or the helper wrote diagnostics to stderr; they are available in the result."
           ]
         },
         "container_metadata": {
@@ -4308,5 +4308,9 @@
       "strategy": "container_run_wrapper"
     }
   ],
-  "toolmanifest_sha256": "bb81d44a687cc6f4ea7ae05fa9f0502f35c48e462051809dce3b2a58492e3498"
+  "toolmanifest_sha256": "bb81d44a687cc6f4ea7ae05fa9f0502f35c48e462051809dce3b2a58492e3498",
+  "diagnostic_translation": {
+    "language": "en",
+    "scope": "Authored LXMI warning text only; recorded measurements, byte hashes, and execution outcomes are unchanged. This is a translated historical report, not a new execution."
+  }
 }

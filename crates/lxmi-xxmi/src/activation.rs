@@ -85,6 +85,32 @@ pub fn profile_activation_status(
     Ok(state)
 }
 
+/// Read the profile identity committed into an immutable runtime. The content
+/// hash binds the selection, including mod IDs, without rewriting saved state.
+pub fn profile_runtime_profile(
+    store: &ManagedStore,
+    game: &str,
+    runtime_id: &str,
+) -> Result<ModProfile> {
+    game_spec(game)?;
+    check_id(runtime_id, "profile")?;
+    let root = Directory::open_absolute(store.root())?;
+    root.assert_private()?;
+    let dir = root.descend(&format!("profile-runtimes/{game}/{runtime_id}"))?;
+    let record: DerivedRecord = decode(&dir.read_file("lxmi-profile-runtime.json", MAX_JSON)?)?;
+    if record.schema_version != 1
+        || record.game_id != game
+        || record.runtime_id != runtime_id
+        || record_id(&record)? != runtime_id
+    {
+        return Err(err(
+            ErrorCode::ChecksumMismatch,
+            "The profile runtime identity does not match its content.",
+        ));
+    }
+    Ok(record.profile)
+}
+
 pub fn review_profile_activation(
     store: &ManagedStore,
     base: &ManagedRuntime,
@@ -107,7 +133,7 @@ pub fn activate_profile(
     if prepared.plan.plan_id != plan_id {
         return Err(err(
             ErrorCode::Busy,
-            "El plan cambió. Revisa la activación nuevamente.",
+            "The plan changed. Review the activation again.",
         ));
     }
     let root = store.initialize()?;
@@ -120,7 +146,7 @@ pub fn activate_profile(
     {
         return Err(err(
             ErrorCode::Busy,
-            "La selección o el perfil cambió en otra ventana. Actualiza y revisa nuevamente.",
+            "The selection or profile changed in another window. Refresh and review again.",
         ));
     }
     let destination = root
@@ -154,7 +180,7 @@ pub fn activate_profile(
             if inventory(&importer, derived_limits())? != prepared.record.files {
                 return Err(err(
                     ErrorCode::ChecksumMismatch,
-                    "El runtime o los mods cambiaron durante la copia.",
+                    "The runtime or mods changed during copying.",
                 ));
             }
             let mut manifest = prepared.record.base.clone();
@@ -202,11 +228,11 @@ pub fn rollback_profile_activation(
     if state.revision != expected_revision {
         return Err(err(
             ErrorCode::Busy,
-            "La selección cambió. Actualiza antes de revertir.",
+            "The selection changed. Refresh before rolling back.",
         ));
     }
     if state.revision == 0 {
-        return Err(err(ErrorCode::NotFound, "No hay una selección anterior."));
+        return Err(err(ErrorCode::NotFound, "There is no previous selection."));
     }
     if let Some(previous) = &state.previous {
         verify_reference(store, game, previous)?;
@@ -229,7 +255,7 @@ pub fn resolve_profile_runtime(
                 || reference.integration_package_id != base.integration_package_id
                 || reference.libraries_package_id != base.libraries_package_id
             {
-                return Err(err(ErrorCode::WrongGameIntegration, "El perfil seleccionado usa otro runtime base. Reviértelo o vuelve a prepararlo para estos paquetes."));
+                return Err(err(ErrorCode::WrongGameIntegration, "The selected profile uses a different base runtime. Roll it back or prepare it again for these packages."));
             }
             verify_reference(store, &state.game_id, &reference)
         }
@@ -250,7 +276,7 @@ pub fn copy_profile_runtime_for_launch(
     if verified.importer_root != runtime.importer_root {
         return Err(err(
             ErrorCode::UnsafePath,
-            "El runtime seleccionado no es un runtime de perfil administrado.",
+            "The selected runtime is not a managed profile runtime.",
         ));
     }
     let root = Directory::open_absolute(&verified.app_root)?;
@@ -265,7 +291,7 @@ pub fn copy_profile_runtime_for_launch(
     if inventory(&target, derived_limits())? != record.files {
         return Err(err(
             ErrorCode::ChecksumMismatch,
-            "La copia de arranque no coincide con el runtime verificado.",
+            "The launch copy does not match the verified runtime.",
         ));
     }
     Ok(record.files)
@@ -290,7 +316,7 @@ fn prepare_plan(
     if base.app_root != expected || base.importer_root != expected.join(folder) {
         return Err(err(
             ErrorCode::UnsafePath,
-            "Se requiere un runtime base administrado y verificado.",
+            "A verified managed base runtime is required.",
         ));
     }
     let base_dir = Directory::open_absolute(&base.app_root)?;
@@ -300,7 +326,7 @@ fn prepare_plan(
     if disk_manifest != base.manifest {
         return Err(err(
             ErrorCode::ChecksumMismatch,
-            "El manifiesto base cambió.",
+            "The base manifest changed.",
         ));
     }
     let base_files = base
@@ -315,12 +341,12 @@ fn prepare_plan(
         .collect::<Vec<_>>();
     let importer = base_dir.child(folder)?;
     if !importer.child("Mods")?.entries(1)?.is_empty() {
-        return Err(err(ErrorCode::InvalidPackage, "El runtime base contiene mods no gestionados. Impórtalos a la biblioteca antes de aplicar perfiles."));
+        return Err(err(ErrorCode::InvalidPackage, "The base runtime contains unmanaged mods. Import them into the library before applying profiles."));
     }
     if inventory(&importer, ImportLimits::default())? != base_files {
         return Err(err(
             ErrorCode::ChecksumMismatch,
-            "El runtime base cambió o contiene archivos no inventariados.",
+            "The base runtime changed or contains files missing from the inventory.",
         ));
     }
     let prepared =
@@ -329,7 +355,7 @@ fn prepare_plan(
     if state.revision != selection_revision {
         return Err(err(
             ErrorCode::Busy,
-            "La selección cambió. Actualiza antes de revisar.",
+            "The selection changed. Refresh before reviewing.",
         ));
     }
     let mut files = base_files.clone();
@@ -343,16 +369,16 @@ fn prepare_plan(
         .iter()
         .any(|f| !destinations.insert(f.relative_path.to_lowercase()))
     {
-        return Err(err(ErrorCode::InvalidPackage, "Dos archivos del perfil intentan ocupar el mismo destino del runtime. Revisa los ShaderFixes seleccionados."));
+        return Err(err(ErrorCode::InvalidPackage, "Two profile files target the same runtime destination. Review the selected ShaderFixes."));
     }
     let bytes = files
         .iter()
         .try_fold(0u64, |sum, f| sum.checked_add(f.size))
-        .ok_or_else(|| err(ErrorCode::LimitExceeded, "Runtime demasiado grande."))?;
+        .ok_or_else(|| err(ErrorCode::LimitExceeded, "The runtime is too large."))?;
     if bytes > derived_limits().max_total_bytes || files.len() > derived_limits().max_files {
         return Err(err(
             ErrorCode::LimitExceeded,
-            "La selección supera los límites del runtime derivado.",
+            "The selection exceeds the derived runtime limits.",
         ));
     }
     let mut record = DerivedRecord {
@@ -411,7 +437,7 @@ fn verify_reference(
     {
         return Err(err(
             ErrorCode::ChecksumMismatch,
-            "La selección no coincide con el runtime preparado.",
+            "The selection does not match the prepared runtime.",
         ));
     }
     Ok(runtime)
@@ -438,7 +464,7 @@ fn verify_derived(store: &ManagedStore, game: &str, id: &str) -> Result<ManagedR
     {
         return Err(err(
             ErrorCode::ChecksumMismatch,
-            "El runtime de perfil cambió. Se conserva para revisión y no se utiliza.",
+            "The profile runtime changed. It is retained for review and will not be used.",
         ));
     }
     let importer = store.verify(&manifest.integration_package_id)?;
@@ -456,7 +482,7 @@ fn verify_derived(store: &ManagedStore, game: &str, id: &str) -> Result<ManagedR
     {
         return Err(err(
             ErrorCode::InvalidSignature,
-            "Los paquetes fuente no están verificados para este juego.",
+            "The source packages are not verified for this game.",
         ));
     }
     let loader_relative = format!(
@@ -470,7 +496,7 @@ fn verify_derived(store: &ManagedStore, game: &str, id: &str) -> Result<ManagedR
     {
         return Err(err(
             ErrorCode::ChecksumMismatch,
-            "El loader no coincide con el paquete Libraries verificado.",
+            "The loader does not match the verified Libraries package.",
         ));
     }
     Ok(ManagedRuntime {
@@ -500,7 +526,7 @@ fn read_state(dir: &Directory, game: &str) -> Result<ActiveProfileSelection> {
     if state.schema_version != 1 || state.game_id != game {
         return Err(err(
             ErrorCode::InvalidMetadata,
-            "Selección de runtime inválida.",
+            "Invalid runtime selection.",
         ));
     }
     for reference in [&state.current, &state.previous].into_iter().flatten() {
@@ -513,7 +539,7 @@ fn save_state(dir: &Directory, state: &mut ActiveProfileSelection) -> Result<()>
     state.revision = state
         .revision
         .checked_add(1)
-        .ok_or_else(|| err(ErrorCode::LimitExceeded, "Revisión agotada."))?;
+        .ok_or_else(|| err(ErrorCode::LimitExceeded, "Revision limit reached."))?;
     let name = temp_name();
     dir.write_new(&name, &encode(state)?)?;
     std::fs::rename(
@@ -547,7 +573,7 @@ fn game_spec(game: &str) -> Result<(&'static str, &'static str)> {
     match game {
         "wuthering-waves" => Ok(("wwmi", "WWMI")),
         "zenless-zone-zero" => Ok(("zzmi", "ZZMI")),
-        _ => Err(err(ErrorCode::WrongGameIntegration, "Juego desconocido.")),
+        _ => Err(err(ErrorCode::WrongGameIntegration, "Unknown game.")),
     }
 }
 fn check_id(id: &str, prefix: &str) -> Result<()> {
@@ -556,10 +582,7 @@ fn check_id(id: &str, prefix: &str) -> Result<()> {
             && v.bytes()
                 .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
     }) {
-        return Err(err(
-            ErrorCode::UnsafePath,
-            "Identificador de runtime inválido.",
-        ));
+        return Err(err(ErrorCode::UnsafePath, "Invalid runtime identifier."));
     }
     Ok(())
 }
@@ -594,10 +617,7 @@ fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>> {
     let bytes =
         serde_json::to_vec(value).map_err(|e| err(ErrorCode::InvalidMetadata, &e.to_string()))?;
     if bytes.len() as u64 > MAX_JSON {
-        return Err(err(
-            ErrorCode::LimitExceeded,
-            "Manifiesto demasiado grande.",
-        ));
+        return Err(err(ErrorCode::LimitExceeded, "The manifest is too large."));
     }
     Ok(bytes)
 }

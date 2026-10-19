@@ -58,16 +58,16 @@ export function ObservationRow() {
   return (
     <>
       <DiagnosticRow
-        title="Observación en ejecución"
+        title="Runtime observation"
         status={
           <StatusDot status={active ? "accent" : "idle"} size="sm">
-            {active ? "Activa" : "Inactiva"}
+            {active ? "Active" : "Inactive"}
           </StatusDot>
         }
         summary={
           active
-            ? `Observando · ${snapshot?.process ? `${snapshot.process.executable_name} (PID ${snapshot.process.pid})` : "esperando el proceso del juego"}`
-            : "Solo lectura · requiere abrir el juego manualmente"
+            ? `Observing · ${snapshot?.process ? `${snapshot.process.executable_name} (PID ${snapshot.process.pid})` : "waiting for the game process"}`
+            : "Read-only · requires opening the game manually"
         }
         action={
           active ? (
@@ -76,7 +76,7 @@ export function ObservationRow() {
               disabled={action.busy}
               onClick={() => void stop()}
             >
-              Detener
+              Stop
             </Button>
           ) : (
             <Button
@@ -84,17 +84,17 @@ export function ObservationRow() {
               disabled={action.busy}
               onClick={() => setConfirming(true)}
             >
-              Iniciar
+              Start
             </Button>
           )
         }
       >
         <Facts
           items={[
-            ["Estado", snapshot?.status],
-            ["Proceso", snapshot?.process?.executable_name],
+            ["Status", snapshot?.status],
+            ["Process", snapshot?.process?.executable_name],
             [
-              "Runtime observado",
+              "Observed runtime",
               snapshot?.observed_runtime.tool?.display_name ??
                 snapshot?.observed_runtime.state,
             ],
@@ -102,10 +102,7 @@ export function ObservationRow() {
               "Prefix",
               snapshot?.prefix.observed_path ?? snapshot?.prefix.state,
             ],
-            [
-              "Avisos",
-              snapshot && (snapshot.warnings.join(" · ") || "Ninguno"),
-            ],
+            ["Warnings", snapshot && (snapshot.warnings.join(" · ") || "None")],
           ]}
         />
         {action.error && <InlineError>{action.error}</InlineError>}
@@ -113,26 +110,26 @@ export function ObservationRow() {
 
       {confirming && (
         <Dialog
-          eyebrow="Observación"
-          title="Abrir el juego manualmente"
+          eyebrow="Observation"
+          title="Open the game manually"
           onClose={() => setConfirming(false)}
           actions={
             <>
-              <Button onClick={() => setConfirming(false)}>Cancelar</Button>
+              <Button onClick={() => setConfirming(false)}>Cancel</Button>
               <Button
                 variant="primary"
                 icon={Activity}
                 onClick={() => void start()}
               >
-                Empezar a observar
+                Start observing
               </Button>
             </>
           }
         >
           <p>
-            LXMI no inicia el juego: ábrelo tú desde Steam. Mientras tanto, LXMI
-            lee la información de los procesos de tu usuario para identificar el
-            runtime y el prefix. No escribe nada.
+            LXMI does not start the game: open it from Steam yourself.
+            Meanwhile, LXMI reads your user process information to identify the
+            runtime and prefix. It does not write anything.
           </p>
         </Dialog>
       )}

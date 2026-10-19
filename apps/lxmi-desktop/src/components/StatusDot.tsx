@@ -3,7 +3,7 @@ import styles from "./StatusDot.module.css";
 
 export type Status = "ok" | "accent" | "idle" | "warn" | "error";
 
-/** «Estado / Punto»: square dot plus a short uppercase label. */
+/** «Status / Punto»: square dot plus a short uppercase label. */
 export function StatusDot({
   status,
   children,

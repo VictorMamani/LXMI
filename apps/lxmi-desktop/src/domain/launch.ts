@@ -1,17 +1,17 @@
 import type { LaunchPhase, LaunchStatus } from "../api/types";
 
-/** The six visible steps of «Jugar con mods», mapped from backend phases. */
+/** The six visible steps of «Play with mods», mapped from backend phases. */
 export const launchSteps: readonly { label: string; phases: LaunchPhase[] }[] =
   [
-    { label: "Copia del perfil", phases: ["preparing"] },
+    { label: "Profile copy", phases: ["preparing"] },
     {
-      label: "HoYoPlay desde Steam",
+      label: "HoYoPlay through Steam",
       phases: ["opening_launcher", "waiting_for_launcher"],
     },
-    { label: "Carga preparada", phases: ["arming"] },
-    { label: "Pulsa «Jugar» en HoYoPlay", phases: ["waiting_for_play"] },
-    { label: "Mods cargados", phases: ["checking_stability"] },
-    { label: "En juego", phases: ["running"] },
+    { label: "Hook ready", phases: ["arming"] },
+    { label: "Press 'Play' in HoYoPlay", phases: ["waiting_for_play"] },
+    { label: "Mods loaded", phases: ["checking_stability"] },
+    { label: "In game", phases: ["running"] },
   ];
 
 export type StepState = "done" | "current" | "pending" | "failed";

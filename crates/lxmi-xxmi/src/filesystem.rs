@@ -25,7 +25,7 @@ pub fn validate_relative_path(value: &str) -> Result<()> {
         return Err(XxmiError::new(
             ErrorCode::UnsafePath,
             Some(PathBuf::from(value)),
-            "Se requiere una ruta relativa normal, sin traversal ni separadores ambiguos.",
+            "A normal relative path without traversal or ambiguous separators is required.",
         ));
     }
     Ok(())
@@ -40,7 +40,7 @@ impl Directory {
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(path.to_owned()),
-                "La ruta debe ser absoluta.",
+                "The path must be absolute.",
             ));
         }
         let mut dir = Self {
@@ -54,7 +54,7 @@ impl Directory {
                         XxmiError::new(
                             ErrorCode::UnsafePath,
                             Some(path.to_owned()),
-                            "Ruta no UTF-8.",
+                            "The path is not UTF-8.",
                         )
                     })?;
                     dir = dir.child(s)?;
@@ -63,7 +63,7 @@ impl Directory {
                     return Err(XxmiError::new(
                         ErrorCode::UnsafePath,
                         Some(path.to_owned()),
-                        "Ruta absoluta no normalizada.",
+                        "The absolute path is not normalized.",
                     ))
                 }
             }
@@ -105,7 +105,7 @@ impl Directory {
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 None,
-                "Un componente requerido.",
+                "One path component is required.",
             ));
         }
         let path = self.path().join(name);
@@ -123,7 +123,7 @@ impl Directory {
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 None,
-                "Un solo componente requerido.",
+                "Exactly one path component is required.",
             ));
         }
         let path = self.path().join(name);
@@ -147,7 +147,7 @@ impl Directory {
             return Err(XxmiError::new(
                 ErrorCode::StorageUnavailable,
                 None,
-                "El almacenamiento LXMI debe pertenecer al usuario y tener permisos 0700.",
+                "LXMI storage must belong to the user and have 0700 permissions.",
             ));
         }
         Ok(())
@@ -159,14 +159,14 @@ impl Directory {
             let name = entry
                 .file_name()
                 .into_string()
-                .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Nombre no UTF-8."))?;
+                .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Name no UTF-8."))?;
             validate_relative_path(&name)?;
             names.push(name);
             if names.len() > limit {
                 return Err(XxmiError::new(
                     ErrorCode::LimitExceeded,
                     None,
-                    "Demasiadas entradas.",
+                    "Too many entries.",
                 ));
             }
         }
@@ -176,7 +176,7 @@ impl Directory {
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 None,
-                "Nombres ambiguos por mayúsculas/minúsculas.",
+                "Case-ambiguous names.",
             ));
         }
         Ok(names)
@@ -188,7 +188,7 @@ impl Directory {
             Ok(m) if m.file_type().is_symlink() => Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(PathBuf::from(name)),
-                "Enlace simbólico rechazado.",
+                "Symbolic link rejected.",
             )),
             Ok(m) => Ok(Some(m)),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
@@ -221,7 +221,7 @@ impl Directory {
             return Err(XxmiError::new(
                 ErrorCode::LimitExceeded,
                 Some(PathBuf::from(name)),
-                "Archivo supera el límite de lectura.",
+                "The file exceeds the read limit.",
             ));
         }
         Ok(bytes)
@@ -241,7 +241,7 @@ impl Directory {
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(PathBuf::from(name)),
-                "Solo archivos regulares sin hardlinks.",
+                "Only regular files without hardlinks are allowed.",
             ));
         }
         Ok(file)
@@ -308,9 +308,9 @@ impl Directory {
         validate_relative_path(from)?;
         validate_relative_path(to)?;
         let a = std::ffi::CString::new(from)
-            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Nombre inválido"))?;
+            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Invalid name"))?;
         let b = std::ffi::CString::new(to)
-            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Nombre inválido"))?;
+            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Invalid name"))?;
         // SAFETY: both FDs and NUL-terminated strings remain live during this syscall.
         let result = unsafe {
             libc::renameat2(
@@ -334,9 +334,9 @@ impl Directory {
         validate_relative_path(from)?;
         validate_relative_path(to)?;
         let a = std::ffi::CString::new(from)
-            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Nombre inválido"))?;
+            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Invalid name"))?;
         let b = std::ffi::CString::new(to)
-            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Nombre inválido"))?;
+            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Invalid name"))?;
         // SAFETY: the directory fd and NUL-terminated names live during the syscall.
         let result = unsafe {
             libc::renameat2(
@@ -358,7 +358,7 @@ impl Directory {
     pub fn remove_file(&self, name: &str) -> Result<()> {
         let (parent, base) = self.parent_for(name)?;
         let c_name = std::ffi::CString::new(base)
-            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Nombre inválido"))?;
+            .map_err(|_| XxmiError::new(ErrorCode::UnsafePath, None, "Invalid name"))?;
         // SAFETY: the directory fd and file name are valid for unlinkat.
         let result = unsafe { libc::unlinkat(parent.file.as_raw_fd(), c_name.as_ptr(), 0) };
         if result != 0 {

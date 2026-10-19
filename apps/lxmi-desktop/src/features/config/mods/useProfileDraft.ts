@@ -4,7 +4,7 @@ import { selectionDiff } from "../../../domain/mods";
 
 /**
  * Profile being edited on the Mods page: which profile is open and the mods
- * ticked in it. Nothing is persisted until «Guardar y aplicar».
+ * ticked in it. Nothing is persisted until «Save and apply».
  */
 export function useProfileDraft(
   library: ModLibrary | null,

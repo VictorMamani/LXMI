@@ -25,7 +25,7 @@ export function SpaceShelf() {
   return (
     <section className={styles.shelf} aria-labelledby="spaces-heading">
       <h2 id="spaces-heading" className={styles.heading}>
-        Otros espacios
+        Other spaces
       </h2>
       <div className={styles.slots}>
         {games.map((game, index) => {
@@ -41,7 +41,7 @@ export function SpaceShelf() {
               onClick={() => {
                 if (isActive) return;
                 selectGame(game.id);
-                toast(`Espacio ${game.channel} cargado`);
+                toast(`Space ${game.channel} loaded`);
               }}
             >
               <img className={styles.art} src={game.media.card} alt="" />
@@ -50,10 +50,10 @@ export function SpaceShelf() {
                 <span className={styles.name}>{game.name}</span>
                 <span className={styles.meta}>
                   {isActive
-                    ? "activo"
+                    ? "active"
                     : count == null
-                      ? "listo"
-                      : `${plural(count, "mod")} · listo`}
+                      ? "ready"
+                      : `${plural(count, "mod")} · ready`}
                 </span>
               </span>
             </button>
@@ -65,8 +65,8 @@ export function SpaceShelf() {
           </span>
           <span className={styles.text}>
             <span className={styles.channel}>{nextFreeChannel}</span>
-            <span className={styles.name}>Ranura libre</span>
-            <span className={styles.meta}>próximamente</span>
+            <span className={styles.name}>Free slot</span>
+            <span className={styles.meta}>coming soon</span>
           </span>
         </div>
       </div>

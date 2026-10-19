@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import styles from "./Tag.module.css";
 
-/** «Etiqueta / Óxido»: solid rust label such as EXPERIMENTAL or the version. */
+/** Solid rust label such as EXPERIMENTAL or the version. */
 export function Tag({ children }: { children: ReactNode }) {
   return <span className={styles.tag}>{children}</span>;
 }

@@ -19,9 +19,7 @@ function resolveTransport(): Promise<Transport> {
   if (isTauri()) return Promise.resolve(tauriTransport);
   if (import.meta.env.DEV)
     return import("./mock/mockTransport").then((m) => m.mockTransport);
-  return Promise.reject(
-    new Error("LXMI necesita ejecutarse dentro de su ventana de escritorio."),
-  );
+  return Promise.reject(new Error("LXMI must run inside its desktop window."));
 }
 
 export const isDemoMode = !isTauri();

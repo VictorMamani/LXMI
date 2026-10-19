@@ -1,28 +1,40 @@
-# LXMI Loader Lab (desarrollo)
+# LXMI Loader Lab (development)
 
-Estas herramientas prueban el export `Inject` del `3dmloader.dll` oficial contra un único proceso Windows creado por LXMI. No aceptan PID, nombre de proceso ni ruta de DLL arbitrarios. El runner obtiene todos los paths desde su propia ubicación bajo `lxmi/tests/loader-v1/`.
+These tools test the official `3dmloader.dll` `Inject` export against a single
+Windows process created by LXMI. They do not accept arbitrary PIDs, process names,
+or DLL paths. The runner derives paths from its own location under
+`lxmi/tests/loader-v1/`.
 
-El target es `lxmi-loader-test-target.exe`; la DLL inocua es `lxmi-loader-test.dll`. La DLL solo escribe un marker JSON dentro del directorio de resultados del laboratorio cuando el nombre de su propio proceso coincide exactamente con el target LXMI.
+The target is `lxmi-loader-test-target.exe`; the harmless DLL is
+`lxmi-loader-test.dll`. The DLL writes a JSON marker to the laboratory results
+directory only when its own process name exactly matches the LXMI target.
 
-`3dmloader.dll` no se copia al repositorio. El backend lo obtiene de un paquete XXMI Libraries que el store verifica como release oficial y copia al directorio privado del laboratorio.
+`3dmloader.dll` is not copied into this repository. The backend obtains it from an
+XXMI Libraries package verified by the store as an official release, then copies
+it into the private laboratory directory.
 
 ## Build
 
-Requisitos en Ubuntu: `gcc-mingw-w64-x86-64` y `mingw-w64-x86-64-dev`. No se instala nada automáticamente.
+Ubuntu requirements: `gcc-mingw-w64-x86-64` and `mingw-w64-x86-64-dev`. Nothing is
+installed automatically.
 
-Desde la raíz del repositorio:
+From the repository root:
 
 ```bash
 bash tools/lxmi-loader-lab/build.sh
 ```
 
-El resultado queda en `target/x86_64-pc-windows-gnu/release/lxmi-loader-lab/`. El build usa el compilador MinGW del host. Los archivos se validan y se copian al storage XDG de LXMI al pulsar **Prepare Loader Lab** en la UI.
+Output is written to `target/x86_64-pc-windows-gnu/release/lxmi-loader-lab/` using
+the host MinGW compiler. The files are validated and copied to LXMI XDG storage
+when you choose **Prepare** in the **Loader Lab** section of the UI.
 
-## Restricciones
+## Restrictions
 
-- `direct_inject` llama al export upstream con el PID del `CreateProcessW` de su hijo, no busca procesos.
-- `hook` no se prueba: upstream instala un hook global de ventanas.
-- El runner solo inicia el ejecutable fijo del test; no hay argumento de ruta.
-- La DLL verifica el nombre de su proceso y un nonce de 128 bits.
-- No usar con ZZZ, Steam, HoYoPlay ni otro proceso.
-- Esta carpeta contiene únicamente código de test LXMI; no contiene código fuente upstream ni redistribuye binarios upstream.
+- `direct_inject` calls the upstream export with the PID returned by its child
+  `CreateProcessW`; it does not search for processes.
+- `hook` is not tested: upstream installs a global window hook.
+- The runner starts only the fixed test executable; there is no path argument.
+- The DLL checks its process name and a 128-bit nonce.
+- Do not use with ZZZ, Steam, HoYoPlay, or another process.
+- This directory contains only LXMI test code; it contains no upstream source code
+  and redistributes no upstream binaries.

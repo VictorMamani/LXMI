@@ -37,15 +37,12 @@ fn sha256(bytes: &[u8]) -> String {
 fn private_dir(path: &Path) -> Result<(), String> {
     match fs::symlink_metadata(path) {
         Ok(m) if m.is_dir() => Ok(()),
-        Ok(_) => Err(format!(
-            "{} no es un directorio administrado.",
-            path.display()
-        )),
+        Ok(_) => Err(format!("{} is not a managed directory.", path.display())),
         Err(_) => fs::DirBuilder::new()
             .recursive(true)
             .mode(0o700)
             .create(path)
-            .map_err(|e| format!("No se pudo crear {}: {e}", path.display())),
+            .map_err(|e| format!("Could not create {}: {e}", path.display())),
     }
 }
 
@@ -55,10 +52,10 @@ fn write_new(path: &Path, bytes: &[u8]) -> Result<(), String> {
         .create_new(true)
         .mode(0o600)
         .open(path)
-        .map_err(|e| format!("No se pudo crear {}: {e}", path.display()))?;
+        .map_err(|e| format!("Could not create {}: {e}", path.display()))?;
     file.write_all(bytes)
         .and_then(|_| file.sync_all())
-        .map_err(|e| format!("No se pudo escribir {}: {e}", path.display()))
+        .map_err(|e| format!("Could not write {}: {e}", path.display()))
 }
 
 fn read_regular(path: &Path, limit: u64) -> Option<Vec<u8>> {
@@ -113,7 +110,7 @@ pub fn prepare_launch_directory(
     fs::DirBuilder::new()
         .mode(0o700)
         .create(&dir)
-        .map_err(|e| format!("No se pudo crear la carpeta de arranque: {e}"))?;
+        .map_err(|e| format!("Could not create the launch directory: {e}"))?;
 
     let files = copy_profile_runtime_for_launch(store, runtime, &dir).map_err(|e| e.detail)?;
     let importer = dir.join(
@@ -124,10 +121,10 @@ pub fn prepare_launch_directory(
     );
     let ini_path = importer.join("d3dx.ini");
     let ini = read_regular(&ini_path, 4 * 1024 * 1024)
-        .ok_or("d3dx.ini no está en la copia de arranque.")?;
+        .ok_or("d3dx.ini is missing from the launch copy.")?;
     let configured =
         configure_loader(&ini, HELPER_NAME, &runtime.target_process).map_err(|e| e.to_string())?;
-    fs::remove_file(&ini_path).map_err(|e| format!("No se pudo preparar d3dx.ini: {e}"))?;
+    fs::remove_file(&ini_path).map_err(|e| format!("Could not prepare d3dx.ini: {e}"))?;
     write_new(&ini_path, &configured)?;
 
     // Persisted mod toggles from the previous launch of this same profile runtime.
@@ -150,10 +147,10 @@ pub fn prepare_launch_directory(
     }
 
     let loader = read_regular(&runtime.loader_library_path, 16 * 1024 * 1024)
-        .ok_or("Falta 3dmloader.dll en XXMI Libraries.")?;
+        .ok_or("3dmloader.dll is missing from XXMI Libraries.")?;
     let loader_library_sha256 = sha256(&loader);
     if loader_library_sha256 != runtime.manifest.loader_library_sha256 {
-        return Err("3dmloader.dll no coincide con el paquete verificado.".into());
+        return Err("3dmloader.dll does not match the verified package.".into());
     }
     write_new(&dir.join("3dmloader.dll"), &loader)?;
     write_new(&dir.join(HELPER_NAME), helper)?;
@@ -161,7 +158,7 @@ pub fn prepare_launch_directory(
     if read_regular(&dir.join(HELPER_NAME), 16 * 1024 * 1024).map(|b| sha256(&b))
         != Some(helper_sha256.clone())
     {
-        return Err("El helper no se escribió correctamente.".into());
+        return Err("The helper was not written correctly.".into());
     }
     let record = PreparedLaunch {
         dir: dir.clone(),
@@ -190,8 +187,8 @@ pub fn prepare_launch_directory(
 
 fn getrandom(buffer: &mut [u8]) -> Result<(), String> {
     let mut file =
-        fs::File::open("/dev/urandom").map_err(|e| format!("Sin fuente aleatoria: {e}"))?;
-    std::io::Read::read_exact(&mut file, buffer).map_err(|e| format!("Sin fuente aleatoria: {e}"))
+        fs::File::open("/dev/urandom").map_err(|e| format!("No randomness source: {e}"))?;
+    std::io::Read::read_exact(&mut file, buffer).map_err(|e| format!("No randomness source: {e}"))
 }
 
 #[cfg(test)]

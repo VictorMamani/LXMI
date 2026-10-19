@@ -15,7 +15,7 @@ type ShowToast = (text: string, tone?: ToastTone) => void;
 const ToastContext = createContext<ShowToast | null>(null);
 const VISIBLE_MS = 2600;
 
-/** One short notice at a time, bottom-right (e.g. «ESPACIO CH·02 CARGADO»). */
+/** One short notice at a time, bottom-right (e.g. 'SPACE CH·02 LOADED'). */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState<ToastMessage | null>(null);
   const counter = useRef(0);
@@ -42,6 +42,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function useToast(): ShowToast {
   const value = useContext(ToastContext);
-  if (!value) throw new Error("useToast requiere ToastProvider");
+  if (!value) throw new Error("useToast requires ToastProvider");
   return value;
 }

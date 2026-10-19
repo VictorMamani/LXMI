@@ -17,10 +17,10 @@ const stepIcon: Record<StepState, typeof Check> = {
 };
 
 function title(status: LaunchStatus): string {
-  if (status.phase === "running") return "EN JUEGO";
-  if (status.phase === "failed") return "CARGA FALLIDA";
-  if (status.phase === "cancelled") return "CARGA CANCELADA";
-  return "CARGANDO MODS";
+  if (status.phase === "running") return "IN GAME";
+  if (status.phase === "failed") return "LOAD FAILED";
+  if (status.phase === "cancelled") return "LOAD CANCELLED";
+  return "LOADING MODS";
 }
 
 /** The six phases of `game_with_mods_status` with a segmented bar. */
@@ -44,17 +44,17 @@ export function LaunchProgress({
   const interrupted = status.phase === "failed" || status.phase === "cancelled";
   const cancellable = !status.finished && status.phase !== "checking_stability";
 
-  let note = "No cierres HoYoPlay";
+  let note = "Do not close HoYoPlay";
   if (interrupted) note = status.message;
-  else if (status.phase === "running") note = "Mods cargados. ¡Buena partida!";
+  else if (status.phase === "running") note = "Mods loaded. Enjoy the game!";
   else if (status.phase === "waiting_for_play" && showQualityHint)
     note =
-      "Personajes con mods: Calidad de personajes «Alta» y Animación de alta precisión desactivada.";
+      "Modded characters: set Character Quality to High and disable High-Precision Animation.";
 
   return (
     <section
       className={styles.panel}
-      aria-label="Progreso de carga"
+      aria-label="Loading progress"
       role="status"
       aria-live="polite"
     >
@@ -101,17 +101,17 @@ export function LaunchProgress({
         <p className={styles.note}>{note}</p>
         {cancellable && (
           <Button icon={X} onClick={onCancel}>
-            Cancelar
+            Cancel
           </Button>
         )}
         {interrupted && (
           <Button icon={RotateCcw} onClick={onRetry}>
-            Reintentar
+            Retry
           </Button>
         )}
         {status.finished && (
-          <Button onClick={onDismiss} aria-label="Cerrar progreso">
-            Cerrar
+          <Button onClick={onDismiss} aria-label="Close progress">
+            Close
           </Button>
         )}
       </footer>

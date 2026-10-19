@@ -47,6 +47,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
 export function useNavigation(): Navigation {
   const value = useContext(NavigationContext);
-  if (!value) throw new Error("useNavigation requiere NavigationProvider");
+  if (!value) throw new Error("useNavigation requires NavigationProvider");
   return value;
 }

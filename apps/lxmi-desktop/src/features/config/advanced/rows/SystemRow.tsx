@@ -7,11 +7,11 @@ import { DiagnosticRow, Facts } from "../DiagnosticRow";
 
 const steamStatus: Record<string, string> = {
   detected: "OK",
-  not_installed: "Sin Steam",
-  configuration_missing: "Sin configurar",
-  invalid_configuration: "Configuración inválida",
-  permission_denied: "Sin permisos",
-  home_directory_unavailable: "Sin HOME",
+  not_installed: "Steam not found",
+  configuration_missing: "Not configured",
+  invalid_configuration: "Invalid configuration",
+  permission_denied: "Permission denied",
+  home_directory_unavailable: "No HOME",
   internal_error: "Error",
 };
 
@@ -25,24 +25,24 @@ export function SystemRow() {
   const summary = [
     system.data &&
       `${system.data.os === "linux" ? "Linux" : system.data.os} ${system.data.architecture}`,
-    scan && plural(scan.installations.length, "instalación", "instalaciones"),
+    scan && plural(scan.installations.length, "installation"),
     scan &&
       plural(
         scan.runtimePlans.filter((p) => p.installation.state === "detected")
           .length,
-        "juego compatible",
-        "juegos compatibles",
+        "supported game",
+        "supported games",
       ),
     proton?.displayName,
   ].filter(Boolean);
 
   return (
     <DiagnosticRow
-      title="Sistema y Steam"
+      title="System and Steam"
       status={
         steam.loading ? (
           <StatusDot status="idle" size="sm">
-            Escaneando
+            Scanning
           </StatusDot>
         ) : scan ? (
           <StatusDot
@@ -57,38 +57,38 @@ export function SystemRow() {
           </StatusDot>
         )
       }
-      summary={steam.error ?? (summary.join(" · ") || "Consultando…")}
+      summary={steam.error ?? (summary.join(" · ") || "Checking…")}
       action={
         <Button
           icon={Radar}
           disabled={steam.loading}
           onClick={() => void steam.reload().catch(() => {})}
         >
-          Escanear
+          Scan
         </Button>
       }
     >
       <Facts
         items={[
-          ["Directorio personal", system.data?.homeDirectory],
+          ["Home directory", system.data?.homeDirectory],
           ["Steam", scan?.installations.map((i) => i.rootPath).join(", ")],
           [
-            "Bibliotecas",
+            "Libraries",
             scan?.installations
               .flatMap((i) => i.libraries.map((l) => l.path))
               .join(", "),
           ],
-          ["Juegos detectados", scan?.games.map((g) => g.name).join(", ")],
+          ["Detected games", scan?.games.map((g) => g.name).join(", ")],
           [
-            "Herramientas de compatibilidad",
+            "Compatibility tools",
             scan?.compatibilityTools.map((t) => t.displayName).join(", "),
           ],
           [
-            "Incidencias",
+            "Issues",
             scan &&
               (scan.issues.length
                 ? scan.issues.map((i) => i.detail ?? i.code).join(" · ")
-                : "Ninguna"),
+                : "None"),
           ],
         ]}
       />

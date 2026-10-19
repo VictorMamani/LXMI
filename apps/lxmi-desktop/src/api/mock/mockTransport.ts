@@ -9,6 +9,7 @@ import type {
   LaunchPhase,
   LaunchStatus,
   ModLibrary,
+  ModProfile,
   ObservationSnapshot,
   PrefixPanel,
   RuntimeStatus,
@@ -32,18 +33,18 @@ const selections: Record<string, Selection> = {
   "zenless-zone-zero": {
     revision: 3,
     current: {
-      profile_name: "Combate",
+      profile_name: "Combat",
       mod_count: 4,
       runtime_id: "rt-zzz",
       integration_package_id: "zzmi-2.4.1-7f3a",
       libraries_package_id: "libs-0.9.3-a41d",
     },
-    previous: { profile_name: "Capturas" },
+    previous: { profile_name: "Screenshots" },
   },
   "wuthering-waves": {
     revision: 1,
     current: {
-      profile_name: "Exploración",
+      profile_name: "Exploration",
       mod_count: 4,
       runtime_id: "rt-wuwa",
       integration_package_id: "wwmi-0.8.2-1c9e",
@@ -52,6 +53,40 @@ const selections: Record<string, Selection> = {
     previous: null,
   },
 };
+const appliedProfiles: Record<string, ModProfile | null> = Object.fromEntries(
+  Object.entries(selections).map(([gameId, selection]) => [
+    gameId,
+    structuredClone(
+      libraries[gameId].profiles.find(
+        (profile) => profile.name === selection.current?.profile_name,
+      ) ?? null,
+    ),
+  ]),
+);
+const previousProfiles: Record<string, ModProfile | null> = Object.fromEntries(
+  Object.entries(selections).map(([gameId, selection]) => [
+    gameId,
+    structuredClone(
+      libraries[gameId].profiles.find(
+        (profile) => profile.name === selection.previous?.profile_name,
+      ) ?? null,
+    ),
+  ]),
+);
+const previousSelections: Record<string, Selection["current"]> =
+  Object.fromEntries(
+    Object.entries(selections).map(([gameId, selection]) => [
+      gameId,
+      selection.previous && selection.current
+        ? {
+            ...selection.current,
+            profile_name: selection.previous.profile_name,
+            mod_count: previousProfiles[gameId]?.mod_ids.length ?? 0,
+            runtime_id: `previous-${gameId}`,
+          }
+        : null,
+    ]),
+  );
 let launch: { status: LaunchStatus; startedAt: number } | null = null;
 let observation: ObservationSnapshot | null = null;
 
@@ -60,7 +95,7 @@ function fail(detail: string): never {
 }
 
 function library(gameId: string): ModLibrary {
-  return libraries[gameId] ?? fail(`Juego desconocido: ${gameId}`);
+  return libraries[gameId] ?? fail(`Unknown game: ${gameId}`);
 }
 
 function packagesFor(kind: string) {
@@ -77,26 +112,46 @@ function packagesFor(kind: string) {
     }));
 }
 
-function runtimeStatus(gameId: string): RuntimeStatus {
+function mockBase(gameId: string): NonNullable<RuntimeStatus["base_runtime"]> {
+  return {
+    runtime_id: `rt-${gameId}`,
+    importer_root: `~/.local/share/lxmi/runtimes/${gameId}`,
+    target_process:
+      gameId === "zenless-zone-zero"
+        ? "ZenlessZoneZero.exe"
+        : "Client-Win64-Shipping.exe",
+    file_count: 214,
+  };
+}
+
+function runtimeStatus(
+  gameId: string,
+  importerId: string | null,
+  librariesId: string | null,
+): RuntimeStatus {
   const selection = selections[gameId];
+  const current = selection.current;
+  if (
+    current &&
+    importerId &&
+    librariesId &&
+    (current.integration_package_id !== importerId ||
+      current.libraries_package_id !== librariesId)
+  )
+    fail(
+      "The selected profile uses a different base runtime. Roll it back or prepare it again for these packages.",
+    );
   const ready = selection.current !== null;
   return {
     game_id: gameId,
     installed: true,
     importer_packages: packagesFor(integrationOf[gameId]),
     libraries_packages: packagesFor("xxmi_libraries"),
-    base_runtime: {
-      runtime_id: `rt-${gameId}`,
-      importer_root: `~/.local/share/lxmi/runtimes/${gameId}`,
-      target_process:
-        gameId === "zenless-zone-zero"
-          ? "ZenlessZoneZero.exe"
-          : "Client-Win64-Shipping.exe",
-      file_count: 214,
-    },
-    selection,
+    base_runtime: importerId && librariesId ? mockBase(gameId) : null,
+    selection: structuredClone(selection),
+    applied_profile: structuredClone(appliedProfiles[gameId]),
     launch_with_mods_available: ready,
-    launch_blockers: ready ? [] : ["Aplica un perfil antes de jugar con mods."],
+    launch_blockers: ready ? [] : ["Apply a profile before playing with mods."],
   };
 }
 
@@ -121,8 +176,8 @@ function currentLaunch(): LaunchStatus | null {
     mods_loaded: step >= 4,
     message:
       phase === "waiting_for_play"
-        ? "Pulsa «Jugar» en HoYoPlay para continuar."
-        : "Preparando la carga de mods…",
+        ? "Press 'Play' in HoYoPlay to continue."
+        : "Preparing to load mods…",
   };
   return launch.status;
 }
@@ -204,7 +259,7 @@ const handlers: Handlers = {
 
   list_mod_library: ({ gameId }) => structuredClone(library(gameId)),
   import_local_mod: ({ gameId, name, source }) => {
-    if (!source.trim()) fail("Indica la ruta de una carpeta o ZIP.");
+    if (!source.trim()) fail("Enter the path to a directory or ZIP archive.");
     const entry = {
       id: `demo-${Date.now()}`,
       name,
@@ -218,7 +273,7 @@ const handlers: Handlers = {
   save_mod_profile: ({ gameId, name, modIds, expectedRevision }) => {
     const lib = library(gameId);
     if (lib.revision !== expectedRevision)
-      fail("La biblioteca cambió mientras editabas. Vuelve a cargarla.");
+      fail("The library changed while you were editing. Reload it.");
     const existing = lib.profiles.find((p) => p.name === name);
     if (existing) existing.mod_ids = [...modIds];
     else lib.profiles.push({ name, mod_ids: [...modIds] });
@@ -226,13 +281,19 @@ const handlers: Handlers = {
     return structuredClone(lib);
   },
 
-  inspect_game_mod_runtime: ({ gameId }) => runtimeStatus(gameId),
-  prepare_game_mod_runtime: () => null,
+  inspect_game_mod_runtime: ({ gameId, importerId, librariesId }) =>
+    runtimeStatus(gameId, importerId, librariesId),
+  prepare_game_mod_runtime: ({ gameId }) => mockBase(gameId),
   review_mod_profile_activation: (args) => {
+    if (
+      args.profileRevision !== library(args.gameId).revision ||
+      args.selectionRevision !== selections[args.gameId].revision
+    )
+      fail("The selection or profile changed. Refresh and review again.");
     const profile = library(args.gameId).profiles.find(
       (p) => p.name === args.profileName,
     );
-    if (!profile) fail(`No existe el perfil «${args.profileName}».`);
+    if (!profile) fail(`Profile '${args.profileName}' does not exist.`);
     return {
       plan_id: `plan-${Date.now()}`,
       game_id: args.gameId,
@@ -249,9 +310,17 @@ const handlers: Handlers = {
   },
   activate_mod_profile: (args) => {
     const selection = selections[args.gameId];
+    if (
+      args.profileRevision !== library(args.gameId).revision ||
+      args.selectionRevision !== selection.revision
+    )
+      fail("The selection or profile changed. Refresh and review again.");
     const profile = library(args.gameId).profiles.find(
       (p) => p.name === args.profileName,
     );
+    previousProfiles[args.gameId] = appliedProfiles[args.gameId];
+    previousSelections[args.gameId] = selection.current;
+    appliedProfiles[args.gameId] = structuredClone(profile ?? null);
     selections[args.gameId] = {
       revision: selection.revision + 1,
       previous: selection.current
@@ -260,32 +329,32 @@ const handlers: Handlers = {
       current: {
         profile_name: args.profileName,
         mod_count: profile?.mod_ids.length ?? 0,
-        runtime_id: `rt-${args.gameId}`,
+        runtime_id: [
+          "profile",
+          args.gameId,
+          args.importerId,
+          args.librariesId,
+          args.profileName,
+          ...(profile?.mod_ids ?? []),
+        ].join(":"),
         integration_package_id: args.importerId ?? "",
         libraries_package_id: args.librariesId ?? "",
       },
     };
     return null;
   },
-  rollback_mod_profile_activation: ({ gameId }) => {
+  rollback_mod_profile_activation: ({ gameId, selectionRevision }) => {
     const selection = selections[gameId];
+    if (selectionRevision !== selection.revision)
+      fail("The selection changed. Refresh before rolling back.");
+    const restored = previousProfiles[gameId];
+    const restoredSelection = previousSelections[gameId];
+    previousSelections[gameId] = selection.current;
+    previousProfiles[gameId] = appliedProfiles[gameId];
+    appliedProfiles[gameId] = restored;
     selections[gameId] = {
       revision: selection.revision + 1,
-      current: selection.previous
-        ? {
-            ...(selection.current ?? {
-              mod_count: 0,
-              runtime_id: "",
-              integration_package_id: "",
-              libraries_package_id: "",
-            }),
-            profile_name: selection.previous.profile_name,
-            mod_count:
-              library(gameId).profiles.find(
-                (p) => p.name === selection.previous?.profile_name,
-              )?.mod_ids.length ?? 0,
-          }
-        : null,
+      current: restoredSelection,
       previous: selection.current
         ? { profile_name: selection.current.profile_name }
         : null,
@@ -301,7 +370,7 @@ const handlers: Handlers = {
         game_id: gameId,
         profile_name: selections[gameId].current?.profile_name ?? null,
         phase: "preparing",
-        message: "Copiando el perfil…",
+        message: "Copying the profile…",
         finished: false,
         mods_loaded: false,
         launch_dir: null,
@@ -317,7 +386,7 @@ const handlers: Handlers = {
       ...launch.status,
       phase: "cancelled",
       finished: true,
-      message: "Inicio cancelado.",
+      message: "Launch cancelled.",
     };
     return true;
   },
@@ -345,7 +414,7 @@ const handlers: Handlers = {
     return entry;
   },
   import_xxmi_directory: () =>
-    fail("En modo demo no se leen carpetas locales."),
+    fail("Local directories cannot be read in demo mode."),
   review_zzmi_assembly: (args) => ({ demo: true, ...args, files: 214 }),
   inspect_zzmi_launch_topology: () => ({
     demo: true,
@@ -409,7 +478,7 @@ export const mockTransport: Transport = async <K extends CommandName>(
     ((a: CommandArgs<K>) => CommandResult<K>) | undefined;
   if (!handler)
     fail(
-      `«${command}» no está disponible en el modo demo: requiere Linux y la app de escritorio.`,
+      `'${command}' is unavailable in demo mode: it requires Linux and the desktop app.`,
     );
   return handler(args);
 };

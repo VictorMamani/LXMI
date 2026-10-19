@@ -415,7 +415,7 @@ impl ProcfsObserver {
                 return ProcfsScan {
                     matches: Vec::new(),
                     warnings: vec![format!(
-                        "No se pudo recorrer la vista procfs del usuario actual: {}",
+                        "Could not traverse the current user procfs view: {}",
                         safe_io_kind(&error)
                     )],
                     environment_evidence: ObservationEvidenceState::Unavailable,
@@ -483,14 +483,14 @@ impl ProcfsObserver {
         if diagnostics.candidate_environments_permission_denied > 0 {
             push_warning(
                 &mut warnings,
-                "Linux denegó el acceso a parte del entorno allowlist de procesos candidatos.",
+                "Linux denied access to part of the allowlisted environment of candidate processes.",
             );
         } else if diagnostics.candidate_environments_unavailable > 0
             || diagnostics.candidate_metadata_unavailable > 0
         {
             push_warning(
                 &mut warnings,
-                "Linux no permitió leer parte del entorno allowlist de procesos relacionados.",
+                "Linux did not allow reading part of the allowlisted environment of related processes.",
             );
         }
         matches.sort_by_key(|item| item.process.pid);
@@ -524,7 +524,7 @@ impl ProcfsObserver {
                 Err(error) => {
                     push_warning(
                         warnings,
-                        &format!("Se omitió una entrada procfs: {}", safe_io_kind(&error)),
+                        &format!("A procfs entry was skipped: {}", safe_io_kind(&error)),
                     );
                     continue;
                 }
@@ -799,18 +799,18 @@ impl ProcfsObserver {
         };
         let evidence = match state {
             ObservationEvidenceState::ObservedAndMatches => {
-                "Un proceso wineserver del usuario actual expone el mismo WINEPREFIX observado. Esto no demuestra que el proceso del juego use esa instancia de wineserver.".into()
+                "A wineserver process owned by the current user exposes the same observed WINEPREFIX. This does not prove that the game process uses that wineserver instance.".into()
             }
             ObservationEvidenceState::Ambiguous => {
-                "Varios procesos wineserver exponen el mismo WINEPREFIX; no se seleccionó uno.".into()
+                "Multiple wineserver processes expose the same WINEPREFIX; none was selected.".into()
             }
             ObservationEvidenceState::Unavailable => {
-                "Hay procesos wineserver, pero Linux no permitió leer todo el entorno allowlist.".into()
+                "Wineserver processes exist, but Linux did not allow reading the entire allowlisted environment.".into()
             }
             ObservationEvidenceState::Unknown => {
-                "Se observaron procesos wineserver, pero no se pudo relacionarlos con el prefix observado.".into()
+                "Wineserver processes were observed, but could not be associated with the observed prefix.".into()
             }
-            _ => "No se observó un proceso wineserver relacionado en la vista del usuario actual.".into(),
+            _ => "No related wineserver process was observed in the current user view.".into(),
         };
         WineServerObservation {
             state,
@@ -1348,10 +1348,10 @@ fn read_limited(path: &Path, limit: usize) -> io::Result<Vec<u8>> {
 
 fn safe_io_kind(error: &io::Error) -> &'static str {
     match error.kind() {
-        io::ErrorKind::PermissionDenied => "permiso denegado",
-        io::ErrorKind::NotFound => "entrada ausente",
-        io::ErrorKind::InvalidData => "metadatos fuera del límite permitido",
-        _ => "error de lectura",
+        io::ErrorKind::PermissionDenied => "permission denied",
+        io::ErrorKind::NotFound => "entry missing",
+        io::ErrorKind::InvalidData => "metadata exceeds the allowed limit",
+        _ => "read error",
     }
 }
 

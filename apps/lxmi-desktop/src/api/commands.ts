@@ -41,11 +41,11 @@ type LabArgs<Mode> = {
  * Results of laboratory commands are shown raw, so they stay `unknown`.
  */
 export type Commands = {
-  // Sistema y Steam
+  // System and Steam
   get_system_info: { args: void; result: SystemInfo };
   scan_steam: { args: void; result: SteamScan };
 
-  // Biblioteca de mods
+  // Mod library
   list_mod_library: { args: { gameId: string }; result: ModLibrary };
   import_local_mod: {
     args: { gameId: string; name: string; source: string };
@@ -61,9 +61,12 @@ export type Commands = {
     result: ModLibrary;
   };
 
-  // Runtime y perfil aplicado
+  // Runtime and applied profile
   inspect_game_mod_runtime: { args: RuntimeArgs; result: RuntimeStatus };
-  prepare_game_mod_runtime: { args: RuntimeArgs; result: unknown };
+  prepare_game_mod_runtime: {
+    args: RuntimeArgs;
+    result: NonNullable<RuntimeStatus["base_runtime"]>;
+  };
   review_mod_profile_activation: {
     args: ActivationArgs;
     result: ActivationPlan;
@@ -77,13 +80,13 @@ export type Commands = {
     result: unknown;
   };
 
-  // Lanzamiento
+  // Launch
   launch_game_without_mods: { args: { gameId: string }; result: unknown };
   start_game_with_mods: { args: { gameId: string }; result: LaunchStatus };
   game_with_mods_status: { args: void; result: LaunchStatus | null };
   cancel_game_with_mods: { args: void; result: boolean };
 
-  // Paquetes XXMI
+  // XXMI packages
   xxmi_status: { args: void; result: XxmiStatus };
   xxmi_check_official_releases: { args: void; result: OfficialRelease[] };
   xxmi_download_official_package: {
@@ -94,7 +97,7 @@ export type Commands = {
   review_zzmi_assembly: { args: ZzmiArgs; result: unknown };
   inspect_zzmi_launch_topology: { args: ZzmiArgs; result: unknown };
 
-  // Prefix de ZZZ
+  // ZZZ prefix
   inspect_zzz_prefix_preflight: {
     args: { captureBaseline: boolean };
     result: PrefixPanel;
@@ -106,7 +109,7 @@ export type Commands = {
   reconcile_zzz_prefix_recovery: { args: void; result: PrefixPanel };
   review_zzz_steam_protected_state: { args: void; result: PrefixPanel };
 
-  // Preparación y observación
+  // Preparation and observation
   inspect_zzz_launch_readiness: { args: ZzmiArgs; result: LaunchReadiness };
   start_zzz_runtime_observation: {
     args: { userConfirmedManualLaunch: boolean };
@@ -121,7 +124,7 @@ export type Commands = {
     result: ObservationSnapshot | null;
   };
 
-  // Laboratorios (experimentales)
+  // Laboratories (experimental)
   inspect_runtime_bridge: {
     args: ZzmiArgs;
     result: { runtimes: ProtonRuntimeOption[] } & Record<string, unknown>;

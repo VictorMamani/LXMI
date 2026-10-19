@@ -6,7 +6,7 @@ export function modSize(mod: ModManifest): number {
 
 /**
  * The library does not store a character yet; by convention mod names follow
- * "Personaje — Variante", so the part before the dash is shown when present.
+ * "Character — Variant", so the part before the dash is shown when present.
  */
 export function characterOf(name: string): string | null {
   const match = /^(.+?)\s+[—–-]\s+.+$/.exec(name);
@@ -14,6 +14,15 @@ export function characterOf(name: string): string | null {
 }
 
 export type ModChange = "added" | "removed" | null;
+
+/** Compare identities, not counts: swapping one mod must still need applying. */
+export function sameModSelection(
+  left: readonly string[],
+  right: readonly string[],
+) {
+  const ids = new Set(left);
+  return ids.size === new Set(right).size && right.every((id) => ids.has(id));
+}
 
 /** Difference between the saved profile and the selection being edited. */
 export function selectionDiff(

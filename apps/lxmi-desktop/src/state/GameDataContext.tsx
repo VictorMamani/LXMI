@@ -76,6 +76,6 @@ export function GameDataProvider({
 
 export function useGameData(): GameData {
   const value = useContext(GameDataContext);
-  if (!value) throw new Error("useGameData requiere GameDataProvider");
+  if (!value) throw new Error("useGameData requires GameDataProvider");
   return value;
 }

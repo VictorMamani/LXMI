@@ -1,152 +1,158 @@
 # LXMI — Linux Model Importer
 
-Gestor de mods para **Zenless Zone Zero** y **Wuthering Waves** en Linux, inspirado en
-[XXMI Launcher](https://github.com/SpectrumQT/XXMI-Launcher). Organiza tus mods en una
-biblioteca privada, los agrupa en perfiles y abre el juego desde Steam con el perfil
-elegido usando la carga oficial de XXMI (ZZMI/WWMI), sin modificar la instalación del
-juego, Steam ni el prefix de Proton.
+A Linux mod manager for **Zenless Zone Zero** and **Wuthering Waves**, inspired by
+[XXMI Launcher](https://github.com/SpectrumQT/XXMI-Launcher). Import mods into a
+private library, organize them into profiles, and launch the selected profile
+through Steam using the official XXMI loader (ZZMI/WWMI). LXMI keeps runtime and
+profile copies outside the game installation, Steam, and the Proton prefix.
 
 ![LXMI](.github/assets/image.png)
 
-> **Estado: primera versión (0.8.7).** «Jugar con mods» está validado en ZZZ con Steam +
-> Proton Experimental. Wuthering Waves ya gestiona biblioteca y perfiles, pero su carga
-> en el juego todavía no está validada y el botón aparece deshabilitado.
+> **Status: initial release (0.8.7).** Playing with mods has been validated for ZZZ
+> with Steam and Proton Experimental. Wuthering Waves supports library and profile
+> management, but loading its mods in the game is not validated and remains disabled.
 
-## Qué hace
+## Features
 
-| Función | Detalle |
+| Feature | Details |
 |---|---|
-| Biblioteca de mods | Importa carpetas o ZIP, guarda una copia privada con inventario SHA-256 y evita duplicados |
-| Perfiles | Selecciones de mods guardadas por juego; se aplican, revierten y rehacen sin borrar nada |
-| Paquetes oficiales | Descarga ZZMI/WWMI y XXMI Libraries de sus releases oficiales y verifica firma y hash |
-| Runtime privado | Ensambla el importador y el perfil en `~/.local/share/lxmi/`, nunca dentro del juego |
-| Jugar con mods (ZZZ) | Abre el juego desde Steam y carga ZZMI con el hook oficial de XXMI justo a tiempo |
-| Jugar sin mods | Pide a Steam el inicio normal (`steam -applaunch`) |
-| Diagnósticos | Detección de Steam, Proton, Steam Linux Runtime, compatdata y paquetes |
+| Mod library | Import directories or ZIP archives into private storage with SHA-256 inventories and content deduplication |
+| Profiles | Save per-game mod selections; apply, undo, and redo without deleting previous runtime copies |
+| Official packages | Download ZZMI/WWMI and XXMI Libraries from official releases and verify their signatures and hashes |
+| Private runtimes | Assemble importers and profiles under `~/.local/share/lxmi/`, outside the game |
+| Play with mods (ZZZ) | Start through Steam and arm the official XXMI hook at launch time |
+| Play without mods | Request a normal Steam launch using `steam -applaunch` |
+| Diagnostics | Inspect Steam, Proton, Steam Linux Runtime, compatdata, and managed packages |
 
-## Cómo funciona «Jugar con mods»
+## How playing with mods works
 
 ```mermaid
 sequenceDiagram
-    actor U as Usuario
+    actor U as User
     participant L as LXMI
     participant S as Steam / HoYoPlay
     participant H as LXMI Loader.exe
     participant G as ZZZ
-    U->>L: Jugar con mods
-    L->>L: Copia de arranque verificada del perfil
-    L->>S: steam -applaunch (si HoYoPlay no está abierto)
-    L->>S: Lee de /proc el AppID, prefix, Proton y Steam Linux Runtime de HoYoPlay
-    L->>H: Lo lanza en ese mismo contexto mediante el servicio de Steam
-    H->>H: HookLibrary de 3dmloader.dll (oficial)
-    L-->>U: «Listo: pulsa Jugar en HoYoPlay»
-    U->>S: Jugar
-    S->>G: Inicia el juego
-    G->>G: ZZMI se carga antes de crear el dispositivo D3D11
-    H->>H: UnhookLibrary y 15 s de vigilancia
-    L-->>U: En juego con los mods del perfil
+    U->>L: Play with mods
+    L->>L: Verify a private profile launch copy
+    L->>S: steam -applaunch if HoYoPlay is not running
+    L->>S: Read HoYoPlay AppID, prefix, Proton and Steam Linux Runtime from /proc
+    L->>H: Start in the same context through the Steam service
+    H->>H: HookLibrary from official 3dmloader.dll
+    L-->>U: Ready: press Play in HoYoPlay
+    U->>S: Play
+    S->>G: Start the game
+    G->>G: Load ZZMI before creating the D3D11 device
+    H->>H: UnhookLibrary and observe for 15 seconds
+    L-->>U: In game with the profile mods
 ```
 
-Puntos clave:
+- **Launch copy.** Each launch uses a private copy under
+  `~/.local/share/lxmi/launches/<game>/<id>/`, with
+  `[Loader] loader = LXMI Loader.exe`. 3DMigoto activates only in the configured
+  game target process and the loader.
+- **Steam context.** The loader uses the Proton, Steam Linux Runtime, and wineserver
+  selected by Steam for HoYoPlay. On Ubuntu,
+  `apparmor_restrict_unprivileged_userns` can prevent an unconfined application from
+  creating the runtime container. LXMI requests it through the Steam service using
+  `steam-runtime-launch-client --alongside-steam`.
+- **Short hook lifetime.** The hook is removed when ZZMI appears in the game, after
+  five minutes without pressing Play, or when the launch is cancelled.
 
-- **Copia de arranque.** Cada inicio usa una copia privada del perfil en
-  `~/.local/share/lxmi/launches/<juego>/<id>/` con `[Loader] loader = LXMI Loader.exe`.
-  3DMigoto solo se activa en el proceso del juego (`target`) y en el cargador.
-- **Mismo contexto que Steam.** El cargador se ejecuta con el Proton y el Steam Linux
-  Runtime que Steam eligió para HoYoPlay, en su wineserver. En Ubuntu,
-  `apparmor_restrict_unprivileged_userns` impide a una app sin perfil crear el contenedor
-  del runtime, así que LXMI lo pide al servicio de Steam
-  (`steam-runtime-launch-client --alongside-steam`).
-- **Carga mínima.** El hook se retira en cuanto ZZMI aparece en el juego, si no pulsas
-  Jugar en 5 minutos o al cancelar.
+## Requirements
 
-## Requisitos
-
-| Necesitas | Para qué |
+| Requirement | Purpose |
 |---|---|
-| Linux con Steam nativo (no Flatpak) | Bibliotecas de Steam y `steam -applaunch` |
-| El juego instalado desde Steam y abierto una vez sin mods | Crea su `compatdata` |
-| Rust estable (`rust-toolchain.toml`) | Backend y Tauri |
-| Node.js 22 y npm | Frontend |
-| Dependencias de Tauri 2 para Linux (WebKitGTK 4.1, etc.) | Ventana nativa; ver la [guía de Tauri](https://tauri.app/start/prerequisites/) |
-| `x86_64-w64-mingw32-gcc` (`gcc-mingw-w64-x86-64`) | Compila `LXMI Loader.exe`. Sin MinGW la app compila, pero «Jugar con mods» queda deshabilitado |
+| Linux with native Steam, outside Flatpak | Steam libraries and `steam -applaunch` |
+| Game installed through Steam and opened once without mods | Creates its compatdata |
+| Stable Rust, as specified in `rust-toolchain.toml` | Backend and Tauri |
+| Node.js 22.19 or newer and npm | Frontend and regression tests |
+| Tauri 2 Linux dependencies, including WebKitGTK 4.1 | Native window; see the [Tauri prerequisites](https://tauri.app/start/prerequisites/) |
+| `x86_64-w64-mingw32-gcc`, available in `gcc-mingw-w64-x86-64` | Builds `LXMI Loader.exe`; without it, the app builds but playing with mods is disabled |
 
-## Lanzar en desarrollo
+## Development
 
 ```bash
 git clone git@github.com:VictorMamani/LXMI.git
 cd LXMI/apps/lxmi-desktop
-npm install
+npm ci
 npm run tauri:dev
 ```
 
-`tauri:dev` arranca Vite en `http://127.0.0.1:1420` y la ventana nativa con recarga en
-caliente. Para generar el paquete de la aplicación: `npm run tauri build`.
+This starts Vite at <http://127.0.0.1:1420> and opens the native Tauri window with
+hot reload. Build application packages using `npm run tauri build`.
 
-## Uso rápido
+All maintained UI text, source comments, documentation, and development messages
+are written in English. User-created mod names, profile names, and filesystem paths
+are preserved as entered.
 
-1. **Compatibilidad →** Consultar paquetes oficiales, descargar ZZMI y XXMI Libraries y
-   pulsar «Preparar runtime administrado».
-2. **Mods → Importar mod** con la ruta de una carpeta o ZIP de mod.
-3. **Perfiles →** marca mods y guarda el perfil.
-4. **Compatibilidad →** Revisar aplicación del perfil y Aplicar perfil al runtime.
-5. **Inicio → Jugar con mods.** Cuando aparezca «Listo: pulsa Jugar en HoYoPlay», pulsa
-   Jugar.
+## Quick start
 
-Para cambiar de mods: cierra el juego, aplica otro perfil y vuelve a pulsar «Jugar con
-mods». La recarga sin reiniciar todavía no existe.
+1. Open **Preferences**, then **Spaces**. Check Steam detection and choose
+   **Prepare runtime** to download and assemble official packages.
+2. Open **Mods**, select **Import**, and enter the absolute directory or ZIP path.
+3. Use the profile picker to create or choose a profile, select its mods, then choose
+   **Save and apply**. If activation fails after saving, the saved profile remains
+   pending and can be applied again.
+4. Return home and choose **Play**. Accept the first-launch explanation. When LXMI
+   prompts you to press Play in HoYoPlay, do so.
+5. Use the arrow beside **Play** to choose **Play without mods**.
 
-## Estructura del repositorio
+To change mods, close the game, apply another profile, and launch again. Reloading
+mods without restarting the game is not implemented. **Spaces** also offers runtime
+updates and selection undo. Updating a runtime reapplies the active profile to the
+new packages.
 
-| Ruta | Contenido |
+## Repository structure
+
+| Path | Contents |
 |---|---|
-| `apps/lxmi-desktop/src/` | Frontend React + TypeScript |
-| `apps/lxmi-desktop/src-tauri/` | Aplicación Tauri: comandos IPC, `build.rs` y ejemplos de prueba nativa |
-| `crates/lxmi-core` | Tipos compartidos: juegos, Steam y sistema |
-| `crates/lxmi-steam` | Detección de Steam: bibliotecas, manifests, compatdata y herramientas de compatibilidad |
-| `crates/lxmi-proton` | Descubrimiento de Proton y Steam Linux Runtime |
-| `crates/lxmi-runtime` | Planificación de runtime por juego |
-| `crates/lxmi-xxmi` | Paquetes XXMI, biblioteca de mods, perfiles, ensamblado y activación de runtimes |
-| `crates/lxmi-launch` | «Jugar con mods»: contexto Steam por procfs, copia de arranque y máquina de estados |
-| `crates/lxmi-bridge`, `crates/lxmi-bridge-protocol` | Puente con helpers Windows en prefixes de prueba propios de LXMI (diagnósticos) |
-| `tools/lxmi-mod-loader/` | `LXMI Loader.exe` (`HookLibrary`/`UnhookLibrary`); lo compila e incrusta `build.rs` |
-| `tools/lxmi-bridge-helper/`, `tools/lxmi-context-peers/`, `tools/lxmi-loader-lab/` | Helpers Windows de los diagnósticos |
+| `apps/lxmi-desktop/src/` | React and TypeScript frontend |
+| `apps/lxmi-desktop/src-tauri/` | Tauri application, IPC commands, `build.rs`, and native examples |
+| `crates/lxmi-core` | Shared game, Steam, and system types |
+| `crates/lxmi-steam` | Steam libraries, manifests, compatdata, and compatibility settings |
+| `crates/lxmi-proton` | Proton and Steam Linux Runtime discovery |
+| `crates/lxmi-runtime` | Per-game runtime planning and passive observation |
+| `crates/lxmi-xxmi` | Packages, mod libraries, profiles, runtime assembly, and activation |
+| `crates/lxmi-launch` | Steam launch context, private launch copies, and launch state machine |
+| `crates/lxmi-bridge`, `crates/lxmi-bridge-protocol` | Windows helpers in LXMI-owned test prefixes |
+| `tools/lxmi-mod-loader/` | `LXMI Loader.exe`; built and embedded by `build.rs` |
+| `tools/lxmi-bridge-helper/`, `tools/lxmi-context-peers/`, `tools/lxmi-loader-lab/` | Windows diagnostic helpers |
 
-## Frontend (para trabajar la interfaz)
+## Frontend architecture
 
-Diseño de referencia: «monMan v3» (pen.dev). Todo vive en `apps/lxmi-desktop/src/`,
-organizado por capas; cada componente tiene su `*.module.css` al lado.
+The visual reference is **monMan v3** (pen.dev). Frontend code lives in
+`apps/lxmi-desktop/src/`; components keep their CSS modules alongside their source.
 
-| Carpeta | Qué contiene |
+| Directory | Contents |
 |---|---|
-| `api/` | `commands.ts` (mapa tipado de todos los comandos Tauri), `client.ts` (`call()`), `types.ts` y `mock/` (backend de demostración) |
-| `domain/` | Lógica pura sin React: catálogo de juegos, fases de lanzamiento, versiones, formato |
-| `services/` | Flujos de varios comandos: guardar y aplicar perfil, actualizar el runtime |
-| `state/` | Contextos compartidos: juego activo (biblioteca y runtime), Steam, lanzamiento, avisos |
-| `hooks/` | `useAsync`, `useAction`, `useHotkeys` |
-| `components/` | Piezas del sistema de diseño: `Button` (primario, contorno, fantasma), `Tag`, `StatusDot`, `Dialog`, `MenuButton`… |
-| `features/home/` | Inicio: video de fondo, tarjetas de juego, JUGAR y progreso de carga |
-| `features/config/` | Configuración: barra lateral, cartuchos (Q / E) y las páginas Espacios, Mods, Compartir, Avanzado (con Laboratorios) y Acerca de |
-| `styles/` | Tokens de color y tipografía (`tokens.css`), estilos base y fuentes empaquetadas |
-| `media/games/` | Fondos animados (WebM VP9), pósters y portadas de cada juego |
+| `api/` | Typed command map, `call()` transport, backend types, and demo backend |
+| `domain/` | Pure game catalog, launch phases, version comparison, and formatting |
+| `services/` | Save/apply and runtime update workflows |
+| `state/` | Shared game, library, runtime, Steam, launch, and notification state |
+| `hooks/` | Async data, user actions, and keyboard shortcuts |
+| `components/` | Buttons, tags, status indicators, dialogs, menus, and fields |
+| `features/home/` | Game backgrounds, cards, play actions, and launch progress |
+| `features/config/` | Spaces, Mods, Share, Advanced, Laboratories, and About |
+| `styles/` | Design tokens, base styles, and bundled fonts |
+| `media/games/` | VP9 WebM backgrounds, WebP posters, and game covers |
 
-Toda la comunicación con el backend pasa por `call()` de `api/client.ts`, tipado con el
-mapa de `api/commands.ts`. Los comandos están registrados en
-`apps/lxmi-desktop/src-tauri/src/lib.rs`.
+All backend communication goes through `call()` in `api/client.ts`, typed by
+`api/commands.ts`. Rust registers commands in `src-tauri/src/lib.rs`.
 
-`npm run dev` sirve el frontend en <http://127.0.0.1:1420>. Fuera de la ventana de Tauri
-(por ejemplo, en Windows o en un navegador) la app usa automáticamente el backend de
-demostración de `api/mock/`, con datos de ejemplo y sin tocar el sistema; «Acerca de»
-indica «Modo demo». Para probar con datos reales usa `npm run tauri:dev` en Linux.
+`npm run dev` opens the frontend in a regular browser with an in-memory demo backend.
+It uses example data and does not touch the system. **About** identifies demo mode.
+Use `npm run tauri:dev` on Linux to exercise real IPC and local game data. The demo is
+not included in production builds.
 
-### Desarrollo en Windows (app real vía WSL)
+### Windows development with WSL
 
-La ventana de Tauri y el backend real corren en WSL2 (WSLg muestra la ventana); Vite
-corre en Windows y la ventana lo carga con recarga en caliente. Preparación, una vez:
+The native Tauri window and Rust backend run in WSL2; WSLg displays the window.
+Vite runs on Windows and serves the native window with hot reload.
 
-1. En `%UserProfile%\.wslconfig`, dentro de `[wsl2]`: `networkingMode=mirrored` (Windows y
-   WSL comparten `localhost`). Luego `wsl --shutdown`.
-2. En Ubuntu: Rust (`curl https://sh.rustup.rs -sSf | sh`) y los paquetes de sistema:
+1. Set `networkingMode=mirrored` under `[wsl2]` in `%UserProfile%\.wslconfig`, then run
+   `wsl --shutdown` so Windows and WSL share localhost.
+2. Install Rust in Ubuntu and the native dependencies:
 
    ```bash
    sudo apt install -y build-essential pkg-config libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
@@ -154,19 +160,19 @@ corre en Windows y la ventana lo carga con recarga en caliente. Preparación, un
      gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav
    ```
 
-Después, desde la raíz del repo en Windows:
+3. From the repository root on Windows, run:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File tools\dev-wsl.ps1
-```
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File tools\dev-wsl.ps1
+   ```
 
-La primera compilación tarda varios minutos; los artefactos quedan en
-`~/.cache/lxmi-target` dentro de WSL. El backend ve el Steam y los juegos de la distro
-de WSL, no los de Windows.
+The first compilation takes several minutes. WSL build artifacts are stored in
+`~/.cache/lxmi-target`. The backend sees Steam and games in the WSL distribution,
+not the Windows installation.
 
-## Comprobaciones antes de subir cambios
+## Checks before submitting changes
 
-Desde la raíz:
+From the repository root:
 
 ```bash
 cargo fmt --all -- --check
@@ -174,34 +180,51 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
-Desde `apps/lxmi-desktop`:
+From `apps/lxmi-desktop`:
 
 ```bash
-npm run typecheck && npm run lint && npm run format:check && npm run build
+npm test
+npm run typecheck
+npm run lint
+npm run format:check
+npm run build
 ```
 
-## Dónde guarda LXMI los datos
+Browser checks do not replace native Tauri verification. Validate window controls,
+WebKitGTK video support, profile activation, and runtime updates in the native app
+before claiming those flows passed on a particular host.
 
-Todo vive en `~/.local/share/lxmi/` (o `$XDG_DATA_HOME/lxmi/`):
+With the Vite server running, an opt-in native smoke check inspects English UI
+labels, real read-only IPC, applied profile identity, and menu keyboard focus:
 
-| Carpeta | Contenido |
+```bash
+LXMI_CONFIRM_NATIVE_UI_SMOKE=YES cargo run -p lxmi-desktop --example ui_native_smoke
+```
+
+It does not change the library, activate profiles, start helpers, or launch games.
+
+## Data storage
+
+LXMI uses `~/.local/share/lxmi/`, or `$XDG_DATA_HOME/lxmi/`:
+
+| Directory | Contents |
 |---|---|
-| `mods/<juego>/` | Biblioteca de mods y perfiles |
-| `packages/` | Paquetes oficiales verificados |
-| `runtimes/`, `profile-runtimes/` | Runtime base y copias inmutables por perfil |
-| `launches/<juego>/<id>/` | Copia de cada inicio con mods; `helper.stdout.jsonl` registra los pasos del cargador |
+| `mods/<game>/` | Mod library and saved profiles |
+| `packages/` | Verified official packages |
+| `runtimes/`, `profile-runtimes/` | Base runtimes and immutable profile runtimes |
+| `launches/<game>/<id>/` | Per-launch copies; `helper.stdout.jsonl` records loader steps |
 
-## Límites y aviso
+## Limitations
 
-- Validado en una combinación: ZZZ de Steam, Proton Experimental, Steam Linux Runtime 4,
-  ZZMI y XXMI Libraries oficiales. Otras versiones pueden comportarse distinto.
-- LXMI no evita ni modifica los sistemas de protección de los juegos.
-- ZZZ y Wuthering Waves son juegos online. Usar mods puede infringir sus condiciones de
-  uso; el riesgo sobre tu cuenta es tuyo.
+- Validated on one combination: Steam ZZZ, Proton Experimental, Steam Linux Runtime 4,
+  and official ZZMI/XXMI Libraries packages. Other versions may behave differently.
+- LXMI does not bypass or modify game protection systems.
+- ZZZ and Wuthering Waves are online games. Using mods may violate their terms;
+  the account risk is yours.
 
-## Créditos
+## Credits
 
-- [XXMI Launcher](https://github.com/SpectrumQT/XXMI-Launcher), ZZMI, WWMI y XXMI
-  Libraries de SpectrumQT y colaboradores: LXMI descarga y usa sus paquetes oficiales sin
-  redistribuirlos.
-- [3DMigoto](https://github.com/bo3b/3Dmigoto), base de los importadores XXMI.
+- [XXMI Launcher](https://github.com/SpectrumQT/XXMI-Launcher), ZZMI, WWMI, and
+  XXMI Libraries by SpectrumQT and contributors. LXMI downloads official packages
+  without redistributing them.
+- [3DMigoto](https://github.com/bo3b/3Dmigoto), the basis of the XXMI importers.

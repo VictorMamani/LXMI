@@ -11,31 +11,31 @@ export function SharePage() {
   const profiles = library.data?.profiles.length ?? 0;
   const soon = (
     <StatusDot status="idle" size="sm">
-      Próximamente
+      Coming soon
     </StatusDot>
   );
   return (
-    <PageLayout eyebrow={`Espacio ${game.channel}`} title="Compartir">
+    <PageLayout eyebrow={`Space ${game.channel}`} title="Share">
       <div>
         <SettingRow
-          label="Exportar perfil"
-          value="Paquete con la lista de mods y sus hashes"
+          label="Export profile"
+          value="Package containing the mod list and hashes"
           status={soon}
-          detail={`${profiles} ${profiles === 1 ? "perfil disponible" : "perfiles disponibles"} en ${game.name}`}
+          detail={`${profiles} ${profiles === 1 ? "available profile" : "available profiles"} in ${game.name}`}
           action={
             <Button icon={Upload} disabled>
-              Exportar
+              Export
             </Button>
           }
         />
         <SettingRow
-          label="Importar perfil"
-          value="Recrea un perfil compartido con los mods de tu biblioteca"
+          label="Import profile"
+          value="Recreate a shared profile using mods from your library"
           status={soon}
-          detail="Los mods que falten se indicarán antes de aplicar nada"
+          detail="Missing mods will be listed before anything is applied"
           action={
             <Button icon={Download} disabled>
-              Importar
+              Import
             </Button>
           }
         />

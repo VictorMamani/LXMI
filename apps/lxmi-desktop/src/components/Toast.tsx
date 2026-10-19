@@ -5,7 +5,7 @@ export type ToastTone = "info" | "success" | "error";
 
 const icons = { info: Repeat, success: Check, error: AlertTriangle };
 
-/** «Toast de cambio»: short uppercase notice with a cyan left rule. */
+/** Short uppercase change notice with a cyan left rule. */
 export function Toast({ text, tone }: { text: string; tone: ToastTone }) {
   const Icon = icons[tone];
   return (

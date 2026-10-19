@@ -69,7 +69,7 @@ export function SpacesPage() {
     });
     if (!done) return;
     await refresh().catch(() => {});
-    toast(`Runtime ${game.importer} actualizado`, "success");
+    toast(`${game.importer} runtime updated`, "success");
   }
 
   async function undo() {
@@ -82,7 +82,7 @@ export function SpacesPage() {
     );
     if (done === undefined) return;
     await refresh().catch(() => {});
-    toast("Selección anterior recuperada", "success");
+    toast("Previous selection restored", "success");
   }
 
   const versions = [
@@ -93,20 +93,20 @@ export function SpacesPage() {
     updates.find((u) => u.kind === game.importerKind) ?? updates[0];
 
   return (
-    <PageLayout eyebrow={`Espacio ${game.channel}`} title={game.name}>
+    <PageLayout eyebrow={`Space ${game.channel}`} title={game.name}>
       {(action.error || runtime.error) && (
         <InlineError>{action.error ?? runtime.error}</InlineError>
       )}
 
       <div>
         <SettingRow
-          label="Juego"
+          label="Game"
           value={
             steam.loading && !steam.data
-              ? "Buscando en Steam…"
+              ? "Scanning Steam…"
               : summary.steam?.detected
-                ? "Detectado en Steam"
-                : "No encontrado en Steam"
+                ? "Detected in Steam"
+                : "Not found in Steam"
           }
           status={
             steam.data &&
@@ -116,15 +116,15 @@ export function SpacesPage() {
               </StatusDot>
             ) : (
               <StatusDot status="warn" size="sm">
-                Revisar
+                Review
               </StatusDot>
             ))
           }
           detail={
             summary.steam?.library
-              ? `Biblioteca ${summary.steam.library}${summary.steam.proton ? ` · ${summary.steam.proton}` : ""}`
+              ? `Library ${summary.steam.library}${summary.steam.proton ? ` · ${summary.steam.proton}` : ""}`
               : (steam.error ??
-                "Instala el juego desde Steam para jugar con mods.")
+                "Install the game through Steam to play with mods.")
           }
           action={
             <Button
@@ -137,31 +137,31 @@ export function SpacesPage() {
                   .catch(() => {})
               }
             >
-              {steam.loading ? "Buscando…" : "Volver a buscar"}
+              {steam.loading ? "Scanning…" : "Scan again"}
             </Button>
           }
         />
 
         <SettingRow
-          label="Runtime de mods"
+          label="Mod runtime"
           value={
             hasRuntime && versions.length
               ? versions.join(" · ")
-              : "Runtime sin preparar"
+              : "Runtime not prepared"
           }
           status={
             target && (
               <StatusDot status="accent" size="sm">
-                Actualización
+                Update
               </StatusDot>
             )
           }
           detail={
             hasRuntime
               ? verified
-                ? "Paquetes oficiales verificados por firma y hash"
-                : "Hay paquetes sin verificar por firma oficial"
-              : `Descarga ${game.importer} y XXMI Libraries oficiales y ensámblalos en una copia privada`
+                ? "Official packages verified by signature and hash"
+                : "Some packages lack official signature verification"
+              : `Download official ${game.importer} and XXMI Libraries packages and assemble a private copy`
           }
           action={
             !hasRuntime || target ? (
@@ -172,10 +172,10 @@ export function SpacesPage() {
                 onClick={() => void update()}
               >
                 {action.pending === "update"
-                  ? "Actualizando…"
+                  ? "Updating…"
                   : hasRuntime && target
-                    ? `Actualizar a ${target.version}`
-                    : "Preparar runtime"}
+                    ? `Update to ${target.version}`
+                    : "Prepare runtime"}
               </Button>
             ) : (
               <Button
@@ -188,26 +188,26 @@ export function SpacesPage() {
                 }
               >
                 {releases.loading || action.pending === "releases"
-                  ? "Consultando…"
-                  : "Buscar actualización"}
+                  ? "Checking…"
+                  : "Check for updates"}
               </Button>
             )
           }
         />
 
         <SettingRow
-          label="Próximo inicio"
+          label="Next launch"
           value={
             summary.profileName
-              ? `Perfil «${summary.profileName}» · ${plural(summary.modCount, "mod")}`
-              : "Sin perfil aplicado"
+              ? `Profile '${summary.profileName}' · ${plural(summary.modCount, "mod")}`
+              : "No profile applied"
           }
           detail={
             previous
-              ? `Anterior: «${previous.profile_name}» · reversible`
+              ? `Previous: '${previous.profile_name}' · reversible`
               : summary.profileName
-                ? "Aplicado a una copia privada · reversible"
-                : "Elige y aplica un perfil en Mods"
+                ? "Applied to a private copy · reversible"
+                : "Choose and apply a profile in Mods"
           }
           action={
             <Button
@@ -215,18 +215,18 @@ export function SpacesPage() {
               disabled={action.busy || !previous}
               onClick={() => void undo()}
             >
-              {action.pending === "undo" ? "Deshaciendo…" : "Deshacer"}
+              {action.pending === "undo" ? "Undoing…" : "Undo"}
             </Button>
           }
         />
 
         <SettingRow
-          label="Carpeta de mods"
+          label="Mods directory"
           value={
             storage.data?.storage_root ??
-            (storage.loading ? "Consultando…" : "No disponible")
+            (storage.loading ? "Checking…" : "Unavailable")
           }
-          detail="Biblioteca privada · el juego nunca se modifica directamente"
+          detail="Private library · the game is never modified directly"
           action={
             <Button
               icon={Copy}
@@ -235,11 +235,11 @@ export function SpacesPage() {
                 if (!storage.data) return;
                 void navigator.clipboard
                   .writeText(storage.data.storage_root)
-                  .then(() => toast("Ruta copiada", "success"))
-                  .catch(() => toast("No se pudo copiar la ruta", "error"));
+                  .then(() => toast("Path copied", "success"))
+                  .catch(() => toast("Could not copy the path", "error"));
               }}
             >
-              Copiar ruta
+              Copy path
             </Button>
           }
         />

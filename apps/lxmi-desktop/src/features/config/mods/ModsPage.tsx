@@ -4,6 +4,7 @@ import { Button } from "../../../components/Button";
 import { InlineError } from "../../../components/InlineError";
 import { TextField } from "../../../components/TextField";
 import { plural } from "../../../domain/format";
+import { sameModSelection } from "../../../domain/mods";
 import { useAction } from "../../../hooks/useAction";
 import { saveAndApplyProfile } from "../../../services/profileActivation";
 import { useGameData } from "../../../state/GameDataContext";
@@ -36,49 +37,68 @@ export function ModsPage() {
       )
     : mods;
   const changes = draft.diff.count + (draft.isSaved ? 0 : 1);
-  const needsApply =
-    draft.name !== null && (changes > 0 || draft.name !== applied);
+  const appliedMatches =
+    status?.applied_profile?.name === draft.name &&
+    sameModSelection(draft.selected, status.applied_profile.mod_ids);
+  const needsApply = draft.name !== null && (changes > 0 || !appliedMatches);
 
   async function apply() {
     if (!lib || !runtime.data || !draft.name) return;
-    const result = await action.run("apply", () =>
-      saveAndApplyProfile({
-        gameId: game.backendId,
-        library: lib,
-        profileName: draft.name!,
-        modIds: draft.selected,
-        changed: changes > 0,
-        status: runtime.data!.status,
-        sources: runtime.data!.sources,
-      }),
-    );
+    const result = await action.run("apply", async () => {
+      try {
+        return await saveAndApplyProfile({
+          gameId: game.backendId,
+          library: lib,
+          profileName: draft.name!,
+          modIds: draft.selected,
+          changed: changes > 0,
+          status: runtime.data!.status,
+          sources: runtime.data!.sources,
+        });
+      } finally {
+        // Saving and activating are separate commits. Refresh even when the
+        // second stage fails, so a retry uses the persisted library revision.
+        await refresh().catch(() => {});
+      }
+    });
     if (!result) return;
-    await refresh().catch(() => {});
     draft.commit();
-    if (result.applied) toast(`Perfil «${draft.name}» aplicado`, "success");
-    else toast(`Perfil guardado. ${result.reason}`, "error");
+    if (result.applied) toast(`Profile '${draft.name}' applied`, "success");
+    else toast(`Profile saved. ${result.reason}`, "error");
   }
 
-  let barTitle = "Sin cambios pendientes";
+  let barTitle = "No pending changes";
   if (draft.diff.count > 0)
-    barTitle = `${plural(draft.diff.count, "cambio")} sin aplicar`;
-  else if (!draft.isSaved && draft.name) barTitle = "Perfil nuevo sin guardar";
-  else if (needsApply) barTitle = "Perfil sin aplicar";
+    barTitle = `${plural(draft.diff.count, "change")} pending`;
+  else if (!draft.isSaved && draft.name) barTitle = "New profile not saved";
+  else if (needsApply) barTitle = "Profile not applied";
 
-  const active = `${draft.selected.length} de ${plural(mods.length, "mod")} activos`;
+  const active = `${draft.selected.length} of ${plural(mods.length, "mod")} selected`;
   const barDetail = needsApply
-    ? `${active} · se aplicarán en el próximo inicio del juego`
-    : `${active} · perfil aplicado a ${game.name}`;
+    ? `${active} · will load on the next game launch`
+    : `${active} · profile applied to ${game.name}`;
 
   return (
     <>
       <PageLayout
-        eyebrow="Biblioteca privada"
+        eyebrow="Private library"
         title={
           <ProfilePicker
             name={draft.name}
             profiles={lib?.profiles ?? []}
-            applied={applied}
+            applied={
+              lib?.profiles.some(
+                (profile) =>
+                  profile.name === applied &&
+                  status?.applied_profile &&
+                  sameModSelection(
+                    profile.mod_ids,
+                    status.applied_profile.mod_ids,
+                  ),
+              )
+                ? applied
+                : null
+            }
             disabled={!lib || action.busy}
             onOpen={(name) => draft.open(name)}
             onCreate={() => setDialog("profile")}
@@ -88,26 +108,27 @@ export function ModsPage() {
           <>
             <TextField
               className={styles.search}
-              label="Buscar mod"
+              label="Search mods"
               icon={Search}
               type="search"
-              placeholder="buscar mod…"
+              placeholder="search mods…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
             <Button
               variant="outline"
               icon={FolderPlus}
+              disabled={action.busy}
               onClick={() => setDialog("import")}
             >
-              Importar
+              Import
             </Button>
           </>
         }
         footer={
           <PendingChangesBar
             title={barTitle}
-            detail={lib ? barDetail : "Leyendo biblioteca…"}
+            detail={lib ? barDetail : "Reading library…"}
             highlighted={needsApply}
             canRevert={draft.diff.count > 0}
             canApply={needsApply && Boolean(runtime.data)}
@@ -121,7 +142,7 @@ export function ModsPage() {
           <InlineError
             action={
               <Button onClick={() => void library.reload().catch(() => {})}>
-                Reintentar
+                Retry
               </Button>
             }
           >
@@ -131,8 +152,8 @@ export function ModsPage() {
         {action.error && <InlineError>{action.error}</InlineError>}
         {lib && lib.issues.length > 0 && (
           <InlineError>
-            {plural(lib.issues.length, "mod no supera", "mods no superan")} la
-            verificación y no se pueden seleccionar:{" "}
+            {plural(lib.issues.length, "mod failed", "mods failed")}{" "}
+            verification and cannot be selected:{" "}
             {lib.issues.map((issue) => issue.detail).join(" · ")}
           </InlineError>
         )}
@@ -143,16 +164,16 @@ export function ModsPage() {
           disabled={action.busy || !draft.name}
           emptyText={
             library.loading && !lib
-              ? "Leyendo biblioteca…"
+              ? "Reading library…"
               : query
-                ? `No hay mods que coincidan con «${query}».`
-                : "Esta biblioteca todavía no tiene mods. Importa una carpeta o un ZIP para empezar."
+                ? `No mods match '${query}'.`
+                : "This library has no mods yet. Import a directory or ZIP archive to get started."
           }
           onToggle={draft.toggle}
         />
         {lib && lib.profiles.length === 0 && mods.length > 0 && !draft.name && (
           <p className={styles.note}>
-            Crea un perfil desde el selector para elegir qué mods se cargan.
+            Create a profile from the picker to choose which mods to load.
           </p>
         )}
       </PageLayout>
@@ -166,7 +187,7 @@ export function ModsPage() {
             setDialog(null);
             void library.reload().catch(() => {});
             if (draft.name) draft.toggle(mod.id, true);
-            toast(`«${mod.name}» importado`, "success");
+            toast(`'${mod.name}' imported`, "success");
           }}
         />
       )}

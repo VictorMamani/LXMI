@@ -64,6 +64,7 @@ export type RuntimeStatus = {
     } | null;
     previous: { profile_name: string } | null;
   };
+  applied_profile: ModProfile | null;
   launch_with_mods_available: boolean;
   launch_blockers: string[];
 };

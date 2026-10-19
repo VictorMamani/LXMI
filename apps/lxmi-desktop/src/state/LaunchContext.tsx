@@ -42,7 +42,7 @@ const keyOf = (status: LaunchStatus | null) =>
   status ? `${status.game_id}:${status.phase}` : null;
 
 /**
- * «Jugar con mods» session. The backend runs one launch at a time, so it
+ * «Play with mods» session. The backend runs one launch at a time, so it
  * lives above the screens and survives navigating to configuration and back.
  */
 export function LaunchProvider({ children }: { children: ReactNode }) {
@@ -121,7 +121,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
 /** The launch session seen from one game. */
 export function useModLaunch(gameId: string) {
   const session = useContext(LaunchContext);
-  if (!session) throw new Error("useModLaunch requiere LaunchProvider");
+  if (!session) throw new Error("useModLaunch requires LaunchProvider");
   const { status } = session;
   const own = status?.game_id === gameId ? status : null;
   return {

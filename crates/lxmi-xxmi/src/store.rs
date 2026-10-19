@@ -38,7 +38,7 @@ impl ManagedStore {
             XxmiError::new(
                 ErrorCode::StorageUnavailable,
                 None,
-                "XDG_DATA_HOME/home no disponible.",
+                "XDG_DATA_HOME/home is unavailable.",
             )
         })?;
         Self::at(base.join("lxmi"), ImportLimits::default())
@@ -49,7 +49,7 @@ impl ManagedStore {
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(root),
-                "El root administrado debe ser absoluto y terminar en lxmi.",
+                "The managed root must be absolute and end in lxmi.",
             ));
         }
         // Do not normalize away traversal.
@@ -76,7 +76,7 @@ impl ManagedStore {
                 return Err(XxmiError::new(
                     ErrorCode::UnsafePath,
                     Some(self.root.clone()),
-                    "El almacenamiento LXMI se solapa con Steam, juego o prefix.",
+                    "LXMI storage overlaps Steam, the game, or the prefix.",
                 ));
             }
         }
@@ -90,7 +90,7 @@ impl ManagedStore {
     pub(crate) fn initialize(&self) -> Result<Directory> {
         // XDG base must exist: do not create arbitrary ancestors, nor write outside LXMI.
         let parent = self.root.parent().ok_or_else(|| {
-            XxmiError::new(ErrorCode::StorageUnavailable, None, "Sin directorio XDG.")
+            XxmiError::new(ErrorCode::StorageUnavailable, None, "No XDG directory.")
         })?;
         let base = Directory::open_absolute(parent)?;
         let root = base.private_child("lxmi")?;
@@ -133,7 +133,11 @@ impl ManagedStore {
             || manifest.version != inspection.version
         {
             tracing::warn!("Checksum mismatch");
-            return Err(XxmiError::new(ErrorCode::ChecksumMismatch,Some(self.root.join("packages/xxmi").join(id)),"El inventario, hash o metadata administrada no coincide con los archivos actuales."));
+            return Err(XxmiError::new(
+                ErrorCode::ChecksumMismatch,
+                Some(self.root.join("packages/xxmi").join(id)),
+                "The managed inventory, hash, or metadata does not match the current files.",
+            ));
         }
         Ok(VerifiedPackage {
             manifest,
@@ -146,7 +150,7 @@ impl ManagedStore {
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(source.into()),
-                "Fuente y almacenamiento no pueden solaparse.",
+                "The source and storage must not overlap.",
             ));
         }
         if source.extension().is_some_and(|e| {
@@ -157,7 +161,7 @@ impl ManagedStore {
             return Err(XxmiError::new(
                 ErrorCode::UnsupportedArchive,
                 Some(source.into()),
-                "0.5 solo importa directorios locales ya extraídos.",
+                "Version 0.5 only imports local directories that have already been extracted.",
             ));
         }
         let input = Directory::open_absolute(source)?;
@@ -179,7 +183,7 @@ impl ManagedStore {
             return Err(XxmiError::new(
                 ErrorCode::Busy,
                 None,
-                "Staging preexistente; no se reutiliza.",
+                "The staging directory already exists and will not be reused.",
             ));
         }
         let stage = staging.new_private_child(&stage_name)?;
@@ -193,7 +197,7 @@ impl ManagedStore {
                     return Err(XxmiError::new(
                         ErrorCode::ChecksumMismatch,
                         Some(source.join(&entry.relative_path)),
-                        "La fuente cambió durante el import.",
+                        "The source changed during import.",
                     ));
                 }
                 payload.ensure_parents(&entry.relative_path)?;
@@ -205,7 +209,7 @@ impl ManagedStore {
                 return Err(XxmiError::new(
                     ErrorCode::ChecksumMismatch,
                     None,
-                    "Staging no coincide con la fuente.",
+                    "The staging directory does not match the source.",
                 ));
             }
             let manifest = PackageManifest {
@@ -220,7 +224,7 @@ impl ManagedStore {
                 imported_unix_seconds: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .map_err(|_| {
-                        XxmiError::new(ErrorCode::Io, None, "Reloj anterior a Unix epoch.")
+                        XxmiError::new(ErrorCode::Io, None, "The clock is before the Unix epoch.")
                     })?
                     .as_secs(),
                 files: staged.files,
@@ -272,7 +276,7 @@ impl ManagedStore {
             return Err(XxmiError::new(
                 ErrorCode::ReleaseUnavailable,
                 None,
-                "Fuente no está en la allowlist oficial.",
+                "The source is not on the official allowlist.",
             ));
         }
         let expected_name = format!(
@@ -285,7 +289,7 @@ impl ManagedStore {
             XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(archive_path.into()),
-                "Asset sin padre.",
+                "The asset has no parent directory.",
             )
         })?;
         let archive_dir = Directory::open_absolute(archive_parent)?;
@@ -296,7 +300,7 @@ impl ManagedStore {
                 XxmiError::new(
                     ErrorCode::UnsafePath,
                     Some(archive_path.into()),
-                    "Nombre del asset inválido.",
+                    "Invalid asset name.",
                 )
             })?;
         let (archive_size, archive_sha256) =
@@ -310,7 +314,7 @@ impl ManagedStore {
             return Err(XxmiError::new(
                 ErrorCode::ChecksumMismatch,
                 Some(archive_path.into()),
-                "El tamaño o SHA-256 del asset no coincide con la metadata de release.",
+                "The asset size or SHA-256 does not match the release metadata.",
             ));
         }
         let signature_status = crate::verify_release_file(
@@ -325,7 +329,7 @@ impl ManagedStore {
                     _ => ErrorCode::InvalidSignature,
                 },
                 Some(archive_path.into()),
-                format!("La firma upstream del ZIP no se verificó: {signature_status:?}."),
+                format!("The upstream ZIP signature was not verified: {signature_status:?}."),
             ));
         }
 
@@ -335,14 +339,14 @@ impl ManagedStore {
                     return Err(XxmiError::new(
                         ErrorCode::InvalidMetadata,
                         Some(path.into()),
-                        "El asset companion esperado es Manifest.json.",
+                        "The expected companion asset is Manifest.json.",
                     ));
                 }
                 let parent = path.parent().ok_or_else(|| {
                     XxmiError::new(
                         ErrorCode::UnsafePath,
                         Some(path.into()),
-                        "Manifest sin padre.",
+                        "The manifest has no parent directory.",
                     )
                 })?;
                 let dir = Directory::open_absolute(parent)?;
@@ -353,7 +357,7 @@ impl ManagedStore {
                         XxmiError::new(
                             ErrorCode::UnsafePath,
                             Some(path.into()),
-                            "Nombre Manifest inválido.",
+                            "Invalid Manifest name.",
                         )
                     })?;
                 let (size, hash) = hash_file(&dir, name, 64 * 1024)?;
@@ -366,7 +370,7 @@ impl ManagedStore {
                     return Err(XxmiError::new(
                         ErrorCode::ChecksumMismatch,
                         Some(path.into()),
-                        "El Manifest companion no coincide con la metadata oficial.",
+                        "The companion Manifest does not match the official metadata.",
                     ));
                 }
                 Some(dir.read_file(name, 64 * 1024)?)
@@ -375,14 +379,14 @@ impl ManagedStore {
                 return Err(XxmiError::new(
                     ErrorCode::MissingRequiredFile,
                     None,
-                    "XXMI Libraries requiere su asset Manifest.json separado.",
+                    "XXMI Libraries requires its separate Manifest.json asset.",
                 ));
             }
             (OfficialPackageKind::Wwmi | OfficialPackageKind::Zzmi, Some(_)) => {
                 return Err(XxmiError::new(
                     ErrorCode::InvalidMetadata,
                     None,
-                    "El importer no declara un asset companion.",
+                    "The importer does not declare a companion asset.",
                 ));
             }
             (OfficialPackageKind::Wwmi | OfficialPackageKind::Zzmi, None) => None,
@@ -402,7 +406,7 @@ impl ManagedStore {
             crate::archive::extract_zip(archive_path, &payload, self.limits)?;
             if let Some(bytes) = companion_bytes.as_ref() {
                 if payload.metadata("Manifest.json")?.is_some() {
-                    return Err(XxmiError::new(ErrorCode::InvalidPackage, None, "El ZIP incluye Manifest.json además del asset companion; no se fusiona por reemplazo."));
+                    return Err(XxmiError::new(ErrorCode::InvalidPackage, None, "The ZIP includes Manifest.json alongside the companion asset; replacement merging is not allowed."));
                 }
                 payload.write_new("Manifest.json", bytes)?;
             }
@@ -416,7 +420,7 @@ impl ManagedStore {
                 return Err(XxmiError::new(
                     ErrorCode::WrongGameIntegration,
                     None,
-                    "El contenido extraído no coincide con el tipo de paquete de la release.",
+                    "The extracted content does not match the release package type.",
                 ));
             }
             let components_verified = if release.package_kind == OfficialPackageKind::XxmiLibraries
@@ -433,7 +437,7 @@ impl ManagedStore {
                         XxmiError::new(
                             ErrorCode::InvalidMetadata,
                             None,
-                            "Manifest.json no contiene firmas.",
+                            "Manifest.json does not contain signatures.",
                         )
                     })?;
                 for filename in ["3dmloader.dll", "d3d11.dll", "d3dcompiler_47.dll"] {
@@ -444,7 +448,7 @@ impl ManagedStore {
                             XxmiError::new(
                                 ErrorCode::MissingSignature,
                                 Some(filename.into()),
-                                "Falta una firma de componente upstream.",
+                                "An upstream component signature is missing.",
                             )
                         })?;
                     let path = payload.path().join(filename);
@@ -454,7 +458,7 @@ impl ManagedStore {
                         return Err(XxmiError::new(
                             ErrorCode::InvalidSignature,
                             Some(path),
-                            format!("Firma upstream inválida para {filename}."),
+                            format!("Invalid upstream signature for {filename}."),
                         ));
                     }
                 }
@@ -475,7 +479,7 @@ impl ManagedStore {
                 {
                     return Ok(existing);
                 }
-                return Err(XxmiError::new(ErrorCode::Busy, Some(self.root.join("packages/xxmi").join(&id)), "El contenido ya existe con otra procedencia; no se atribuye autenticidad cambiando solo el manifiesto."));
+                return Err(XxmiError::new(ErrorCode::Busy, Some(self.root.join("packages/xxmi").join(&id)), "The content already exists with different provenance; changing the manifest alone cannot establish authenticity."));
             }
             let package_manifest_asset = companion.map(|(metadata, _)| metadata);
             let provenance = UpstreamProvenance {
@@ -492,7 +496,11 @@ impl ManagedStore {
                     SystemTime::now()
                         .duration_since(UNIX_EPOCH)
                         .map_err(|_| {
-                            XxmiError::new(ErrorCode::Io, None, "Reloj anterior a Unix epoch.")
+                            XxmiError::new(
+                                ErrorCode::Io,
+                                None,
+                                "The clock is before the Unix epoch.",
+                            )
                         })?
                         .as_secs(),
                 ),
@@ -519,7 +527,7 @@ impl ManagedStore {
                 imported_unix_seconds: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .map_err(|_| {
-                        XxmiError::new(ErrorCode::Io, None, "Reloj anterior a Unix epoch.")
+                        XxmiError::new(ErrorCode::Io, None, "The clock is before the Unix epoch.")
                     })?
                     .as_secs(),
                 files,
@@ -561,7 +569,7 @@ fn validate_id(id: &str) -> Result<()> {
         return Err(XxmiError::new(
             ErrorCode::UnsafePath,
             None,
-            "ID SHA-256 inválido.",
+            "Invalid SHA-256 ID.",
         ));
     }
     Ok(())

@@ -37,7 +37,7 @@ impl DownloadCache {
                 XxmiError::new(
                     ErrorCode::StorageUnavailable,
                     None,
-                    "No existe una ruta XDG cache absoluta.",
+                    "No absolute XDG cache path exists.",
                 )
             })?;
         Self::at(base.join("lxmi/downloads"))
@@ -50,7 +50,7 @@ impl DownloadCache {
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(root),
-                "La cache debe ser una ruta absoluta terminada en lxmi/downloads.",
+                "The cache must be an absolute path ending in lxmi/downloads.",
             ));
         }
         for component in root.components() {
@@ -61,7 +61,7 @@ impl DownloadCache {
                 return Err(XxmiError::new(
                     ErrorCode::UnsafePath,
                     Some(root),
-                    "Ruta cache no normalizada.",
+                    "The cache path is not normalized.",
                 ));
             }
         }
@@ -77,7 +77,7 @@ impl DownloadCache {
             XxmiError::new(
                 ErrorCode::StorageUnavailable,
                 None,
-                "Cache sin directorio padre.",
+                "The cache has no parent directory.",
             )
         })?;
         let base = Directory::open_absolute(base)?;
@@ -97,7 +97,7 @@ impl DownloadCache {
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 None,
-                "Extensión de asset no permitida.",
+                "Asset extension not allowed.",
             ));
         }
         let root = self.initialize()?;
@@ -109,7 +109,7 @@ impl DownloadCache {
                 return Err(XxmiError::new(
                     ErrorCode::UnsafePath,
                     Some(final_path),
-                    "Asset cache no es archivo regular.",
+                    "The cached asset is not a regular file.",
                 ));
             }
             let (size, digest) = crate::package::hash_file(&release, &name, max_bytes)?;
@@ -117,7 +117,7 @@ impl DownloadCache {
                 return Err(XxmiError::new(
                     ErrorCode::ChecksumMismatch,
                     Some(final_path),
-                    "El asset cache no coincide con el digest oficial.",
+                    "The cached asset does not match the official digest.",
                 ));
             }
             return Ok(CachedAsset {
@@ -143,20 +143,20 @@ impl DownloadCache {
                     XxmiError::new(
                         ErrorCode::Network,
                         None,
-                        format!("Falló lectura de descarga: {error}"),
+                        format!("Failed to read the download: {error}"),
                     )
                 })?;
                 if count == 0 {
                     break;
                 }
                 size = size.checked_add(count as u64).ok_or_else(|| {
-                    XxmiError::new(ErrorCode::LimitExceeded, None, "Overflow de descarga.")
+                    XxmiError::new(ErrorCode::LimitExceeded, None, "Download size overflow.")
                 })?;
                 if size > max_bytes {
                     return Err(XxmiError::new(
                         ErrorCode::LimitExceeded,
                         None,
-                        "Asset supera el límite de descarga.",
+                        "The asset exceeds the download limit.",
                     ));
                 }
                 digest.update(&buffer[..count]);
@@ -172,7 +172,7 @@ impl DownloadCache {
                 return Err(XxmiError::new(
                     ErrorCode::ChecksumMismatch,
                     Some(final_path.clone()),
-                    "El SHA-256 descargado no coincide con el digest oficial de GitHub.",
+                    "The downloaded SHA-256 does not match the official GitHub digest.",
                 ));
             }
             release.promote_file(&partial, &name)?;
@@ -198,21 +198,21 @@ impl DownloadCache {
             return Err(XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(path.into()),
-                "Asset fuera de la cache LXMI.",
+                "The asset is outside the LXMI cache.",
             ));
         }
         let relative = path.strip_prefix(&self.root).map_err(|_| {
             XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(path.into()),
-                "Asset fuera de la cache LXMI.",
+                "The asset is outside the LXMI cache.",
             )
         })?;
         let relative = relative.to_str().ok_or_else(|| {
             XxmiError::new(
                 ErrorCode::UnsafePath,
                 Some(path.into()),
-                "Ruta cache no UTF-8.",
+                "The cache path is not UTF-8.",
             )
         })?;
         validate_relative_path(relative)?;

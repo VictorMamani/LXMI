@@ -6,38 +6,38 @@ import { SettingRow } from "../SettingRow";
 
 export function AboutPage() {
   return (
-    <PageLayout eyebrow="LXMI" title="Acerca de">
+    <PageLayout eyebrow="LXMI" title="About">
       <div>
         <SettingRow
-          label="Versión"
+          label="Version"
           value={`LXMI ${version}`}
           status={
             isDemoMode && (
               <StatusDot status="warn" size="sm">
-                Modo demo
+                Demo mode
               </StatusDot>
             )
           }
           detail={
             isDemoMode
-              ? "Interfaz en el navegador con datos de ejemplo; las acciones no tocan el sistema"
-              : "Gestor de mods XXMI para Linux · Tauri + React"
+              ? "Browser interface with example data; actions do not touch your system"
+              : "XXMI mod manager for Linux · Tauri + React"
           }
         />
         <SettingRow
-          label="Gestión de archivos"
-          value="Copias privadas con inventario y SHA-256"
-          detail="Los mods originales y la instalación del juego no se modifican"
+          label="File management"
+          value="Private copies with inventory and SHA-256"
+          detail="Original mods and the game installation are not modified"
         />
         <SettingRow
-          label="Carga de mods"
-          value="Loader oficial de XXMI sobre una copia del perfil"
-          detail="Steam y HoYoPlay se usan tal cual; cada cambio de perfil es reversible"
+          label="Mod loading"
+          value="Official XXMI loader with a profile copy"
+          detail="Steam and HoYoPlay are used as installed; each profile change is reversible"
         />
         <SettingRow
-          label="Riesgo"
-          value="Los mods son contenido de terceros en juegos online"
-          detail="Su uso puede infringir las condiciones del juego; la decisión es tuya"
+          label="Risk"
+          value="Mods are third-party content in online games"
+          detail="Their use may violate the game terms; the decision is yours"
         />
       </div>
     </PageLayout>

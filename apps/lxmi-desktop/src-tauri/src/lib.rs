@@ -20,7 +20,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Development smoke: prepares a «Jugar con mods» launch copy for the saved profile
+/// Development smoke: prepares a «Play with mods» launch copy for the saved profile
 /// without starting Steam, Proton or the game.
 pub fn prepare_mod_launch_copy(game_id: &str) -> Result<lxmi_launch::PreparedLaunch, String> {
     mod_launch::prepare_copy(game_id).map_err(|e| e.detail)

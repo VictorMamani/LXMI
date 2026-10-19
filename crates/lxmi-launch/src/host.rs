@@ -87,10 +87,10 @@ impl SteamModLaunchHost {
 
 fn windows_path(path: &Path) -> Result<String, String> {
     let canonical =
-        fs::canonicalize(path).map_err(|e| format!("No se encontró {}: {e}", path.display()))?;
+        fs::canonicalize(path).map_err(|e| format!("{} was not found: {e}", path.display()))?;
     let text = canonical
         .to_str()
-        .ok_or("Ruta del juego no representable.")?;
+        .ok_or("The game path cannot be represented.")?;
     Ok(format!("Z:{}", text.replace('/', "\\")))
 }
 
@@ -126,7 +126,7 @@ impl LaunchHost for SteamModLaunchHost {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
-            .map_err(|e| format!("No se pudo enviar la solicitud a Steam: {e}"))?;
+            .map_err(|e| format!("Could not send the request to Steam: {e}"))?;
         std::thread::spawn(move || {
             let _ = child.wait();
         });
@@ -140,7 +140,7 @@ impl LaunchHost for SteamModLaunchHost {
         let dir = self
             .launch_dir
             .clone()
-            .ok_or("La copia de arranque no está preparada.")?;
+            .ok_or("The launch copy is not prepared.")?;
         spawn_helper_in(&dir, &self.target, launcher)
     }
 
@@ -159,14 +159,14 @@ fn spawn_helper_in(
     let proton = launcher.proton_dir.join("proton");
     for file in [&entry, &proton] {
         if !fs::symlink_metadata(file).is_ok_and(|m| m.is_file()) {
-            return Err(format!("No se encontró {}.", file.display()));
+            return Err(format!("{} was not found.", file.display()));
         }
     }
     let variable = dir.join("runtime-variable");
     fs::DirBuilder::new()
         .mode(0o700)
         .create(&variable)
-        .map_err(|e| format!("No se pudo preparar el runtime: {e}"))?;
+        .map_err(|e| format!("Could not prepare the runtime: {e}"))?;
     let stderr_path = dir.join("helper.stderr.log");
     let stderr = fs::File::create(&stderr_path).map_err(|e| e.to_string())?;
     let app = target.steam_app_id.to_string();
@@ -248,8 +248,8 @@ fn spawn_helper_in(
         .process_group(0);
     let mut child = command
         .spawn()
-        .map_err(|e| format!("No se pudo iniciar el cargador: {e}"))?;
-    let stdout = child.stdout.take().ok_or("Sin salida del cargador.")?;
+        .map_err(|e| format!("Could not start the loader: {e}"))?;
+    let stdout = child.stdout.take().ok_or("No loader output.")?;
     let mut journal =
         fs::File::create(dir.join("helper.stdout.jsonl")).map_err(|e| e.to_string())?;
     let group = Arc::new(AtomicI32::new(if alongside {
@@ -330,7 +330,7 @@ fn stderr_detail(text: &str) -> Option<String> {
     if text.contains("setting up uid map")
         || text.contains("No permissions to create new namespace")
     {
-        return Some("el sistema no permitió a Steam Linux Runtime crear su contenedor (AppArmor restringe los user namespaces) y el servicio de lanzamiento de Steam no respondió. Reinicia Steam y vuelve a intentarlo.".into());
+        return Some("the system did not allow Steam Linux Runtime to create its container (AppArmor restricts user namespaces) and the Steam launch service did not respond. Restart Steam and try again.".into());
     }
     let line = text.lines().rev().map(str::trim).find(|l| !l.is_empty())?;
     Some(line.chars().take(300).collect())

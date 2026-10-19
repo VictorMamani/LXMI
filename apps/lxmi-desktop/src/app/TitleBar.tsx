@@ -34,7 +34,7 @@ export function TitleBar() {
         <button
           type="button"
           className={styles.control}
-          aria-label="Minimizar"
+          aria-label="Minimize"
           onClick={() => void window.minimize()}
         >
           <Minus size={15} strokeWidth={1.5} aria-hidden />
@@ -42,7 +42,7 @@ export function TitleBar() {
         <button
           type="button"
           className={styles.control}
-          aria-label={maximized ? "Restaurar" : "Maximizar"}
+          aria-label={maximized ? "Restore" : "Maximize"}
           onClick={() => void window.toggleMaximize()}
         >
           {maximized ? (
@@ -54,7 +54,7 @@ export function TitleBar() {
         <button
           type="button"
           className={`${styles.control} ${styles.close}`}
-          aria-label="Cerrar"
+          aria-label="Close"
           onClick={() => void window.close()}
         >
           <X size={16} strokeWidth={1.5} aria-hidden />

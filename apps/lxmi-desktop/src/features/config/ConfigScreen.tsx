@@ -31,7 +31,7 @@ export function ConfigScreen({ section }: { section: ConfigSection }) {
     const next = adjacentGame(game.id, step);
     if (next.id === game.id) return;
     selectGame(next.id);
-    toast(`Espacio ${next.channel} cargado`);
+    toast(`Space ${next.channel} loaded`);
   }
 
   useHotkeys({

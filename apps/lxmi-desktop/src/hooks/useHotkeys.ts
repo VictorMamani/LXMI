@@ -30,7 +30,7 @@ export function useHotkeys(keys: KeyMap, enabled = true) {
         isTyping(event.target)
       )
         return;
-      if (document.querySelector("dialog[open]")) return;
+      if (document.querySelector('dialog[open], [role="menu"]')) return;
       const handler =
         latest.current[
           event.key.length === 1 ? event.key.toLowerCase() : event.key

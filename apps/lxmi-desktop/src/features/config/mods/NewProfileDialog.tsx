@@ -28,34 +28,34 @@ export function NewProfileDialog({
 
   return (
     <Dialog
-      eyebrow="Perfiles"
-      title="Nuevo perfil"
+      eyebrow="Profiles"
+      title="New profile"
       onClose={onClose}
       width={440}
     >
       <form className={styles.form} onSubmit={submit}>
         <TextField
-          label="Nombre"
-          placeholder="Por ejemplo, Capturas"
+          label="Name"
+          placeholder="For example, Screenshots"
           value={name}
           maxLength={100}
           onChange={(event) => setName(event.target.value)}
           hint={
             duplicate
-              ? "Ya existe un perfil con ese nombre."
-              : "Parte de la selección actual. Se guarda al aplicar."
+              ? "A profile with that name already exists."
+              : "Starts from the current selection. Saved when applied."
           }
           autoFocus
         />
         <div className={styles.formActions}>
-          <Button onClick={onClose}>Cancelar</Button>
+          <Button onClick={onClose}>Cancel</Button>
           <Button
             type="submit"
             variant="primary"
             icon={Plus}
             disabled={!trimmed || duplicate}
           >
-            Crear
+            Create
           </Button>
         </div>
       </form>

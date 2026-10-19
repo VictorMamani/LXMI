@@ -13,10 +13,10 @@ export function AdvancedPage() {
   const { openConfig } = useNavigation();
   return (
     <PageLayout
-      eyebrow="Diagnóstico"
-      title="Herramientas avanzadas"
+      eyebrow="Diagnostics"
+      title="Advanced tools"
       aside={
-        <p className={styles.note}>Nada de esto es necesario para jugar.</p>
+        <p className={styles.note}>None of these tools are required to play.</p>
       }
     >
       <div className={styles.rows}>
@@ -40,14 +40,14 @@ export function AdvancedPage() {
         />
         <span className={styles.labsText}>
           <span className={styles.labsTitle}>
-            Laboratorios <Tag>Experimental</Tag>
+            Laboratories <Tag>Experimental</Tag>
           </span>
           <span className={styles.labsSummary}>
-            Runtime Bridge · Contexto Proton/Wine · Loader Lab · Entrada real al
-            prefix — pueden tener efectos secundarios
+            Runtime Bridge · Proton/Wine context · Loader Lab · Real entry into
+            the prefix — may have side effects
           </span>
         </span>
-        <span className={styles.labsOpen}>ABRIR →</span>
+        <span className={styles.labsOpen}>OPEN →</span>
       </button>
     </PageLayout>
   );

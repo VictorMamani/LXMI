@@ -3,7 +3,7 @@ const MB = 1024 * 1024;
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < MB) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / MB).toLocaleString("es", { maximumFractionDigits: bytes < 10 * MB ? 1 : 0 })} MB`;
+  return `${(bytes / MB).toLocaleString("en", { maximumFractionDigits: bytes < 10 * MB ? 1 : 0 })} MB`;
 }
 
 export function plural(
@@ -14,9 +14,9 @@ export function plural(
   return `${count} ${count === 1 ? singular : pluralForm}`;
 }
 
-const relative = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
-/** "hace 2 h", "hace 3 días"… */
+/** "2 hours ago", "3 days ago"… */
 export function timeAgo(timestamp: number, now = Date.now()): string {
   const minutes = Math.round((timestamp - now) / 60000);
   if (Math.abs(minutes) < 60) return relative.format(minutes, "minute");

@@ -9,7 +9,7 @@ import { InlineError } from "../../../components/InlineError";
 import { TextField } from "../../../components/TextField";
 import styles from "./ModsPage.module.css";
 
-/** "/home/a/Descargas/Ellen — Verano.zip" → "Ellen — Verano" */
+/** "/home/a/Downloads/Ellen — Summer.zip" → "Ellen — Summer" */
 function nameFromPath(path: string): string {
   const leaf =
     path
@@ -59,42 +59,43 @@ export function ImportModDialog({
 
   return (
     <Dialog
-      eyebrow={`Biblioteca · ${gameName}`}
-      title="Importar mod"
+      eyebrow={`Library · ${gameName}`}
+      title="Import mod"
       onClose={onClose}
       width={560}
     >
       <form className={styles.form} onSubmit={(event) => void submit(event)}>
         <TextField
-          label="Carpeta o ZIP"
-          placeholder="/home/usuario/Descargas/mi-mod.zip"
+          label="Directory or ZIP"
+          placeholder="/home/user/Downloads/my-mod.zip"
           value={source}
           onChange={(event) => setSource(event.target.value)}
-          hint="Ruta absoluta. El mod debe contener un INI; RAR y 7z deben extraerse antes."
+          hint="Absolute path. The mod must contain an INI; extract RAR and 7z archives first."
           required
           autoFocus
         />
         <TextField
-          label="Nombre en la biblioteca"
-          placeholder={nameFromPath(source) || "Personaje — Variante"}
+          label="Library name"
+          placeholder={nameFromPath(source) || "Character — Variant"}
           value={name}
           maxLength={100}
           onChange={(event) => setName(event.target.value)}
         />
         <p>
-          LXMI guarda una copia privada; el original y el juego no se modifican.
-          Los hashes detectan cambios locales, no certifican el origen del mod.
+          LXMI stores a private copy; the original and the game are not
+          modified. Hashes detect local changes; they do not certify the mod
+          origin.
         </p>
         {error && <InlineError>{error}</InlineError>}
         <div className={styles.formActions}>
-          <Button onClick={onClose}>Cancelar</Button>
+          <Button onClick={onClose}>Cancel</Button>
           <Button
             type="submit"
             variant="primary"
             icon={FolderPlus}
             disabled={busy || !source.trim() || !finalName}
           >
-            {busy ? "Importando…" : "Importar"}
+            {busy ? "Importing…" : "Import"}
           </Button>
         </div>
       </form>

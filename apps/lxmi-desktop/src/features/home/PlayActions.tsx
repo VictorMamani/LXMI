@@ -3,8 +3,8 @@ import { MenuButton } from "../../components/MenuButton";
 import styles from "./PlayActions.module.css";
 
 /**
- * JUGAR (with mods) plus a chevron that holds «Jugar sin mods», so that
- * option does not need its own button; GESTIONAR MODS below.
+ * PLAY (with mods) plus a chevron that holds «Play without mods», so that
+ * option does not need its own button; MANAGE MODS below.
  */
 export function PlayActions({
   canPlayWithMods,
@@ -34,7 +34,7 @@ export function PlayActions({
           onClick={onPlay}
         >
           <Play size={18} strokeWidth={1.75} aria-hidden />
-          <span>{playing ? "INICIANDO…" : "JUGAR"}</span>
+          <span>{playing ? "STARTING…" : "PLAY"}</span>
         </button>
         <span className={styles.divider} aria-hidden />
         <MenuButton
@@ -43,7 +43,7 @@ export function PlayActions({
           placement="top-end"
           items={[
             {
-              label: "Jugar sin mods",
+              label: "Play without mods",
               onSelect: onPlayWithout,
               disabled: !canPlayWithout,
             },
@@ -52,7 +52,7 @@ export function PlayActions({
             <button
               type="button"
               className={styles.playMore}
-              aria-label="Más opciones de juego"
+              aria-label="More play options"
               disabled={playing}
               {...props}
             >
@@ -63,10 +63,10 @@ export function PlayActions({
       </div>
       <button type="button" className={styles.manage} onClick={onManage}>
         <Layers size={16} strokeWidth={1.75} aria-hidden />
-        <span>GESTIONAR MODS</span>
+        <span>MANAGE MODS</span>
       </button>
       <p className={styles.hint} data-warning={hint !== null || undefined}>
-        {hint ?? "▲ jugar sin mods"}
+        {hint ?? "▲ play without mods"}
       </p>
     </div>
   );

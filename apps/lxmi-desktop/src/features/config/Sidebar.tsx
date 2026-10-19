@@ -6,26 +6,26 @@ import { Tag } from "../../components/Tag";
 import styles from "./Sidebar.module.css";
 
 const sections: { id: ConfigSection; label: string }[] = [
-  { id: "spaces", label: "Espacios" },
+  { id: "spaces", label: "Spaces" },
   { id: "mods", label: "Mods" },
-  { id: "share", label: "Compartir" },
-  { id: "advanced", label: "Avanzado" },
-  { id: "about", label: "Acerca de" },
+  { id: "share", label: "Share" },
+  { id: "advanced", label: "Advanced" },
+  { id: "about", label: "About" },
 ];
 
 export function Sidebar({ active }: { active: ConfigSection }) {
   const { openConfig, goHome } = useNavigation();
-  // Laboratories live under «Avanzado».
+  // Laboratories live under «Advanced».
   const current = active === "labs" ? "advanced" : active;
 
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
         <p className={styles.logo}>MODHUB</p>
-        <p className={styles.subtitle}>CONFIGURACIÓN</p>
+        <p className={styles.subtitle}>SETTINGS</p>
       </div>
 
-      <nav aria-label="Secciones de configuración">
+      <nav aria-label="Settings sections">
         <ul className={styles.nav}>
           {sections.map((section) => (
             <li key={section.id}>
@@ -44,7 +44,7 @@ export function Sidebar({ active }: { active: ConfigSection }) {
 
       <div className={styles.footer}>
         <Button variant="outline" icon={ArrowLeft} onClick={goHome}>
-          Volver
+          Back
         </Button>
         <p className={styles.version}>
           <Tag>LXMI {version}</Tag>

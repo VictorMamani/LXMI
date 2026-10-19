@@ -23,7 +23,7 @@ function packageLabel(pkg: XxmiPackage): string {
     pkg.kind === "xxmi_libraries"
       ? "XXMI Libraries"
       : pkg.kind.game_integration.toUpperCase();
-  return `${kind} ${pkg.version?.raw ?? "sin versión"}`;
+  return `${kind} ${pkg.version?.raw ?? "no version"}`;
 }
 
 export function PackagesRow() {
@@ -51,10 +51,7 @@ export function PackagesRow() {
     );
     if (value !== undefined)
       setEvidence({
-        label:
-          kind === "assembly"
-            ? "Plan de ensamblado ZZMI"
-            : "Topología de lanzamiento",
+        label: kind === "assembly" ? "ZZMI assembly plan" : "Launch topology",
         value,
       });
   }
@@ -62,32 +59,32 @@ export function PackagesRow() {
   return (
     <>
       <DiagnosticRow
-        title="Paquetes XXMI"
+        title="XXMI packages"
         status={
           data && (
             <StatusDot status={issues ? "warn" : "ok"} size="sm">
-              {issues ? plural(issues, "incidencia") : "OK"}
+              {issues ? plural(issues, "issue") : "OK"}
             </StatusDot>
           )
         }
         summary={
           status.error ??
           (data
-            ? `${plural(verified, "paquete verificado", "paquetes verificados")} en el almacén · ${issues ? plural(issues, "incidencia") : "sin incidencias"}`
-            : "Consultando el almacén…")
+            ? `${plural(verified, "verified package", "verified packages")} in storage · ${issues ? plural(issues, "issue") : "no issues"}`
+            : "Checking storage…")
         }
         action={
           <Button icon={FolderInput} onClick={() => setImporting(true)}>
-            Importar carpeta
+            Import directory
           </Button>
         }
       >
         <Facts
           items={[
-            ["Almacén", data?.storage_root],
+            ["Storage", data?.storage_root],
             ...(data?.packages.map((pkg): [string, string] => [
               packageLabel(pkg),
-              `${pkg.id.slice(0, 12)} · ${pkg.authenticity === VERIFIED ? "firma oficial verificada" : "sin autenticar"}`,
+              `${pkg.id.slice(0, 12)} · ${pkg.authenticity === VERIFIED ? "official signature verified" : "unauthenticated"}`,
             ]) ?? []),
             ...(data?.issues.map((issue): [string, string] => [
               issue.code,
@@ -101,14 +98,14 @@ export function PackagesRow() {
             disabled={action.busy || !sources.zzmiId}
             onClick={() => void inspect("assembly")}
           >
-            Revisar ensamblado ZZMI
+            Review ZZMI assembly
           </Button>
           <Button
             variant="outline"
             disabled={action.busy || !sources.zzmiId}
             onClick={() => void inspect("topology")}
           >
-            Topología de lanzamiento
+            Launch topology
           </Button>
         </DetailActions>
         {action.error && <InlineError>{action.error}</InlineError>}
@@ -120,7 +117,7 @@ export function PackagesRow() {
           onImported={(pkg) => {
             setImporting(false);
             void status.reload().catch(() => {});
-            toast(`${packageLabel(pkg)} importado`, "success");
+            toast(`${packageLabel(pkg)} imported`, "success");
           }}
         />
       )}
@@ -148,8 +145,8 @@ function ImportPackageDialog({
 
   return (
     <Dialog
-      eyebrow="Paquetes XXMI"
-      title="Importar carpeta"
+      eyebrow="XXMI packages"
+      title="Import directory"
       onClose={onClose}
       width={520}
     >
@@ -158,23 +155,23 @@ function ImportPackageDialog({
         style={{ display: "contents" }}
       >
         <TextField
-          label="Carpeta del paquete"
-          placeholder="/home/usuario/Descargas/ZZMI"
+          label="Package directory"
+          placeholder="/home/user/Downloads/ZZMI"
           value={path}
           onChange={(event) => setPath(event.target.value)}
-          hint="Se verifica y se guarda en el almacén de LXMI; no se instala en el juego."
+          hint="Verified and saved in LXMI storage; not installed in the game."
           autoFocus
         />
         {action.error && <InlineError>{action.error}</InlineError>}
         <DetailActions>
-          <Button onClick={onClose}>Cancelar</Button>
+          <Button onClick={onClose}>Cancel</Button>
           <Button
             type="submit"
             variant="primary"
             icon={FolderInput}
             disabled={action.busy || !path.trim()}
           >
-            {action.busy ? "Verificando…" : "Importar"}
+            {action.busy ? "Verifying…" : "Import"}
           </Button>
         </DetailActions>
       </form>

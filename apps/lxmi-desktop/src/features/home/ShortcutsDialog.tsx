@@ -3,20 +3,20 @@ import { Dialog } from "../../components/Dialog";
 import styles from "./ShortcutsDialog.module.css";
 
 const shortcuts: [string, string][] = [
-  ["Q / E", "Juego anterior / siguiente"],
-  ["M", "Gestionar mods"],
-  ["Esc", "Volver al inicio desde configuración"],
+  ["Q / E", "Previous / next game"],
+  ["M", "Manage mods"],
+  ["Esc", "Return home from settings"],
 ];
 
 export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog
-      title="Atajos de teclado"
+      title="Keyboard shortcuts"
       onClose={onClose}
       width={420}
       actions={
         <Button variant="outline" onClick={onClose}>
-          Cerrar
+          Close
         </Button>
       }
     >

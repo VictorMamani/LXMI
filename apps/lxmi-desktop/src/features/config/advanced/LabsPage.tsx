@@ -14,8 +14,8 @@ import styles from "./LabsPage.module.css";
 import { useZzzSources } from "./useZzzSources";
 
 const contextModes: { value: ContextLabMode; label: string }[] = [
-  { value: "same_prefix", label: "Mismo prefix" },
-  { value: "different_prefixes", label: "Prefixes distintos" },
+  { value: "same_prefix", label: "Same prefix" },
+  { value: "different_prefixes", label: "Different prefixes" },
 ];
 const loaderModes: LoaderLabMode[] = [
   "baseline",
@@ -53,29 +53,29 @@ export function LabsPage() {
 
   return (
     <PageLayout
-      eyebrow="Diagnóstico · experimental"
-      title="Laboratorios"
+      eyebrow="Diagnostics · experimental"
+      title="Laboratories"
       aside={
         <Button
           variant="outline"
           icon={ArrowLeft}
           onClick={() => openConfig("advanced")}
         >
-          Avanzado
+          Advanced
         </Button>
       }
     >
       <div className={styles.warning}>
         <Tag>Experimental</Tag>
         <p>
-          Estas pruebas ejecutan helpers dentro de prefixes de Proton y pueden
-          tener efectos secundarios. Úsalas solo para investigar; no son
-          necesarias para jugar.
+          These tests run helpers inside Proton prefixes and may have side
+          effects. Use them only for investigation; they are not required to
+          play.
         </p>
       </div>
 
       <label className={styles.runtime}>
-        <span>Runtime Proton explícito</span>
+        <span>Explicit Proton runtime</span>
         <select
           value={protonScript}
           onChange={(event) => setRuntime(event.target.value)}
@@ -83,7 +83,7 @@ export function LabsPage() {
         >
           {!options.length && (
             <option value="">
-              {runtimes.loading ? "Buscando…" : "Ninguno disponible"}
+              {runtimes.loading ? "Scanning…" : "None available"}
             </option>
           )}
           {options.map((option) => (
@@ -143,7 +143,7 @@ function Consent({
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
       />
-      Acepto los efectos secundarios
+      I accept the side effects
     </label>
   );
 }
@@ -154,19 +154,19 @@ function BridgeLab({ protonScript }: { protonScript: string }) {
   return (
     <LabSection
       title="Runtime Bridge"
-      description="Handshake del helper con el runtime ZZMI dentro de un prefix propio de LXMI."
+      description="Helper handshake with the ZZMI runtime inside an LXMI-owned prefix."
       lab={lab}
     >
       <Button
         icon={Search}
         disabled={lab.busy}
         onClick={() =>
-          void lab.run("Inspección del bridge", () =>
+          void lab.run("Bridge inspection", () =>
             call("inspect_runtime_bridge", sources),
           )
         }
       >
-        Inspeccionar
+        Inspect
       </Button>
       <Button
         variant="outline"
@@ -175,7 +175,7 @@ function BridgeLab({ protonScript }: { protonScript: string }) {
           lab.busy || !protonScript || !sources.zzmiId || !sources.librariesId
         }
         onClick={() =>
-          void lab.run("Prueba del bridge", () =>
+          void lab.run("Bridge test", () =>
             call("run_runtime_bridge_test", {
               zzmiId: sources.zzmiId!,
               librariesId: sources.librariesId!,
@@ -184,7 +184,7 @@ function BridgeLab({ protonScript }: { protonScript: string }) {
           )
         }
       >
-        Ejecutar prueba
+        Run test
       </Button>
     </LabSection>
   );
@@ -198,8 +198,8 @@ function ContextLab({ protonScript }: { protonScript: string }) {
   const disabled = lab.busy || !protonScript || !consent;
   return (
     <LabSection
-      title="Contexto Proton/Wine"
-      description="Comprueba si dos procesos comparten wineserver, inyección directa y reentrada."
+      title="Proton/Wine context"
+      description="Check whether two processes share a wineserver, direct injection, and reentry."
       lab={lab}
     >
       <select
@@ -218,34 +218,30 @@ function ContextLab({ protonScript }: { protonScript: string }) {
         variant="outline"
         disabled={disabled}
         onClick={() =>
-          void lab.run("Prueba de contexto", () =>
-            call("run_context_lab_test", args),
-          )
+          void lab.run("Context test", () => call("run_context_lab_test", args))
         }
       >
-        Contexto
+        Context
       </Button>
       <Button
         variant="outline"
         disabled={disabled}
         onClick={() =>
-          void lab.run("Inyección directa", () =>
+          void lab.run("Direct injection", () =>
             call("run_direct_context_test", args),
           )
         }
       >
-        Inyección directa
+        Direct injection
       </Button>
       <Button
         variant="outline"
         disabled={disabled}
         onClick={() =>
-          void lab.run("Reentrada", () =>
-            call("run_context_reentry_test", args),
-          )
+          void lab.run("Reentry", () => call("run_context_reentry_test", args))
         }
       >
-        Reentrada
+        Reentry
       </Button>
     </LabSection>
   );
@@ -258,29 +254,27 @@ function LoaderLab({ protonScript }: { protonScript: string }) {
   return (
     <LabSection
       title="Loader Lab"
-      description="Carga una DLL de prueba en un ejecutable objetivo controlado, con el loader oficial."
+      description="Load a test DLL into a controlled target executable using the official loader."
       lab={lab}
     >
       <Button
         icon={Search}
         disabled={lab.busy}
         onClick={() =>
-          void lab.run("Estado del Loader Lab", () =>
-            call("inspect_loader_lab"),
-          )
+          void lab.run("Loader Lab status", () => call("inspect_loader_lab"))
         }
       >
-        Inspeccionar
+        Inspect
       </Button>
       <Button
         disabled={lab.busy}
         onClick={() =>
-          void lab.run("Preparación", () =>
+          void lab.run("Preparation", () =>
             call("prepare_loader_lab").then(() => call("inspect_loader_lab")),
           )
         }
       >
-        Preparar
+        Prepare
       </Button>
       <select
         className={styles.select}
@@ -299,7 +293,7 @@ function LoaderLab({ protonScript }: { protonScript: string }) {
         icon={Play}
         disabled={lab.busy || !protonScript || !consent}
         onClick={() =>
-          void lab.run(`Experimento ${mode}`, () =>
+          void lab.run(`Experiment ${mode}`, () =>
             call("run_loader_lab_experiment", {
               protonScript,
               mode,
@@ -308,7 +302,7 @@ function LoaderLab({ protonScript }: { protonScript: string }) {
           )
         }
       >
-        Ejecutar
+        Run
       </Button>
     </LabSection>
   );
@@ -327,7 +321,7 @@ function PrefixEntryLab() {
   const [consent, setConsent] = useState(false);
 
   async function loadHistory() {
-    const history = await lab.run("Historial", () =>
+    const history = await lab.run("History", () =>
       call("inspect_zzz_harmless_prefix_entry_history"),
     );
     const current = (
@@ -340,39 +334,39 @@ function PrefixEntryLab() {
 
   return (
     <LabSection
-      title="Entrada real al prefix"
-      description="Ejecuta un helper inocuo dentro del prefix real de ZZZ con copia de recuperación verificada."
+      title="Real prefix entry"
+      description="Run a harmless helper inside the real ZZZ prefix with a verified recovery backup."
       lab={lab}
     >
       <Button
         icon={Search}
         disabled={lab.busy}
         onClick={() =>
-          void lab.run("Cualificación del entorno", () =>
+          void lab.run("Environment qualification", () =>
             call("inspect_linux_environment_qualification"),
           )
         }
       >
-        Entorno
+        Environment
       </Button>
       <Button
         disabled={lab.busy}
         onClick={() =>
-          void lab.run("Cualificar ejecutor", () =>
+          void lab.run("Qualify executor", () =>
             call("qualify_zzz_prefix_executor"),
           )
         }
       >
-        Cualificar ejecutor
+        Qualify executor
       </Button>
       <Button disabled={lab.busy} onClick={() => void loadHistory()}>
-        Historial
+        History
       </Button>
       <Button
         disabled={lab.busy}
         onClick={() =>
           void lab
-            .run("Experimento creado", () =>
+            .run("Experiment created", () =>
               call("create_zzz_harmless_prefix_entry_experiment"),
             )
             .then((value) => {
@@ -382,14 +376,14 @@ function PrefixEntryLab() {
             })
         }
       >
-        Crear experimento
+        Create experiment
       </Button>
       <Button
         variant="outline"
         disabled={lab.busy || !experimentId}
         onClick={() =>
           void lab
-            .run("Revisión", () =>
+            .run("Review", () =>
               call("prepare_zzz_harmless_prefix_entry", {
                 experimentId: experimentId!,
               }),
@@ -399,7 +393,7 @@ function PrefixEntryLab() {
             )
         }
       >
-        Revisar
+        Review
       </Button>
       {review && (
         <div className={styles.review}>
@@ -412,7 +406,7 @@ function PrefixEntryLab() {
             disabled={lab.busy || !consent}
             onClick={() =>
               void lab
-                .run("Resultado de la entrada", () =>
+                .run("Entry result", () =>
                   call("run_zzz_harmless_prefix_entry", {
                     experimentId: review.experiment_id,
                     reviewToken: review.review_token,
@@ -425,7 +419,7 @@ function PrefixEntryLab() {
                 })
             }
           >
-            Ejecutar entrada
+            Run entry
           </Button>
         </div>
       )}

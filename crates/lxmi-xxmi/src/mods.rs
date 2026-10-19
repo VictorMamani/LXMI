@@ -173,7 +173,7 @@ impl ModLibrary {
             || manifest.files != files
             || fingerprint(&files)? != id
         {
-            return Err(error(ErrorCode::ChecksumMismatch, "El mod cambió desde su importación. Vuelve a importar el original con otro contenido."));
+            return Err(error(ErrorCode::ChecksumMismatch, "The mod changed since it was imported. Import the original again with different content."));
         }
         Ok(manifest)
     }
@@ -188,13 +188,13 @@ impl ModLibrary {
         {
             return Err(error(
                 ErrorCode::UnsupportedArchive,
-                "Extrae el RAR o 7z e importa su carpeta. Esta versión extrae únicamente ZIP.",
+                "Extract the RAR or 7z and import its directory. This version only extracts ZIP archives.",
             ));
         }
         if source.starts_with(self.store.root()) || self.store.root().starts_with(source) {
             return Err(error(
                 ErrorCode::UnsafePath,
-                "La fuente y el almacenamiento LXMI no pueden solaparse.",
+                "The source and LXMI storage must not overlap.",
             ));
         }
         // Open every source path component before creating private storage.
@@ -202,15 +202,13 @@ impl ModLibrary {
             .extension()
             .is_some_and(|e| e.eq_ignore_ascii_case("zip"));
         let input = if is_zip {
-            let parent = Directory::open_absolute(
-                source
-                    .parent()
-                    .ok_or_else(|| error(ErrorCode::UnsafePath, "ZIP sin padre."))?,
-            )?;
+            let parent = Directory::open_absolute(source.parent().ok_or_else(|| {
+                error(ErrorCode::UnsafePath, "The ZIP has no parent directory.")
+            })?)?;
             let base = source
                 .file_name()
                 .and_then(|n| n.to_str())
-                .ok_or_else(|| error(ErrorCode::UnsafePath, "Nombre ZIP inválido."))?;
+                .ok_or_else(|| error(ErrorCode::UnsafePath, "Invalid ZIP name."))?;
             parent.open_file(base)?;
             None
         } else {
@@ -230,7 +228,7 @@ impl ModLibrary {
                 if inventory(&payload, self.limits)? != files {
                     return Err(error(
                         ErrorCode::ChecksumMismatch,
-                        "La fuente cambió durante la copia.",
+                        "The source changed during copying.",
                     ));
                 }
             } else {
@@ -246,7 +244,7 @@ impl ModLibrary {
             if packages.entries(MAX_MODS)?.len() >= MAX_MODS {
                 return Err(error(
                     ErrorCode::LimitExceeded,
-                    "Límite de 256 mods por juego alcanzado.",
+                    "The limit of 256 mods per game has been reached.",
                 ));
             }
             let manifest = ModManifest {
@@ -283,7 +281,10 @@ impl ModLibrary {
         let _lock = LibraryLock::acquire(&dir)?;
         let mut state = read_profiles(&dir, game)?;
         if state.revision != expected_revision {
-            return Err(error(ErrorCode::Busy, "Los perfiles cambiaron en otra ventana. Actualiza la biblioteca y vuelve a guardar."));
+            return Err(error(
+                ErrorCode::Busy,
+                "Profiles changed in another window. Refresh the library and save again.",
+            ));
         }
         for id in ids {
             self.verify_in(&dir, game, id)?;
@@ -304,7 +305,7 @@ impl ModLibrary {
             if state.profiles.len() >= MAX_PROFILES {
                 return Err(error(
                     ErrorCode::LimitExceeded,
-                    "Límite de 64 perfiles por juego alcanzado.",
+                    "The limit of 64 profiles per game has been reached.",
                 ));
             }
             state.profiles.push(profile);
@@ -312,7 +313,7 @@ impl ModLibrary {
         state.revision = state
             .revision
             .checked_add(1)
-            .ok_or_else(|| error(ErrorCode::LimitExceeded, "Revisión agotada."))?;
+            .ok_or_else(|| error(ErrorCode::LimitExceeded, "Revision limit reached."))?;
         let temporary = temp_name();
         dir.write_new(&temporary, &encode(&state)?)?;
         // Paths are descriptor-anchored; rename replaces only our state file.
@@ -340,7 +341,7 @@ impl ModLibrary {
         if state.revision != expected_revision {
             return Err(error(
                 ErrorCode::Busy,
-                "El perfil cambió. Actualiza la biblioteca antes de prepararlo.",
+                "The profile changed. Refresh the library before preparing it.",
             ));
         }
         let profile = state
@@ -350,7 +351,7 @@ impl ModLibrary {
             .ok_or_else(|| {
                 error(
                     ErrorCode::NotFound,
-                    "Guarda el perfil antes de preparar su copia.",
+                    "Save the profile before preparing its copy.",
                 )
             })?;
         let mut manifests = vec![];
@@ -361,7 +362,7 @@ impl ModLibrary {
             for file in &manifest.files {
                 bytes = bytes
                     .checked_add(file.size)
-                    .ok_or_else(|| error(ErrorCode::LimitExceeded, "Perfil demasiado grande."))?;
+                    .ok_or_else(|| error(ErrorCode::LimitExceeded, "The profile is too large."))?;
                 expected_files.push(PackageFile {
                     relative_path: format!("lxmi_{id}/{}", file.relative_path),
                     ..file.clone()
@@ -374,7 +375,7 @@ impl ModLibrary {
         {
             return Err(error(
                 ErrorCode::LimitExceeded,
-                "La selección supera los límites de un perfil preparado.",
+                "The selection exceeds the prepared profile limits.",
             ));
         }
         expected_files.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
@@ -406,7 +407,7 @@ impl ModLibrary {
             {
                 return Err(error(
                     ErrorCode::ChecksumMismatch,
-                    "La copia preparada cambió. Se conserva para revisión; no se sobrescribe.",
+                    "The prepared copy changed. It is retained for review and will not be overwritten.",
                 ));
             }
             return Ok(report);
@@ -424,7 +425,7 @@ impl ModLibrary {
             if inventory(&mods, profile_limits(self.limits))? != report.files {
                 return Err(error(
                     ErrorCode::ChecksumMismatch,
-                    "Los mods cambiaron durante la preparación.",
+                    "The mods changed during preparation.",
                 ));
             }
             stage.write_new("lxmi-profile.json", &encode(&report)?)?;
@@ -455,10 +456,7 @@ fn read_profiles(dir: &Directory, game: &str) -> Result<ProfileState> {
     }
     let state: ProfileState = decode(&dir.read_file("profiles.json", MAX_METADATA)?)?;
     if state.schema_version != 1 || state.game_id != game || state.profiles.len() > MAX_PROFILES {
-        return Err(error(
-            ErrorCode::InvalidMetadata,
-            "Estado de perfiles inválido.",
-        ));
+        return Err(error(ErrorCode::InvalidMetadata, "Invalid profile state."));
     }
     let mut seen = HashSet::new();
     for profile in &state.profiles {
@@ -467,7 +465,7 @@ fn read_profiles(dir: &Directory, game: &str) -> Result<ProfileState> {
         if !seen.insert(profile.name.to_lowercase()) {
             return Err(error(
                 ErrorCode::InvalidMetadata,
-                "Nombres de perfil duplicados.",
+                "Duplicate profile names.",
             ));
         }
     }
@@ -499,7 +497,7 @@ pub(crate) fn copy_file_as(
     if copied != file.size {
         return Err(error(
             ErrorCode::ChecksumMismatch,
-            "El archivo cambió durante la copia.",
+            "The file changed during copying.",
         ));
     }
     output
@@ -542,7 +540,7 @@ fn validate_mod_files(files: &[PackageFile]) -> Result<()> {
             {
                 return Err(error(
                     ErrorCode::UnsafePath,
-                    "El mod contiene nombres de archivo ambiguos o reservados en Windows.",
+                    "The mod contains ambiguous or Windows-reserved filenames.",
                 ));
             }
         }
@@ -564,7 +562,7 @@ fn validate_mod_files(files: &[PackageFile]) -> Result<()> {
     if !has_ini && !shader_pack {
         return Err(error(
             ErrorCode::InvalidPackage,
-            "Selecciona un mod con INI o un paquete de reemplazos de shaders en ShaderFixes.",
+            "Select a mod with an INI or a shader replacement package in ShaderFixes.",
         ));
     }
     if files.iter().any(|f| {
@@ -574,7 +572,7 @@ fn validate_mod_files(files: &[PackageFile]) -> Result<()> {
                 .any(|x| e.eq_ignore_ascii_case(x))
         })
     }) {
-        return Err(error(ErrorCode::InvalidPackage, "Esta biblioteca admite mods con INI y recursos. Importa los ejecutables y DLL del runtime desde la sección XXMI."));
+        return Err(error(ErrorCode::InvalidPackage, "This library accepts mods with INI files and resources. Import runtime executables and DLLs from the XXMI section."));
     }
     Ok(())
 }
@@ -583,7 +581,7 @@ fn validate_game(game: &str) -> Result<()> {
     if !matches!(game, "wuthering-waves" | "zenless-zone-zero") {
         return Err(error(
             ErrorCode::WrongGameIntegration,
-            "Selecciona Wuthering Waves o Zenless Zone Zero.",
+            "Select Wuthering Waves or Zenless Zone Zero.",
         ));
     }
     Ok(())
@@ -594,10 +592,7 @@ fn validate_id(id: &str) -> Result<()> {
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
     {
-        return Err(error(
-            ErrorCode::UnsafePath,
-            "Identificador de mod inválido.",
-        ));
+        return Err(error(ErrorCode::UnsafePath, "Invalid mod identifier."));
     }
     Ok(())
 }
@@ -605,7 +600,7 @@ fn validate_ids(ids: &[String]) -> Result<()> {
     if ids.len() > MAX_MODS {
         return Err(error(
             ErrorCode::LimitExceeded,
-            "Demasiados mods en el perfil.",
+            "Too many mods in the profile.",
         ));
     }
     let mut seen = HashSet::new();
@@ -614,7 +609,7 @@ fn validate_ids(ids: &[String]) -> Result<()> {
         if !seen.insert(id) {
             return Err(error(
                 ErrorCode::InvalidMetadata,
-                "Mod duplicado en el perfil.",
+                "Duplicate mod in the profile.",
             ));
         }
     }
@@ -624,7 +619,7 @@ fn validate_name(name: &str) -> Result<()> {
     if name.trim().is_empty() || name.len() > 100 || name.chars().any(char::is_control) {
         return Err(error(
             ErrorCode::InvalidMetadata,
-            "Escribe un nombre de 1 a 100 bytes, sin caracteres de control.",
+            "Enter a name between 1 and 100 bytes without control characters.",
         ));
     }
     Ok(())
@@ -645,7 +640,7 @@ fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>> {
     if bytes.len() as u64 > MAX_METADATA {
         return Err(error(
             ErrorCode::LimitExceeded,
-            "El inventario o los perfiles superan el límite de metadata.",
+            "The inventory or profiles exceed the metadata limit.",
         ));
     }
     Ok(bytes)
@@ -672,7 +667,7 @@ impl LibraryLock {
         if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
             return Err(error(
                 ErrorCode::Busy,
-                "La biblioteca está ocupada. Espera a que termine la otra operación.",
+                "The library is busy. Wait for the other operation to finish.",
             ));
         }
         Ok(Self { _file: file })

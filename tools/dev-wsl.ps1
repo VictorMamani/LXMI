@@ -16,10 +16,10 @@ function Test-Vite {
 # Reuse a Vite already running; otherwise start one and stop it on exit.
 $vite = $null
 if (-not (Test-Vite)) {
-  Write-Host "Iniciando Vite en $devUrl..."
+  Write-Host "Starting Vite at $devUrl..."
   $vite = Start-Process npm.cmd -ArgumentList "run", "dev" -WorkingDirectory $desktop -PassThru -WindowStyle Minimized
   for ($i = 0; $i -lt 60 -and -not (Test-Vite); $i++) { Start-Sleep -Milliseconds 500 }
-  if (-not (Test-Vite)) { throw "Vite no respondió en $devUrl" }
+  if (-not (Test-Vite)) { throw "Vite did not respond at $devUrl" }
 }
 
 $wslRepo = (wsl -e wslpath -a ($repo -replace '\\', '/')).Trim()

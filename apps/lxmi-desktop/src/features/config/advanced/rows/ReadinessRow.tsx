@@ -20,19 +20,19 @@ export function ReadinessRow() {
 
   return (
     <DiagnosticRow
-      title="Preparación de lanzamiento"
+      title="Launch readiness"
       status={
         data && (
           <StatusDot status={blockers ? "warn" : "ok"} size="sm">
-            {blockers ? plural(blockers, "bloqueo") : "Sin bloqueos"}
+            {blockers ? plural(blockers, "bloqueo") : "No blockers"}
           </StatusDot>
         )
       }
       summary={
         readiness.error ??
         (data
-          ? `${pending ? plural(pending, "requisito pendiente", "requisitos pendientes") : "Requisitos cumplidos"} · ${data.selected_game_runtime ? `contexto Steam/${data.selected_game_runtime}` : "runtime de Steam sin seleccionar"}`
-          : "Evaluando…")
+          ? `${pending ? plural(pending, "pending requirement", "pending requirements") : "Requirements met"} · ${data.selected_game_runtime ? `Steam context/${data.selected_game_runtime}` : "no Steam runtime selected"}`
+          : "Evaluating…")
       }
       action={
         <Button
@@ -40,19 +40,19 @@ export function ReadinessRow() {
           disabled={readiness.loading}
           onClick={() => void readiness.reload().catch(() => {})}
         >
-          {readiness.loading ? "Evaluando…" : "Evaluar"}
+          {readiness.loading ? "Evaluating…" : "Evaluate"}
         </Button>
       }
     >
       <Facts
         items={[
-          ["Decisión", data?.decision],
+          ["Decision", data?.decision],
           ...(data?.requirements.map((r): [string, string] => [
             r.id.replaceAll("_", " "),
             `${r.state} · ${r.evidence}`,
           ]) ?? []),
-          ["Bloqueos", data && (data.blockers.join(" · ") || "Ninguno")],
-          ["Desconocidos", data && (data.unknowns.join(" · ") || "Ninguno")],
+          ["Blockers", data && (data.blockers.join(" · ") || "None")],
+          ["Unknowns", data && (data.unknowns.join(" · ") || "None")],
         ]}
       />
     </DiagnosticRow>
