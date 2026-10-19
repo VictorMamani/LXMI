@@ -6,9 +6,11 @@ import styles from "./LaunchConsentDialog.module.css";
 
 /** Shown before the first «Play with mods»: what happens and the user's risk. */
 export function LaunchConsentDialog({
+  experimental,
   onAccept,
   onClose,
 }: {
+  experimental: boolean;
   onAccept: () => void;
   onClose: () => void;
 }) {
@@ -16,7 +18,9 @@ export function LaunchConsentDialog({
   return (
     <Dialog
       eyebrow="Before playing with mods"
-      title="How mods are loaded"
+      title={
+        experimental ? "Experimental WWMI Direct Inject" : "How mods are loaded"
+      }
       onClose={onClose}
       width={520}
       actions={
@@ -33,16 +37,40 @@ export function LaunchConsentDialog({
         </>
       }
     >
-      <p>
-        LXMI opens the game through Steam and, once HoYoPlay is running,
-        prepares the official XXMI hook. For a few seconds, HoYoPlay also
-        receives the DLL and rejects it. The game installation and Steam are not
-        modified.
-      </p>
-      <p>
-        Mods are third-party content in an online game: using them may violate
-        the game terms. The decision and risk are yours.
-      </p>
+      {experimental ? (
+        <>
+          <p>
+            LXMI opens Wuthering Waves through Steam with -dx11, waits for the
+            game process, and loads WWMI using the official Direct Inject
+            method. The game installation, Steam, and the Proton prefix are not
+            modified.
+          </p>
+          <p>
+            Gameplay was tested with dwproton 11.0-14 and DXVK Sarek. In Steam
+            launch options, use <code>PROTON_DXVK_SAREK=1 %command%</code>. With
+            this Proton version, the default DXVK crashed at about 75% loading.
+            Other setups remain unverified.
+          </p>
+          <p>
+            DLL injection in an online game with ACE anti-cheat may be detected
+            and have account consequences. Mod loading and account safety are
+            not guaranteed. Use test accounts only.
+          </p>
+        </>
+      ) : (
+        <>
+          <p>
+            LXMI opens the game through Steam and, once HoYoPlay is running,
+            prepares the official XXMI hook. For a few seconds, HoYoPlay also
+            receives the DLL and rejects it. The game installation and Steam are
+            not modified.
+          </p>
+          <p>
+            Mods are third-party content in an online game: using them may
+            violate the game terms. The decision and risk are yours.
+          </p>
+        </>
+      )}
       <label className={styles.consent}>
         <input
           type="checkbox"

@@ -10,11 +10,10 @@ import {
 import { call } from "../api/client";
 import { errorMessage } from "../api/errors";
 import type { LaunchStatus } from "../api/types";
-import { launchStepIndex } from "../domain/launch";
+import { launchConsentKey, launchStepIndex } from "../domain/launch";
 import { readStored, writeStored } from "../lib/storage";
 
 const POLL_MS = 1000;
-const CONSENT_KEY = "lxmi.modLaunchAcknowledged.v1";
 const lastLaunchKey = (gameId: string) => `lxmi.lastModLaunch.${gameId}`;
 
 export function readLastLaunch(gameId: string): number | null {
@@ -61,7 +60,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
         const next = await call("game_with_mods_status");
         if (cancelled) return;
         setStatus(next);
-        const index = next ? launchStepIndex(next.phase) : -1;
+        const index = next ? launchStepIndex(next.game_id, next.phase) : -1;
         if (index >= 0) setLastReached(index);
         if (next && !next.finished) timer = window.setTimeout(poll, POLL_MS);
       } catch (reason) {
@@ -134,7 +133,7 @@ export function useModLaunch(gameId: string) {
     busyElsewhere:
       status !== null && !status.finished && status.game_id !== gameId,
     start: () => session.start(gameId),
-    consentGiven: () => readStored(CONSENT_KEY) === "yes",
-    giveConsent: () => writeStored(CONSENT_KEY, "yes"),
+    consentGiven: () => readStored(launchConsentKey(gameId)) === "yes",
+    giveConsent: () => writeStored(launchConsentKey(gameId), "yes"),
   };
 }

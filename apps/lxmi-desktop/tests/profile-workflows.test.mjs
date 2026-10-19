@@ -7,6 +7,13 @@ globalThis.isTauri = true;
 const { mockTransport } = await import("../src/api/mock/mockTransport.ts");
 const { resolveSources } = await import("../src/domain/runtime.ts");
 const { sameModSelection } = await import("../src/domain/mods.ts");
+const {
+  launchConsentKey,
+  launchLauncher,
+  launchStepStates,
+  launchStepIndex,
+  launchStepsFor,
+} = await import("../src/domain/launch.ts");
 const { updateRuntime } = await import("../src/services/runtimeUpdate.ts");
 const { saveAndApplyProfile } =
   await import("../src/services/profileActivation.ts");
@@ -107,4 +114,43 @@ test("mod identity comparison ignores ordering and detects equal-count replaceme
   assert.equal(sameModSelection(["a", "b"], ["b", "a"]), true);
   assert.equal(sameModSelection(["a", "b"], ["a", "c"]), false);
   assert.equal(sameModSelection(["a"], []), false);
+});
+
+test("WWMI has experimental runtime metadata and a separate acknowledgement from the existing ZZZ hook", async () => {
+  const wwmi = await mockTransport("inspect_game_mod_runtime", {
+    gameId: "wuthering-waves",
+    importerId: null,
+    librariesId: null,
+  });
+  assert.equal(wwmi.launch_experimental, true);
+  assert.equal((await inspect()).launch_experimental, false);
+  // Keep existing ZZZ acknowledgement; it must never acknowledge Direct Inject.
+  assert.equal(launchConsentKey(gameId), "lxmi.modLaunchAcknowledged.v1");
+  assert.notEqual(
+    launchConsentKey("wuthering-waves"),
+    launchConsentKey(gameId),
+  );
+  assert.equal(launchLauncher("wuthering-waves"), "Wuthering Waves");
+  assert.equal(launchLauncher(gameId), "HoYoPlay");
+});
+
+test("a failed Direct Inject launch keeps the reached step failed rather than reporting a loaded module", () => {
+  assert.deepEqual(
+    launchStepStates({ game_id: "wuthering-waves", phase: "failed" }, 3),
+    ["done", "done", "done", "failed", "pending", "pending"],
+  );
+});
+
+test("WWMI stages its loader before Steam starts the game while ZZZ keeps its launcher-first steps", () => {
+  const wuwa = "wuthering-waves";
+  assert.equal(launchStepIndex(wuwa, "arming"), 1);
+  assert.equal(launchStepIndex(wuwa, "opening_launcher"), 2);
+  assert.equal(launchStepIndex(gameId, "opening_launcher"), 1);
+  assert.equal(launchStepIndex(gameId, "arming"), 2);
+  assert.equal(launchStepsFor(wuwa)[3].label, "Injecting WWMI");
+  assert.equal(launchStepsFor(gameId)[3].label, "Press 'Play' in the launcher");
+  assert.deepEqual(
+    launchStepStates({ game_id: wuwa, phase: "opening_launcher" }, 2),
+    ["done", "done", "current", "pending", "pending", "pending"],
+  );
 });

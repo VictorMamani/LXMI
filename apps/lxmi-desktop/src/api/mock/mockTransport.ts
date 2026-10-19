@@ -16,6 +16,7 @@ import type {
   XxmiPackage,
 } from "../types";
 import { initialLibraries, initialPackages, latestReleases } from "./fixtures";
+import { launchLauncher } from "../../domain/launch";
 
 type Selection = RuntimeStatus["selection"];
 type Handlers = {
@@ -152,6 +153,7 @@ function runtimeStatus(
     applied_profile: structuredClone(appliedProfiles[gameId]),
     launch_with_mods_available: ready,
     launch_blockers: ready ? [] : ["Apply a profile before playing with mods."],
+    launch_experimental: gameId === "wuthering-waves",
   };
 }
 
@@ -163,12 +165,25 @@ const LAUNCH_TIMELINE: LaunchPhase[] = [
   "checking_stability",
   "running",
 ];
+/** Wuthering Waves stages the loader before Steam starts the game. */
+const STAGED_TIMELINE: LaunchPhase[] = [
+  "preparing",
+  "arming",
+  "opening_launcher",
+  "waiting_for_play",
+  "checking_stability",
+  "running",
+];
 const LAUNCH_STEP_MS = 2200;
 
 function currentLaunch(): LaunchStatus | null {
   if (!launch || launch.status.finished) return launch?.status ?? null;
   const step = Math.floor((Date.now() - launch.startedAt) / LAUNCH_STEP_MS);
-  const phase = LAUNCH_TIMELINE[Math.min(step, LAUNCH_TIMELINE.length - 1)];
+  const timeline =
+    launch.status.game_id === "wuthering-waves"
+      ? STAGED_TIMELINE
+      : LAUNCH_TIMELINE;
+  const phase = timeline[Math.min(step, timeline.length - 1)];
   launch.status = {
     ...launch.status,
     phase,
@@ -176,8 +191,12 @@ function currentLaunch(): LaunchStatus | null {
     mods_loaded: step >= 4,
     message:
       phase === "waiting_for_play"
-        ? "Press 'Play' in HoYoPlay to continue."
-        : "Preparing to load mods…",
+        ? launch.status.game_id === "wuthering-waves"
+          ? "Game detected. Attaching the loader and injecting WWMI…"
+          : `Press 'Play' in ${launchLauncher(launch.status.game_id)} to continue.`
+        : phase === "running"
+          ? "The game is running. The mod module is loaded; LXMI does not verify the effect of each mod."
+          : "Preparing to load mods…",
   };
   return launch.status;
 }

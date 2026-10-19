@@ -40,6 +40,28 @@ const DESKTOP_ENV: [&str; 11] = [
 /// HookLibrary fails with 300 (hook isolation fixture, 2026-10-15).
 const DLL_OVERRIDES: &str = "d3d11,d3d10core,d3d9,dxgi,d3d12,d3d12core=n";
 
+/// How the helper gets the importer into the game. Chosen per game by the caller.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoadMode {
+    /// ZZZ, validated on Steam + Proton: global hook installed before the game exists.
+    Hook,
+    /// WWMI upstream default since v2.2.0: `Inject` on the bound game PID. Experimental.
+    DirectInject,
+}
+
+impl LoadMode {
+    /// Helper verb; the helper rejects anything else.
+    pub fn helper_verb(self) -> &'static str {
+        match self {
+            Self::Hook => "hook-wait",
+            Self::DirectInject => "inject-wait",
+        }
+    }
+}
+
+/// Importer folders the helper accepts. Anything else is refused before Proton starts.
+pub const IMPORTER_FOLDERS: &[&str] = &["ZZMI", "WWMI"];
+
 #[derive(Debug, Clone)]
 pub struct ModLaunchTarget {
     pub game_id: String,
@@ -49,6 +71,13 @@ pub struct ModLaunchTarget {
     pub launcher_executable: PathBuf,
     pub compat_data: PathBuf,
     pub steam_root: PathBuf,
+    /// Importer folder in the launch copy: `ZZMI` or `WWMI`. Fixed by the caller's table.
+    pub integration_folder: &'static str,
+    /// Launcher name shown in messages, e.g. «HoYoPlay» or «Wuthering Waves».
+    pub launcher_label: &'static str,
+    /// Extra arguments for `steam -applaunch`, e.g. `-dx11` for WWMI.
+    pub launch_arguments: &'static [&'static str],
+    pub load_mode: LoadMode,
 }
 
 pub struct SteamModLaunchHost {
@@ -58,6 +87,7 @@ pub struct SteamModLaunchHost {
     helper: Vec<u8>,
     uid: u32,
     launch_dir: Option<PathBuf>,
+    planned: Option<SteamProcessContext>,
 }
 
 impl SteamModLaunchHost {
@@ -74,7 +104,14 @@ impl SteamModLaunchHost {
             helper,
             uid: unsafe { libc::getuid() },
             launch_dir: None,
+            planned: None,
         }
+    }
+    /// Arms the loader with this Steam context before Steam starts the game (Direct
+    /// Inject for games without a launcher to wait in). Built from Steam's configuration.
+    pub fn with_planned_context(mut self, context: SteamProcessContext) -> Self {
+        self.planned = Some(context);
+        self
     }
     fn query(&self, executable: &Path) -> ProcessQuery {
         ProcessQuery {
@@ -117,11 +154,16 @@ impl LaunchHost for SteamModLaunchHost {
         )
     }
 
+    fn launcher_label(&self) -> String {
+        self.target.launcher_label.into()
+    }
+
     fn request_steam_launch(&self) -> Result<(), String> {
-        // Fixed AppID from discovery, direct argv, no shell or URI.
+        // Fixed AppID and arguments from the caller's table, direct argv, no shell or URI.
         let mut child = Command::new("steam")
             .arg("-applaunch")
             .arg(self.target.steam_app_id.to_string())
+            .args(self.target.launch_arguments)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -141,19 +183,26 @@ impl LaunchHost for SteamModLaunchHost {
             .launch_dir
             .clone()
             .ok_or("The launch copy is not prepared.")?;
-        spawn_helper_in(&dir, &self.target, launcher)
+        let gate = self.planned.is_some().then(|| dir.join(RELEASE_FILE));
+        spawn_helper_in(&dir, &self.target, launcher, gate)
     }
 
     fn pause(&self, duration: Duration) {
         std::thread::sleep(duration);
     }
+
+    fn planned_context(&self) -> Option<SteamProcessContext> {
+        self.planned.clone()
+    }
 }
 
-/// Starts `LXMI Loader.exe hook-wait` from `dir` inside the launcher's Proton/SLR.
+/// Starts `LXMI Loader.exe <verb>` from `dir` inside the launcher's Proton/SLR. With a
+/// `gate` the container starts now but Proton waits until `release()` creates that file.
 fn spawn_helper_in(
     dir: &Path,
     target: &ModLaunchTarget,
     launcher: &SteamProcessContext,
+    gate: Option<PathBuf>,
 ) -> Result<Box<dyn HelperProcess>, String> {
     let entry = launcher.runtime_dir.join("_v2-entry-point");
     let proton = launcher.proton_dir.join("proton");
@@ -192,16 +241,7 @@ fn spawn_helper_in(
     ] {
         env.push((key.into(), value.to_os_string()));
     }
-    let mut run: Vec<OsString> = vec![
-        entry.into(),
-        "--verb=run".into(),
-        "--".into(),
-        proton.into(),
-        "runinprefix".into(),
-        dir.join(HELPER_NAME).into(),
-        "hook-wait".into(),
-        windows_path(&target.game_executable)?.into(),
-    ];
+    let mut run = helper_run_arguments(&entry, &proton, dir, target, gate.as_deref())?;
 
     // Ubuntu's apparmor_restrict_unprivileged_userns denies the container's user
     // namespace to unprofiled processes such as this app (bwrap "setting up uid
@@ -278,8 +318,50 @@ fn spawn_helper_in(
         lines: rx,
         group,
         stderr_path,
+        gate,
     }))
 }
+
+/// Argument vector for `SteamLinuxRuntime -- [gate] proton runinprefix <helper> <verb> <game> <folder>`.
+/// Every value is fixed by the caller's table except the game path, which is canonicalized.
+pub(crate) fn helper_run_arguments(
+    entry: &Path,
+    proton: &Path,
+    dir: &Path,
+    target: &ModLaunchTarget,
+    gate: Option<&Path>,
+) -> Result<Vec<OsString>, String> {
+    if !IMPORTER_FOLDERS.contains(&target.integration_folder) {
+        return Err("Importer folder is not allowed.".into());
+    }
+    let mut run: Vec<OsString> = vec![entry.into(), "--verb=run".into(), "--".into()];
+    if let Some(gate) = gate {
+        run.extend([
+            "/bin/sh".into(),
+            "-c".into(),
+            STAGE_GATE.into(),
+            "sh".into(),
+        ]);
+        run.push(gate.into());
+    }
+    run.extend([
+        proton.into(),
+        "runinprefix".into(),
+        dir.join(HELPER_NAME).into(),
+        target.load_mode.helper_verb().into(),
+        windows_path(&target.game_executable)?.into(),
+        target.integration_folder.into(),
+    ]);
+    Ok(run)
+}
+
+/// File whose creation releases a staged loader.
+const RELEASE_FILE: &str = "loader-release";
+
+/// Runs inside the container, before Proton: announces itself, waits (about 5 minutes at
+/// most) for the release file, then becomes Proton. No Wine process exists until then,
+/// so Steam's `waitforexitandrun` never waits for it.
+const STAGE_GATE: &str = r#"printf '{"status":"loader_staged"}\n'; i=0; while [ ! -e "$1" ]; do i=$((i+1)); [ "$i" -gt 6000 ] && exit 3; sleep 0.05; done; shift; exec "$@""#;
 
 const GROUP_WRAPPER: &str = r#"printf '{"status":"launch_group","pgid":%d}\n' "$$"; exec "$@""#;
 
@@ -342,6 +424,8 @@ struct SteamHelper {
     /// Process group of the helper tree; 0 until the wrapper announces it.
     group: Arc<AtomicI32>,
     stderr_path: PathBuf,
+    /// Release file of a staged loader.
+    gate: Option<PathBuf>,
 }
 
 impl HelperProcess for SteamHelper {
@@ -374,6 +458,17 @@ impl HelperProcess for SteamHelper {
     fn exit_detail(&mut self) -> Option<String> {
         let bytes = fs::read(&self.stderr_path).ok()?;
         stderr_detail(&String::from_utf8_lossy(&bytes))
+    }
+    fn release(&mut self) -> Result<(), String> {
+        let Some(gate) = &self.gate else {
+            return Ok(());
+        };
+        fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(gate)
+            .map(drop)
+            .map_err(|e| format!("Could not release the loader: {e}"))
     }
 }
 
@@ -417,6 +512,10 @@ mod tests {
             launcher_executable: var("LXMI_FIXTURE_TARGET"),
             compat_data: var("LXMI_FIXTURE_COMPAT"),
             steam_root: var("LXMI_FIXTURE_STEAM"),
+            integration_folder: "ZZMI",
+            launcher_label: "fixture",
+            launch_arguments: &[],
+            load_mode: super::LoadMode::Hook,
         };
         let launcher = crate::context::SteamProcessContext {
             pid: 0,
@@ -426,7 +525,7 @@ mod tests {
             runtime_dir: var("LXMI_FIXTURE_RUNTIME"),
             steam_client_dir: None,
         };
-        let mut helper = super::spawn_helper_in(&dir, &target, &launcher).unwrap();
+        let mut helper = super::spawn_helper_in(&dir, &target, &launcher, None).unwrap();
         let (mut hooked, mut armed) = (None, false);
         let started = Instant::now();
         while !armed && started.elapsed() < Duration::from_secs(180) {
@@ -468,6 +567,102 @@ mod tests {
             "fixture: hook=0 armed=true cancelled_in_ms={}",
             stopped.elapsed().as_millis()
         );
+    }
+
+    fn target(
+        mode: super::LoadMode,
+        folder: &'static str,
+        game: &std::path::Path,
+    ) -> super::ModLaunchTarget {
+        super::ModLaunchTarget {
+            game_id: "test".into(),
+            steam_app_id: 1,
+            game_executable: game.to_path_buf(),
+            launcher_executable: game.to_path_buf(),
+            compat_data: game.to_path_buf(),
+            steam_root: game.to_path_buf(),
+            integration_folder: folder,
+            launcher_label: "test",
+            launch_arguments: &[],
+            load_mode: mode,
+        }
+    }
+
+    #[test]
+    fn helper_arguments_keep_the_validated_zzz_hook_and_add_the_wwmi_inject_verb() {
+        let dir = std::env::temp_dir().join(format!("lxmi-args-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let game = dir.join("Client Win64 game.exe");
+        std::fs::write(&game, b"").unwrap();
+        let entry = std::path::Path::new("/entry");
+        let proton = std::path::Path::new("/proton");
+
+        let zzz = super::helper_run_arguments(
+            entry,
+            proton,
+            &dir,
+            &target(super::LoadMode::Hook, "ZZMI", &game),
+            None,
+        )
+        .unwrap();
+        assert!(zzz.iter().any(|a| a == "hook-wait"));
+        assert!(!zzz.iter().any(|a| a == "inject-wait"));
+        assert_eq!(zzz.last().unwrap(), "ZZMI");
+
+        let wwmi = super::helper_run_arguments(
+            entry,
+            proton,
+            &dir,
+            &target(super::LoadMode::DirectInject, "WWMI", &game),
+            None,
+        )
+        .unwrap();
+        assert!(wwmi.iter().any(|a| a == "inject-wait"));
+        assert!(!wwmi.iter().any(|a| a == "hook-wait"));
+        assert_eq!(wwmi.last().unwrap(), "WWMI");
+        // Path with spaces stays one argument.
+        let exe = wwmi
+            .iter()
+            .find(|a| a.to_string_lossy().contains("Client Win64"))
+            .unwrap();
+        assert!(exe.to_string_lossy().ends_with("Client Win64 game.exe"));
+        assert_eq!(zzz[3], "/proton", "no gate unless staged");
+
+        // Staged: the gate runs inside the container, before Proton, with the release path.
+        let release = dir.join(super::RELEASE_FILE);
+        let staged = super::helper_run_arguments(
+            entry,
+            proton,
+            &dir,
+            &target(super::LoadMode::DirectInject, "WWMI", &game),
+            Some(&release),
+        )
+        .unwrap();
+        let staged: Vec<String> = staged
+            .iter()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(staged[..4], ["/entry", "--verb=run", "--", "/bin/sh"]);
+        assert_eq!(staged[5], super::STAGE_GATE);
+        assert_eq!(staged[7], release.to_string_lossy());
+        assert_eq!(staged[8], "/proton");
+        assert_eq!(staged[9], "runinprefix");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn helper_arguments_refuse_unknown_importer_folders() {
+        let game = std::env::temp_dir();
+        let bad = target(super::LoadMode::Hook, "Unknown", &game);
+        assert!(super::helper_run_arguments(
+            std::path::Path::new("/e"),
+            std::path::Path::new("/p"),
+            &game,
+            &bad,
+            None
+        )
+        .is_err());
     }
 
     #[test]

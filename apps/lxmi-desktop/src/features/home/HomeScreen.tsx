@@ -124,6 +124,7 @@ export function HomeScreen() {
             canPlayWithout={Boolean(status?.installed)}
             playing={active}
             hint={hint}
+            experimental={Boolean(status?.launch_experimental)}
             onPlay={play}
             onPlayWithout={() => void playWithout()}
             onManage={() => openConfig("mods")}
@@ -133,6 +134,8 @@ export function HomeScreen() {
 
       {dialog === "consent" && (
         <LaunchConsentDialog
+          key={game.id}
+          experimental={Boolean(status?.launch_experimental)}
           onClose={() => setDialog(null)}
           onAccept={() => {
             launch.giveConsent();

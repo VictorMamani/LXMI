@@ -5,10 +5,26 @@
  * is neither the [Loader] target nor this loader. The hook is removed as soon as
  * the module is seen, by exact path, in the newly created target, or on timeout.
  *
- * Usage: "LXMI Loader.exe" hook-wait <Windows path of the game executable>
- * The module and 3dmloader.dll are derived from this image's directory; no PID,
- * DLL path or process name is accepted from argv. No privileges, suspension,
- * Inject, or process termination. One JSON object per stdout line.
+ * Usage: "LXMI Loader.exe" <hook-wait|inject-wait> <Windows path of the game executable> <ZZMI|WWMI>
+ *
+ * hook-wait   (ZZZ, validated): HookLibrary before the game exists, then unhook once the
+ *             module is seen in the new game process.
+ * inject-wait (WWMI, experimental): upstream Direct Inject. Waits for the exact game image
+ *             to appear, then calls the 3dmloader.dll `Inject` export with that PID. No hook.
+ *             Injection into a live process may be detected by the game's anti-cheat.
+ *             LXMI releases this helper into the game's wineserver once Steam started the
+ *             game (there is no launcher to wait in), so the game may be up to
+ *             INJECT_LATE_WINDOW_MS older than the helper; LXMI checked it was not running
+ *             before asking Steam. Anything older is still rejected.
+ *             The importer's own d3dcompiler_47.dll is injected first: d3d11.dll imports it
+ *             by name, and a DLL loaded by full path resolves imports from the game folder
+ *             and system32, which under Proton holds Wine's compiler (it cannot build the
+ *             importer's shaders). Once loaded, the import binds to it by name.
+ *
+ * The importer folder is one of two fixed names; the module (<folder>\d3d11.dll) and
+ * 3dmloader.dll are derived from this image's directory. No PID, DLL path or process
+ * name is accepted from argv. No privileges, suspension, or process termination.
+ * One JSON object per stdout line.
  */
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -21,9 +37,14 @@
 #define WAIT_FOR_GAME_MS 300000
 #define WAIT_FOR_MODULE_MS 30000
 #define HEALTH_WINDOW_MS 15000
+#define INJECT_LATE_WINDOW_MS 60000
 
 typedef int (__cdecl *HookLibraryFn)(LPCWSTR, HHOOK *, HANDLE *);
 typedef int (__cdecl *UnhookLibraryFn)(HHOOK *, HANDLE *);
+typedef int (__cdecl *InjectFn)(DWORD, LPCWSTR, int);
+
+/* Same default as upstream XXMI process_timeout (seconds) passed to Inject. */
+#define INJECT_TIMEOUT_S 15
 
 static HMODULE loader;
 static HHOOK hook;
@@ -97,8 +118,13 @@ static int module_present(DWORD pid, const wchar_t *path) {
 }
 
 int wmain(int argc, wchar_t **argv) {
-    if (argc != 3 || wcscmp(argv[1], L"hook-wait") || wcslen(argv[2]) >= CAP)
+    if (argc != 4 || wcslen(argv[2]) >= CAP) return fail("invalid_arguments", 0);
+    int inject = 0;
+    if (!wcscmp(argv[1], L"inject-wait")) inject = 1;
+    else if (wcscmp(argv[1], L"hook-wait")) return fail("invalid_arguments", 0);
+    if (wcscmp(argv[3], L"ZZMI") && wcscmp(argv[3], L"WWMI"))
         return fail("invalid_arguments", 0);
+    const wchar_t *importer_folder = argv[3];
     const wchar_t *expected_image = argv[2];
     const wchar_t *expected_base = wcsrchr(expected_image, L'\\');
     if (!expected_base || !expected_base[1]) return fail("invalid_arguments", 0);
@@ -106,30 +132,42 @@ int wmain(int argc, wchar_t **argv) {
     if (GetFileAttributesW(expected_image) == INVALID_FILE_ATTRIBUTES)
         return fail("game_executable_not_visible", GetLastError());
 
-    wchar_t root[CAP], module_path[CAP], loader_path[CAP];
+    wchar_t root[CAP], module_path[CAP], compiler_path[CAP], loader_path[CAP];
     DWORD length = GetModuleFileNameW(NULL, root, CAP);
     if (!length || length >= CAP || !wcsrchr(root, L'\\')) return fail("invalid_layout", 0);
     *wcsrchr(root, L'\\') = 0;
-    if (swprintf(module_path, CAP, L"%ls\\ZZMI\\d3d11.dll", root) < 0 ||
+    if (swprintf(module_path, CAP, L"%ls\\%ls\\d3d11.dll", root, importer_folder) < 0 ||
+        swprintf(compiler_path, CAP, L"%ls\\%ls\\d3dcompiler_47.dll", root, importer_folder) < 0 ||
         swprintf(loader_path, CAP, L"%ls\\3dmloader.dll", root) < 0)
         return fail("path_too_long", 0);
 
     loader = LoadLibraryExW(loader_path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
     if (!loader) return fail("loader_load_failed", GetLastError());
-    FARPROC hook_symbol = GetProcAddress(loader, "HookLibrary");
-    FARPROC unhook_symbol = GetProcAddress(loader, "UnhookLibrary");
-    if (!hook_symbol || !unhook_symbol) return fail("hook_exports_missing", 0);
-    HookLibraryFn hook_library = NULL;
-    memcpy(&hook_library, &hook_symbol, sizeof(hook_library));
-    memcpy(&unhook_library, &unhook_symbol, sizeof(unhook_library));
+    InjectFn inject_library = NULL;
+    unsigned long long armed_at = 0;
+    if (inject) {
+        FARPROC inject_symbol = GetProcAddress(loader, "Inject");
+        if (!inject_symbol) return fail("inject_export_missing", 0);
+        memcpy(&inject_library, &inject_symbol, sizeof(inject_library));
+        armed_at = now_filetime();
+        printf("{\"status\":\"armed_inject_waiting_for_new_game\",\"timeout_seconds\":%d}\n", WAIT_FOR_GAME_MS / 1000);
+        fflush(stdout);
+    } else {
+        FARPROC hook_symbol = GetProcAddress(loader, "HookLibrary");
+        FARPROC unhook_symbol = GetProcAddress(loader, "UnhookLibrary");
+        if (!hook_symbol || !unhook_symbol) return fail("hook_exports_missing", 0);
+        HookLibraryFn hook_library = NULL;
+        memcpy(&hook_library, &hook_symbol, sizeof(hook_library));
+        memcpy(&unhook_library, &unhook_symbol, sizeof(unhook_library));
 
-    unsigned long long armed_at = now_filetime();
-    int hooked = hook_library(module_path, &hook, &hook_mutex);
-    printf("{\"status\":\"hook_library_returned\",\"code\":%d}\n", hooked);
-    fflush(stdout);
-    if (hooked != 0) { unhook_library = NULL; return 1; }
-    printf("{\"status\":\"armed_hook_waiting_for_new_game\",\"timeout_seconds\":%d}\n", WAIT_FOR_GAME_MS / 1000);
-    fflush(stdout);
+        armed_at = now_filetime();
+        int hooked = hook_library(module_path, &hook, &hook_mutex);
+        printf("{\"status\":\"hook_library_returned\",\"code\":%d}\n", hooked);
+        fflush(stdout);
+        if (hooked != 0) { unhook_library = NULL; return 1; }
+        printf("{\"status\":\"armed_hook_waiting_for_new_game\",\"timeout_seconds\":%d}\n", WAIT_FOR_GAME_MS / 1000);
+        fflush(stdout);
+    }
 
     DWORD pid = 0, matches = 0;
     HANDLE target = NULL;
@@ -163,7 +201,10 @@ int wmain(int argc, wchar_t **argv) {
         Sleep(10);
     } while (GetTickCount() - started < WAIT_FOR_GAME_MS);
 
-    if (target && created <= armed_at) {
+    /* FILETIME counts 100 ns units. */
+    unsigned long long not_before = armed_at;
+    if (inject) not_before -= (unsigned long long)INJECT_LATE_WINDOW_MS * 10000ULL;
+    if (target && created <= not_before) {
         unhook(); CloseHandle(target);
         return fail("existing_game_rejected", 0);
     }
@@ -171,6 +212,19 @@ int wmain(int argc, wchar_t **argv) {
         unhook();
         if (target) CloseHandle(target);
         return fail(matches > 1 ? "ambiguous_target" : "game_not_started", 0);
+    }
+
+    if (inject) {
+        /* The importer's compiler first, so d3d11.dll's import binds to it (see header). */
+        int compiler = inject_library(pid, compiler_path, INJECT_TIMEOUT_S);
+        printf("{\"status\":\"compiler_inject_returned\",\"code\":%d}\n", compiler);
+        fflush(stdout);
+        if (compiler != 0) { CloseHandle(target); FreeLibrary(loader); return 1; }
+        /* Upstream Direct Inject: one Inject call for this bound PID. No hook exists. */
+        int code = inject_library(pid, module_path, INJECT_TIMEOUT_S);
+        printf("{\"status\":\"inject_returned\",\"code\":%d}\n", code);
+        fflush(stdout);
+        if (code != 0) { CloseHandle(target); FreeLibrary(loader); return 1; }
     }
 
     /* Same exact-path check as upstream WaitForInjection, bound to this PID. */
@@ -183,8 +237,10 @@ int wmain(int argc, wchar_t **argv) {
         Sleep(5);
     }
     unhook();
-    printf("{\"status\":\"game_observed\",\"windows_pid\":%lu,\"mods_module_present\":%d,\"process_age_ms\":%llu}\n",
-           pid, seen, (now_filetime() - created) / 10000);
+    /* Diagnostics only: whether the importer's own compiler is the one loaded (-1 hook mode). */
+    int compiler_present = inject ? module_present(pid, compiler_path) : -1;
+    printf("{\"status\":\"game_observed\",\"windows_pid\":%lu,\"mods_module_present\":%d,\"compiler_module_present\":%d,\"process_age_ms\":%llu}\n",
+           pid, seen, compiler_present, (now_filetime() - created) / 10000);
     fflush(stdout);
 
     int rc = 2;

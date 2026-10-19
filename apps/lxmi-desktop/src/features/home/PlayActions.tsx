@@ -11,6 +11,7 @@ export function PlayActions({
   canPlayWithout,
   playing,
   hint,
+  experimental,
   onPlay,
   onPlayWithout,
   onManage,
@@ -20,6 +21,7 @@ export function PlayActions({
   playing: boolean;
   /** Why mods cannot load, when that is the case. */
   hint: string | null;
+  experimental: boolean;
   onPlay: () => void;
   onPlayWithout: () => void;
   onManage: () => void;
@@ -68,6 +70,12 @@ export function PlayActions({
       <p className={styles.hint} data-warning={hint !== null || undefined}>
         {hint ?? "▲ play without mods"}
       </p>
+      {experimental && (
+        <p className={styles.hint} data-warning>
+          Experimental WWMI. Tested with dwproton 11.0-14. In Steam launch
+          options, use <code>PROTON_DXVK_SAREK=1 %command%</code>.
+        </p>
+      )}
     </div>
   );
 }

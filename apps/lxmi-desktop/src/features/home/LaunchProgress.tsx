@@ -3,8 +3,9 @@ import type { LaunchStatus } from "../../api/types";
 import { Button } from "../../components/Button";
 import { pad2 } from "../../domain/format";
 import {
-  launchSteps,
+  launchStepsFor,
   launchStepStates,
+  launchLauncher,
   type StepState,
 } from "../../domain/launch";
 import styles from "./LaunchProgress.module.css";
@@ -39,17 +40,23 @@ export function LaunchProgress({
   onRetry: () => void;
   onDismiss: () => void;
 }) {
+  const steps = launchStepsFor(status.game_id);
   const states = launchStepStates(status, lastReached);
   const reached = states.filter((s) => s !== "pending").length;
   const interrupted = status.phase === "failed" || status.phase === "cancelled";
   const cancellable = !status.finished && status.phase !== "checking_stability";
 
-  let note = "Do not close HoYoPlay";
+  let note = `Do not close ${launchLauncher(status.game_id)}`;
   if (interrupted) note = status.message;
-  else if (status.phase === "running") note = "Mods loaded. Enjoy the game!";
-  else if (status.phase === "waiting_for_play" && showQualityHint)
-    note =
-      "Modded characters: set Character Quality to High and disable High-Precision Animation.";
+  else if (
+    status.phase === "running" ||
+    status.phase === "waiting_for_play" ||
+    status.game_id === "wuthering-waves"
+  )
+    note = status.message;
+  if (status.phase === "waiting_for_play" && showQualityHint)
+    note +=
+      " Modded characters: set Character Quality to High and disable High-Precision Animation.";
 
   return (
     <section
@@ -66,7 +73,7 @@ export function LaunchProgress({
           {title(status)}
         </h2>
         <span className={styles.step}>
-          {pad2(reached)} / {pad2(launchSteps.length)}
+          {pad2(reached)} / {pad2(steps.length)}
         </span>
       </header>
 
@@ -77,7 +84,7 @@ export function LaunchProgress({
       </div>
 
       <ol className={styles.phases}>
-        {launchSteps.map((step, index) => {
+        {steps.map((step, index) => {
           const Icon = stepIcon[states[index]];
           return (
             <li

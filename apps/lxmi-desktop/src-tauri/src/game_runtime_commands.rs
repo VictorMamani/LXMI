@@ -16,6 +16,8 @@ pub struct GameModRuntimeStatus {
     pub applied_profile: Option<ModProfile>,
     pub launch_with_mods_available: bool,
     pub launch_blockers: Vec<String>,
+    /// True while gameplay validation covers only a limited setup (WWMI Direct Inject).
+    pub launch_experimental: bool,
 }
 
 fn context() -> Result<(SteamDiscoveryResult, ManagedStore)> {
@@ -96,7 +98,16 @@ pub async fn inspect_game_mod_runtime(
             .as_ref()
             .map(|current| profile_runtime_profile(&store, &game_id, &current.runtime_id))
             .transpose()?;
-        let launch_blockers = crate::mod_launch::launch_blockers(&game_id, &selection);
+        let mut launch_blockers = crate::mod_launch::launch_blockers(&game_id, &selection);
+        if let (true, true, Some(runtime)) = (
+            installed,
+            launch_blockers.is_empty(),
+            selected_runtime.as_ref(),
+        ) {
+            launch_blockers.extend(crate::mod_launch::runtime_blockers(
+                &discovery, &game_id, runtime,
+            ));
+        }
         Ok(GameModRuntimeStatus {
             game_id: game_id.clone(),
             installed,
@@ -113,6 +124,7 @@ pub async fn inspect_game_mod_runtime(
             base_runtime: base,
             selected_runtime,
             launch_with_mods_available: installed && launch_blockers.is_empty(),
+            launch_experimental: crate::mod_launch::launch_is_experimental(&game_id),
             launch_blockers,
             selection,
             applied_profile,
