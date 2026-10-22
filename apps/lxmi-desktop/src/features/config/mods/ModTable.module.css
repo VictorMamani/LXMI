@@ -54,6 +54,11 @@
   flex: none;
 }
 
+.kind {
+  width: 80px;
+  flex: none;
+}
+
 .number {
   width: 90px;
   flex: none;
@@ -102,6 +107,12 @@
 
 @media (max-width: 1080px) {
   .character {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .kind {
     display: none;
   }
 }

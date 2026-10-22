@@ -8,7 +8,10 @@ import type { CommandArgs, CommandName, CommandResult } from "../commands";
 import type {
   LaunchPhase,
   LaunchStatus,
+  ModDetails,
+  ModKind,
   ModLibrary,
+  ModManifest,
   ModProfile,
   ObservationSnapshot,
   PrefixPanel,
@@ -17,6 +20,7 @@ import type {
 } from "../types";
 import { initialLibraries, initialPackages, latestReleases } from "./fixtures";
 import { launchLauncher } from "../../domain/launch";
+import { characterOf } from "../../domain/mods";
 
 type Selection = RuntimeStatus["selection"];
 type Handlers = {
@@ -97,6 +101,39 @@ function fail(detail: string): never {
 
 function library(gameId: string): ModLibrary {
   return libraries[gameId] ?? fail(`Unknown game: ${gameId}`);
+}
+
+/** Ids whose previews were "generated", per game. */
+const generatedPreviews: Record<string, Set<string>> = {};
+
+/** Demo stand-in for INI analysis: the kind is guessed from the name. */
+function mockDetails(gameId: string, mod: ModManifest): ModDetails {
+  const name = mod.name.toLocaleLowerCase();
+  const kind: ModKind = /\b(hud|ui)\b/.test(name)
+    ? "ui"
+    : /paint|recolor/.test(name)
+      ? "texture"
+      : "model";
+  const generated = generatedPreviews[gameId]?.has(mod.id) ?? false;
+  return {
+    mod_id: mod.id,
+    kind,
+    character: kind === "ui" ? null : characterOf(mod.name),
+    previewable: kind === "model",
+    preview: !generated
+      ? "missing"
+      : kind === "model"
+        ? "ready"
+        : "unavailable",
+  };
+}
+
+/** A flat silhouette tinted per mod, in place of a rendered model. */
+function mockPreview(id: string, view: string): string {
+  const hue = [...id].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 360;
+  const light = view === "back" ? 38 : 58;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 640"><g fill="hsl(${hue} 55% ${light}%)"><circle cx="240" cy="110" r="52"/><path d="M168 178h144l40 210-36 6-20-120-8 330h-50l-6-210-6 210h-50l-8-330-20 120-36-6z"/></g></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 function packagesFor(kind: string) {
@@ -298,6 +335,24 @@ const handlers: Handlers = {
     else lib.profiles.push({ name, mod_ids: [...modIds] });
     lib.revision += 1;
     return structuredClone(lib);
+  },
+
+  list_mod_details: ({ gameId }) =>
+    library(gameId).mods.map((mod) => mockDetails(gameId, mod)),
+  generate_mod_preview: ({ gameId, modId }) => {
+    const mod = library(gameId).mods.find((m) => m.id === modId);
+    if (!mod) fail("The mod is not in the library.");
+    (generatedPreviews[gameId] ??= new Set()).add(modId);
+    return mockDetails(gameId, mod);
+  },
+  get_mod_preview: ({ gameId, modId, view }) => {
+    if (!generatedPreviews[gameId]?.has(modId))
+      fail("This mod has no preview yet.");
+    return mockPreview(modId, view);
+  },
+  clear_mod_previews: ({ gameId }) => {
+    delete generatedPreviews[gameId];
+    return null;
   },
 
   inspect_game_mod_runtime: ({ gameId, importerId, librariesId }) =>

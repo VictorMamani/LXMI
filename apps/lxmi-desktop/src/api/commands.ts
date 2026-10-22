@@ -4,12 +4,14 @@ import type {
   LaunchReadiness,
   LaunchStatus,
   LoaderLabMode,
+  ModDetails,
   ModLibrary,
   ModManifest,
   ObservationSnapshot,
   OfficialRelease,
   PrefixPanel,
   PrefixRecoveryAction,
+  PreviewView,
   ProtonRuntimeOption,
   RuntimeStatus,
   SteamScan,
@@ -60,6 +62,17 @@ export type Commands = {
     };
     result: ModLibrary;
   };
+  list_mod_details: { args: { gameId: string }; result: ModDetails[] };
+  generate_mod_preview: {
+    args: { gameId: string; modId: string };
+    result: ModDetails;
+  };
+  /** A PNG data URL. */
+  get_mod_preview: {
+    args: { gameId: string; modId: string; view: PreviewView };
+    result: string;
+  };
+  clear_mod_previews: { args: { gameId: string }; result: null };
 
   // Runtime and applied profile
   inspect_game_mod_runtime: { args: RuntimeArgs; result: RuntimeStatus };
