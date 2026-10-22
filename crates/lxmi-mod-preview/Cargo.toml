@@ -1,0 +1,10 @@
+[package]
+name = "lxmi-mod-preview"
+version = "0.1.0"
+edition = "2021"
+description = "Offline 3DMigoto mod classification and software-rendered model previews"
+
+[dependencies]
+png = "0.17"
+serde = { version = "1", features = ["derive"] }
+texture2ddecoder = "0.1.2"

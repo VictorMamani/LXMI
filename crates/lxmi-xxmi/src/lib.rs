@@ -44,8 +44,12 @@ pub use launch_readiness::{
     ZzmiGateComponentAssessment, ZzmiLaunchReadiness, ZzmiLaunchReadinessInput, ZzmiLoaderMode,
     ZzmiReadinessDecision, ZzmiReadinessRequirement, ZzmiRequirementState,
 };
+pub use lxmi_mod_preview::{ModInsight, ModKind, PreviewView};
 pub use model::*;
-pub use mods::{ModLibrary, ModLibrarySnapshot, ModManifest, ModProfile, PreparedModProfile};
+pub use mods::{
+    ModDetails, ModLibrary, ModLibrarySnapshot, ModManifest, ModProfile, PreparedModProfile,
+    PreviewState,
+};
 pub use package::{inspect_runtime, validate_directory, WWMI_REQUIRED_FILES, ZZMI_REQUIRED_FILES};
 pub use planning::{
     assess, assess_for_integration, integration_for_game, plan_installation,

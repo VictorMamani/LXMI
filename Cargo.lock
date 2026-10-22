@@ -2053,6 +2053,7 @@ version = "0.1.0"
 name = "lxmi-desktop"
 version = "0.8.7"
 dependencies = [
+ "base64 0.22.1",
  "getrandom 0.3.4",
  "libc",
  "lxmi-bridge",
@@ -2080,6 +2081,15 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "lxmi-mod-preview"
+version = "0.1.0"
+dependencies = [
+ "png 0.17.16",
+ "serde",
+ "texture2ddecoder",
 ]
 
 [[package]]
@@ -2122,6 +2132,7 @@ dependencies = [
  "base64 0.22.1",
  "libc",
  "lxmi-core",
+ "lxmi-mod-preview",
  "lxmi-proton",
  "lxmi-runtime",
  "lxmi-steam",
@@ -2573,6 +2584,12 @@ dependencies = [
  "smallvec",
  "windows-link",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pem-rfc7468"
@@ -4006,6 +4023,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fed54709c5b3a53d09bb1c113ea4f5ceafd1e772ddcb0030a82e1d56c087b08"
 dependencies = [
  "new_debug_unreachable",
+]
+
+[[package]]
+name = "texture2ddecoder"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "427ae8ec7f2f0fdd3146b77cfa44bea880caf066f7e55398a8467afe2645c832"
+dependencies = [
+ "paste",
 ]
 
 [[package]]
