@@ -1,11 +1,14 @@
 //! Local mod library. Originals and prepared profile snapshots are immutable.
 //! Preparation never deploys to a runtime, game or prefix and never reloads a game.
+mod previews;
+
 use crate::{
     archive::extract_zip,
     filesystem::{missing, Directory},
     package::{fingerprint, inventory},
     ErrorCode, ImportLimits, ManagedStore, PackageFile, Result, XxmiError,
 };
+pub use previews::{ModDetails, PreviewState};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{

@@ -20,6 +20,7 @@ lxmi-launch = { path = "../../../crates/lxmi-launch" }
 lxmi-proton = { path = "../../../crates/lxmi-proton" }
 lxmi-runtime = { path = "../../../crates/lxmi-runtime" }
 lxmi-steam = { path = "../../../crates/lxmi-steam" }
+base64 = "0.22"
 getrandom = "0.3"
 libc = "0.2"
 sha2 = "0.10"

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 lxmi-core = { path = "../lxmi-core" }
+lxmi-mod-preview = { path = "../lxmi-mod-preview" }
 lxmi-runtime = { path = "../lxmi-runtime" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

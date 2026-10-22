@@ -6,6 +6,7 @@ members = [
   "crates/lxmi-bridge-protocol",
   "crates/lxmi-core",
   "crates/lxmi-launch",
+  "crates/lxmi-mod-preview",
   "crates/lxmi-proton",
   "crates/lxmi-runtime",
   "crates/lxmi-xxmi",
@@ -18,4 +19,10 @@ tracing = "0.1"
 
 # Keep integrity checks usable for multi-gigabyte mod profiles during development.
 [profile.dev.package.sha2]
+opt-level = 3
+
+# Previews decode large textures and rasterize millions of pixels.
+[profile.dev.package.texture2ddecoder]
+opt-level = 3
+[profile.dev.package.lxmi-mod-preview]
 opt-level = 3

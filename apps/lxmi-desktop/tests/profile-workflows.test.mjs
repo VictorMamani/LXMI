@@ -154,3 +154,55 @@ test("WWMI stages its loader before Steam starts the game while ZZZ keeps its la
     ["done", "done", "current", "pending", "pending", "pending"],
   );
 });
+
+test("mods filter by detected kind, search matches the detected character, and only missing model previews are queued", async () => {
+  const { matchesKind, matchesQuery, pendingPreviews } =
+    await import("../src/domain/mods.ts");
+  const mod = (id, name) => ({ id, name, files: [] });
+  const details = (id, kind, preview, character = null) => ({
+    mod_id: id,
+    kind,
+    character,
+    previewable: kind === "model",
+    preview,
+  });
+  const mods = [mod("a", "Black outfit"), mod("b", "Clean HUD"), mod("c", "X")];
+  const byId = new Map([
+    ["a", details("a", "model", "missing", "Ellen")],
+    ["b", details("b", "ui", "missing")],
+    ["c", details("c", "shader", "unavailable")],
+  ]);
+  assert.ok(matchesQuery(mods[0], byId.get("a"), "ellen"));
+  assert.ok(!matchesQuery(mods[1], byId.get("b"), "ellen"));
+  assert.ok(matchesKind(byId.get("c"), "other"));
+  assert.ok(!matchesKind(undefined, "model"));
+  assert.ok(matchesKind(undefined, "all"));
+  assert.deepEqual(pendingPreviews(mods, byId), ["a"]);
+});
+
+test("demo previews are generated per mod and cleared per game", async () => {
+  const before = await mockTransport("list_mod_details", { gameId });
+  const model = before.find((d) => d.previewable);
+  assert.equal(model.preview, "missing");
+  await assert.rejects(
+    mockTransport("get_mod_preview", {
+      gameId,
+      modId: model.mod_id,
+      view: "thumbnail",
+    }),
+  );
+  const generated = await mockTransport("generate_mod_preview", {
+    gameId,
+    modId: model.mod_id,
+  });
+  assert.equal(generated.preview, "ready");
+  const url = await mockTransport("get_mod_preview", {
+    gameId,
+    modId: model.mod_id,
+    view: "front",
+  });
+  assert.match(url, /^data:image\//);
+  await mockTransport("clear_mod_previews", { gameId });
+  const after = await mockTransport("list_mod_details", { gameId });
+  assert.ok(after.every((d) => d.preview === "missing"));
+});

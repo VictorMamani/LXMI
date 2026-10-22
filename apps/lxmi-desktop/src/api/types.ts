@@ -19,6 +19,21 @@ export type ModManifest = {
 
 export type ModProfile = { name: string; mod_ids: string[] };
 
+/** What a mod replaces, detected from its INI files. */
+export type ModKind = "model" | "texture" | "ui" | "shader" | "other";
+export type PreviewView = "front" | "back" | "thumbnail";
+
+/** Optional insight about a mod; previews are generated on request. */
+export type ModDetails = {
+  mod_id: string;
+  kind: ModKind;
+  /** Best guess from the mod's section names, e.g. "Nicole". */
+  character: string | null;
+  /** A 3D model whose buffers were found. */
+  previewable: boolean;
+  preview: "missing" | "ready" | "unavailable";
+};
+
 export type ModLibrary = {
   game_id: string;
   mods: ModManifest[];

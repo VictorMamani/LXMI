@@ -1,0 +1,143 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 0 12px;
+  margin-bottom: 16px;
+}
+
+.filters {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--rf-faint);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--rf-muted);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color 120ms,
+    color 120ms;
+}
+
+.filter:hover:not(:disabled) {
+  color: var(--rf-text);
+}
+
+.filter[aria-pressed="true"] {
+  border-color: var(--rf-cyan);
+  color: var(--rf-cyan);
+  background: var(--rf-cyan-wash);
+}
+
+.filter:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.filter:focus-visible,
+.more:focus-visible {
+  outline: 1px solid var(--rf-cyan);
+  outline-offset: 2px;
+}
+
+.count {
+  font-size: 10.5px;
+  color: var(--rf-muted);
+}
+
+.previews {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.status {
+  font-size: 11.5px;
+  color: var(--rf-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status[data-running="true"] {
+  color: var(--rf-cyan);
+}
+
+.layouts {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--rf-faint);
+  border-radius: var(--radius-sm);
+}
+
+.layout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  border: 0;
+  border-radius: 1px;
+  background: none;
+  color: var(--rf-muted);
+  cursor: pointer;
+}
+
+.layout:hover {
+  color: var(--rf-text);
+}
+
+.layout[aria-pressed="true"] {
+  background: var(--rf-surface-2);
+  color: var(--rf-cyan);
+}
+
+.layout:focus-visible {
+  outline: 1px solid var(--rf-cyan);
+  outline-offset: 1px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--rf-text);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: none;
+  color: var(--rf-muted);
+  cursor: pointer;
+}
+
+.more:hover {
+  color: var(--rf-text);
+}

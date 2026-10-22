@@ -30,6 +30,8 @@ cd '$wslRepo'
 export CARGO_TARGET_DIR=`$HOME/.cache/lxmi-target CARGO_BUILD_JOBS=6
 ~/.cargo/bin/cargo run -p lxmi-desktop
 "@
+# A CRLF checkout puts carriage returns in the here-string, which bash rejects.
+$command = $command -replace "`r", ""
 
 try {
   wsl -e bash -lc $command

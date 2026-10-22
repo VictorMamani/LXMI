@@ -415,3 +415,86 @@ fn metadata_symlinks_are_rejected_without_writing_their_target() {
     );
     assert_eq!(fs::read(outside).unwrap(), b"sentinel");
 }
+
+fn model_source(f: &Fixture) -> PathBuf {
+    let path = f.0.join("model");
+    fs::create_dir_all(path.join("Meshes")).unwrap();
+    fs::write(
+        path.join("model.ini"),
+        "[TextureOverrideTestaBodyPosition]\r\nvb0 = ResourceTestaBodyPosition\r\n\
+         [TextureOverrideTestaBodyA]\r\nib = ResourceTestaBodyIB\r\ndrawindexed = 6, 0, 0\r\n\
+         [ResourceTestaBodyPosition]\r\nstride = 40\r\nfilename = Meshes\\TestaBodyPosition.buf\r\n\
+         [ResourceTestaBodyIB]\r\nformat = DXGI_FORMAT_R32_UINT\r\nfilename = Meshes\\TestaBodyA.ib\r\n",
+    )
+    .unwrap();
+    let mut vb = vec![];
+    for [x, z] in [[0.0f32, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]] {
+        for v in [x, 0.0, z, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0] {
+            vb.extend(f32::to_le_bytes(v));
+        }
+    }
+    fs::write(path.join("Meshes/TestaBodyPosition.buf"), vb).unwrap();
+    let ib: Vec<u8> = [0u32, 1, 2, 0, 2, 3]
+        .iter()
+        .flat_map(|i| i.to_le_bytes())
+        .collect();
+    fs::write(path.join("Meshes/TestaBodyA.ib"), ib).unwrap();
+    path
+}
+
+#[test]
+fn previews_are_optional_cached_and_removable() {
+    use lxmi_xxmi::{ModKind, PreviewState, PreviewView};
+    let f = Fixture::new();
+    let library = f.library();
+    assert!(library.mod_details(ZZZ).unwrap().is_empty());
+    let model = library
+        .import(ZZZ, "Testa outfit", &model_source(&f))
+        .unwrap();
+    let texture = library.import(ZZZ, "Skin", &f.source("skin")).unwrap();
+
+    let details = library.mod_details(ZZZ).unwrap();
+    let of = |id: &str| details.iter().find(|d| d.mod_id == id).unwrap().clone();
+    assert_eq!(of(&model.id).insight.kind, ModKind::Model);
+    assert_eq!(of(&model.id).insight.character.as_deref(), Some("Testa"));
+    assert_eq!(of(&model.id).preview, PreviewState::Missing);
+    assert!(!of(&texture.id).insight.previewable);
+
+    let generated = library.generate_mod_preview(ZZZ, &model.id).unwrap();
+    assert_eq!(generated.preview, PreviewState::Ready);
+    for view in PreviewView::ALL {
+        let png = library.mod_preview(ZZZ, &model.id, view).unwrap();
+        assert_eq!(&png[..4], b"\x89PNG");
+    }
+    // Cached: a second request does not render again or fail.
+    assert_eq!(
+        library
+            .generate_mod_preview(ZZZ, &model.id)
+            .unwrap()
+            .preview,
+        PreviewState::Ready
+    );
+    assert_eq!(
+        library
+            .generate_mod_preview(ZZZ, &texture.id)
+            .unwrap()
+            .preview,
+        PreviewState::Unavailable
+    );
+    assert_eq!(
+        library
+            .mod_preview(ZZZ, &texture.id, PreviewView::Front)
+            .unwrap_err()
+            .code,
+        ErrorCode::NotFound
+    );
+
+    library.clear_mod_previews(ZZZ).unwrap();
+    assert!(library
+        .mod_details(ZZZ)
+        .unwrap()
+        .iter()
+        .all(|d| d.preview == PreviewState::Missing));
+    // The mods themselves are untouched.
+    assert_eq!(library.list(ZZZ).unwrap().mods.len(), 2);
+}

@@ -25,3 +25,6 @@ __pycache__/
 # Logs and temporary files
 *.log
 *.tmp
+
+# Local SDLC workspace, kept outside the tracked tree
+/SDLC/

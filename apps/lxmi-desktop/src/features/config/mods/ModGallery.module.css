@@ -1,0 +1,318 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+  padding: 0 12px 24px;
+}
+
+.cell {
+  display: flex;
+  min-width: 0;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: 1px solid var(--rf-faint);
+  border-radius: 4px;
+  background:
+    radial-gradient(ellipse 55% 40% at 50% 42%, #ffffff0f, transparent),
+    var(--rf-surface);
+  cursor: pointer;
+  transition: border-color 160ms;
+}
+
+.card[data-checked="true"] {
+  border-color: #19e3ff59;
+  background:
+    radial-gradient(ellipse 55% 40% at 50% 42%, #19e3ff1f, transparent),
+    var(--rf-surface);
+}
+
+.card[data-changed="true"] {
+  border-color: var(--rf-cyan);
+}
+
+.card[data-disabled="true"] {
+  cursor: default;
+}
+
+.card:hover,
+.card:has(:focus-visible) {
+  border-color: var(--rf-cyan);
+}
+
+.render {
+  position: absolute;
+  inset: 6px 0 0;
+  width: 100%;
+  height: calc(100% - 6px);
+  object-fit: contain;
+  pointer-events: none;
+  animation: appear 240ms var(--ease-out);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Top and bottom shading so the details stay legible over a render. */
+.veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(#0f1011d9, transparent 22%),
+    linear-gradient(transparent 48%, #0f1011f2 82%);
+  pointer-events: none;
+}
+
+.details {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+}
+
+.veil,
+.details {
+  transition: opacity 280ms var(--ease-out);
+}
+
+.card[data-image="false"] .veil {
+  display: none;
+}
+
+.card[data-image="true"]:not([data-revealed="true"], :has(:focus-visible))
+  :is(.veil, .details) {
+  opacity: 0;
+}
+
+.idle {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 280ms var(--ease-out);
+}
+
+.card[data-image="false"] .idle,
+.card[data-revealed="true"] .idle,
+.card:has(:focus-visible) .idle {
+  opacity: 0;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--rf-cyan);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.active {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  color: var(--rf-muted);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.card[data-checked="true"] .active {
+  color: var(--rf-cyan);
+}
+
+.kind,
+.change {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.kind {
+  color: var(--rf-rust);
+}
+
+.change {
+  color: var(--rf-cyan);
+}
+
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  color: var(--rf-faint);
+  font-size: 11px;
+  text-align: center;
+}
+
+.placeholder span {
+  color: var(--rf-muted);
+}
+
+.placeholder[data-status="rendering"] {
+  color: var(--rf-cyan);
+}
+
+.placeholder[data-status="rendering"] span {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  color: var(--rf-cyan);
+  text-transform: uppercase;
+}
+
+.spinner {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.character {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 1px;
+  line-height: 26px;
+  color: var(--rf-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card[data-image="false"] .character {
+  font-size: 17px;
+  line-height: 20px;
+}
+
+.name {
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--rf-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid #ffffff14;
+}
+
+.meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.meta div:last-child {
+  align-items: flex-end;
+}
+
+.meta dt {
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  color: var(--rf-muted);
+  text-transform: uppercase;
+}
+
+.meta dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--rf-text);
+}
+
+.angles {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--rf-faint);
+  border-radius: var(--radius);
+  background: #0f1011cc;
+}
+
+.angle {
+  flex: 1;
+  height: 26px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  color: var(--rf-muted);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background-color 120ms,
+    color 120ms;
+}
+
+.angle:hover {
+  color: var(--rf-text);
+}
+
+.angle[aria-pressed="true"] {
+  background: var(--rf-text);
+  color: var(--rf-bg);
+}
+
+.angle:focus-visible {
+  outline: 1px solid var(--rf-cyan);
+  outline-offset: 1px;
+}
+
+.empty {
+  padding: 32px 12px;
+  color: var(--rf-muted);
+  font-size: 12.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .render,
+  .spinner {
+    animation: none;
+  }
+}

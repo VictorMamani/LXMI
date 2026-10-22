@@ -1,22 +1,35 @@
 import { FolderPlus, Search } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { errorMessage } from "../../../api/errors";
 import { Button } from "../../../components/Button";
 import { InlineError } from "../../../components/InlineError";
 import { TextField } from "../../../components/TextField";
 import { plural } from "../../../domain/format";
-import { sameModSelection } from "../../../domain/mods";
+import {
+  kindFilters,
+  matchesKind,
+  matchesQuery,
+  sameModSelection,
+  type KindFilter,
+} from "../../../domain/mods";
 import { useAction } from "../../../hooks/useAction";
+import { readStored, writeStored } from "../../../lib/storage";
 import { saveAndApplyProfile } from "../../../services/profileActivation";
 import { useGameData } from "../../../state/GameDataContext";
 import { useToast } from "../../../state/ToastContext";
 import { PageLayout } from "../PageLayout";
 import { ImportModDialog } from "./ImportModDialog";
+import { ModGallery } from "./ModGallery";
 import { ModTable } from "./ModTable";
+import { ModToolbar, type ModLayout } from "./ModToolbar";
 import styles from "./ModsPage.module.css";
 import { NewProfileDialog } from "./NewProfileDialog";
 import { PendingChangesBar } from "./PendingChangesBar";
 import { ProfilePicker } from "./ProfilePicker";
+import { useModInsights } from "./useModInsights";
 import { useProfileDraft } from "./useProfileDraft";
+
+const LAYOUT_KEY = "lxmi.mods.layout";
 
 export function ModsPage() {
   const { game, library, runtime, refresh } = useGameData();
@@ -24,18 +37,51 @@ export function ModsPage() {
   const action = useAction<"apply">();
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<"import" | "profile" | null>(null);
+  const [filter, setFilter] = useState<KindFilter>("all");
+  const [layout, setLayoutState] = useState<ModLayout>(() =>
+    readStored(LAYOUT_KEY) === "list" ? "list" : "gallery",
+  );
+  function setLayout(value: ModLayout) {
+    writeStored(LAYOUT_KEY, value);
+    setLayoutState(value);
+  }
 
   const lib = library.data;
   const status = runtime.data?.status ?? null;
   const applied = status?.selection.current?.profile_name ?? null;
   const draft = useProfileDraft(lib, applied);
 
-  const mods = lib?.mods ?? [];
-  const filtered = query
-    ? mods.filter((mod) =>
-        mod.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
-      )
-    : mods;
+  const insights = useModInsights(game.backendId, lib?.mods ?? null);
+  const details = insights.details;
+
+  const mods = useMemo(() => lib?.mods ?? [], [lib]);
+  const searched = mods.filter((mod) =>
+    matchesQuery(mod, details.get(mod.id), query),
+  );
+  const filtered = searched.filter((mod) =>
+    matchesKind(details.get(mod.id), filter),
+  );
+  const counts = Object.fromEntries(
+    kindFilters.map(({ id }) => [
+      id,
+      searched.filter((mod) => matchesKind(details.get(mod.id), id)).length,
+    ]),
+  ) as Record<KindFilter, number>;
+  const readyPreviews = mods.filter(
+    (mod) => details.get(mod.id)?.preview === "ready",
+  ).length;
+  const filterLabel = kindFilters
+    .find((f) => f.id === filter)
+    ?.label.toLocaleLowerCase();
+
+  async function clearPreviews() {
+    try {
+      await insights.clearPreviews();
+      toast("Previews deleted", "success");
+    } catch (reason) {
+      toast(errorMessage(reason), "error");
+    }
+  }
   const changes = draft.diff.count + (draft.isSaved ? 0 : 1);
   const appliedMatches =
     status?.applied_profile?.name === draft.name &&
@@ -66,6 +112,15 @@ export function ModsPage() {
     if (result.applied) toast(`Profile '${draft.name}' applied`, "success");
     else toast(`Profile saved. ${result.reason}`, "error");
   }
+
+  const emptyText =
+    library.loading && !lib
+      ? "Reading library…"
+      : query
+        ? `No mods match '${query}'.`
+        : filter !== "all"
+          ? `No ${filterLabel} mods in this library.`
+          : "This library has no mods yet. Import a directory or ZIP archive to get started.";
 
   let barTitle = "No pending changes";
   if (draft.diff.count > 0)
@@ -157,20 +212,44 @@ export function ModsPage() {
             {lib.issues.map((issue) => issue.detail).join(" · ")}
           </InlineError>
         )}
-        <ModTable
-          mods={filtered}
-          selected={draft.selected}
-          changeOf={draft.diff.changeOf}
-          disabled={action.busy || !draft.name}
-          emptyText={
-            library.loading && !lib
-              ? "Reading library…"
-              : query
-                ? `No mods match '${query}'.`
-                : "This library has no mods yet. Import a directory or ZIP archive to get started."
-          }
-          onToggle={draft.toggle}
-        />
+        {mods.length > 0 && (
+          <ModToolbar
+            filter={filter}
+            counts={counts}
+            onFilter={setFilter}
+            layout={layout}
+            onLayout={setLayout}
+            previewsEnabled={insights.enabled}
+            progress={insights.progress}
+            readyPreviews={readyPreviews}
+            onPreviewsChange={insights.setEnabled}
+            onClearPreviews={() => void clearPreviews()}
+          />
+        )}
+        {layout === "gallery" ? (
+          <ModGallery
+            gameId={game.backendId}
+            mods={filtered}
+            details={details}
+            rendering={insights.progress?.current ?? null}
+            queued={insights.running}
+            selected={draft.selected}
+            changeOf={draft.diff.changeOf}
+            disabled={action.busy || !draft.name}
+            emptyText={emptyText}
+            onToggle={draft.toggle}
+          />
+        ) : (
+          <ModTable
+            mods={filtered}
+            details={details}
+            selected={draft.selected}
+            changeOf={draft.diff.changeOf}
+            disabled={action.busy || !draft.name}
+            emptyText={emptyText}
+            onToggle={draft.toggle}
+          />
+        )}
         {lib && lib.profiles.length === 0 && mods.length > 0 && !draft.name && (
           <p className={styles.note}>
             Create a profile from the picker to choose which mods to load.
