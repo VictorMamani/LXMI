@@ -2,7 +2,6 @@ import { ArrowLeft } from "lucide-react";
 import { version } from "../../../package.json";
 import { useNavigation, type ConfigSection } from "../../app/navigation";
 import { Button } from "../../components/Button";
-import { Tag } from "../../components/Tag";
 import styles from "./Sidebar.module.css";
 
 const sections: { id: ConfigSection; label: string }[] = [
@@ -21,8 +20,8 @@ export function Sidebar({ active }: { active: ConfigSection }) {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
-        <p className={styles.logo}>MODHUB</p>
-        <p className={styles.subtitle}>SETTINGS</p>
+        <p className={styles.logo}>LXMI</p>
+        <p className={styles.subtitle}>Settings · v{version}</p>
       </div>
 
       <nav aria-label="Settings sections">
@@ -46,9 +45,8 @@ export function Sidebar({ active }: { active: ConfigSection }) {
         <Button variant="outline" icon={ArrowLeft} onClick={goHome}>
           Back
         </Button>
-        <p className={styles.version}>
-          <Tag>LXMI {version}</Tag>
-          <span>ESC</span>
+        <p className={styles.hint}>
+          <kbd>ESC</kbd> to go back
         </p>
       </div>
     </aside>

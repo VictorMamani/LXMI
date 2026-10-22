@@ -4,20 +4,26 @@
   width: var(--sidebar-width);
   flex: none;
   padding: 36px 0 32px 36px;
+  /* Nav labels scale with the sidebar width (cqi = 1% of it). */
+  container-type: inline-size;
 }
 
 .brand {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 10px;
 }
 
+/* Same solid rust label as the version tag, at logo size. */
 .logo {
+  padding: 4px 12px 4px 13px;
+  background: var(--rf-rust);
   font-family: var(--font-display);
   font-size: 30px;
-  letter-spacing: 4px;
+  letter-spacing: 5px;
   line-height: 34px;
-  color: var(--rf-cyan);
+  color: var(--rf-bg);
 }
 
 .subtitle {
@@ -25,13 +31,14 @@
   font-size: 11px;
   letter-spacing: 3px;
   color: var(--rf-muted);
+  text-transform: uppercase;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 18px;
+  gap: clamp(18px, 7cqi, 28px);
   margin-top: 44px;
 }
 
@@ -41,9 +48,9 @@
   border: 0;
   background: none;
   font-family: var(--font-display);
-  font-size: 15px;
-  letter-spacing: 2.5px;
-  line-height: 17px;
+  font-size: clamp(15px, 10cqi, 26px);
+  letter-spacing: 0.16em;
+  line-height: 1.15;
   color: var(--rf-muted);
   text-transform: uppercase;
   transition:
@@ -58,9 +65,9 @@
 
 .link[aria-current="page"] {
   padding-left: 13px;
-  font-size: 32px;
-  letter-spacing: 2px;
-  line-height: 36px;
+  font-size: clamp(32px, 17cqi, 44px);
+  letter-spacing: 0.06em;
+  line-height: 1.15;
   color: var(--rf-text);
 }
 
@@ -68,8 +75,8 @@
   content: "";
   position: absolute;
   left: 0;
-  top: 5px;
-  bottom: 5px;
+  top: 0.15em;
+  bottom: 0.15em;
   width: 3px;
   background: var(--rf-cyan);
 }
@@ -82,12 +89,15 @@
   margin-top: auto;
 }
 
-.version {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.hint {
   font-family: var(--font-display);
   font-size: 11px;
   letter-spacing: 1.5px;
   color: var(--rf-faint);
+  text-transform: uppercase;
+}
+
+.hint kbd {
+  font: inherit;
+  color: var(--rf-muted);
 }
